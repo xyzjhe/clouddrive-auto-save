@@ -144,23 +144,23 @@
         </el-row>
 
         <el-form-item label="分享链接" required>
-          <el-input v-model="form.share_url" placeholder="请输入 139 或 Quark 分享链接" @change="handleUrlChange">
-            <template #append>
+          <div class="share-url-row">
+            <el-input v-model="form.share_url" placeholder="请输入 139 或 Quark 分享链接" @change="handleUrlChange" />
+            <el-button-group class="share-url-actions">
               <el-button
                 :icon="FolderOpen"
                 title="浏览分享内容并选择目录"
                 :disabled="!form.share_url || !form.account_id"
                 @click="openBrowseShareDialog"
               />
-              <div class="append-divider"></div>
               <el-button
                 :icon="ExternalLink"
                 title="在新标签页中打开链接"
                 :disabled="!form.share_url"
                 @click="openExternalLink(form.share_url, form.extract_code)"
               />
-            </template>
-          </el-input>
+            </el-button-group>
+          </div>
         </el-form-item>
 
         <el-row :gutter="20">
@@ -1548,21 +1548,17 @@ html.dark .task-name-cell .name {
   color: var(--el-color-primary);
 }
 
-.append-divider {
-  width: 1px;
-  height: 20px;
-  background: var(--el-border-color);
-  margin: 0 6px;
-}
-
-:deep(.el-input-group__append) {
+.share-url-row {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  gap: 8px;
+  width: 100%;
 }
 
-:deep(.el-input-group__append .el-button) {
-  margin-left: 0;
+.share-url-row .el-input {
+  flex: 1;
+}
+
+.share-url-actions .el-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
