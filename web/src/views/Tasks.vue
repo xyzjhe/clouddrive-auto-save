@@ -144,16 +144,23 @@
         </el-row>
 
         <el-form-item label="分享链接" required>
-          <el-input v-model="form.share_url" placeholder="请输入 139 或 Quark 分享链接" @change="handleUrlChange">
-            <template #append>
-              <el-button 
-                :icon="ExternalLink" 
+          <div class="share-url-row">
+            <el-input v-model="form.share_url" placeholder="请输入 139 或 Quark 分享链接" @change="handleUrlChange" />
+            <el-button-group class="share-url-actions">
+              <el-button
+                :icon="FolderOpen"
+                title="浏览分享内容并选择目录"
+                :disabled="!form.share_url || !form.account_id"
+                @click="openBrowseShareDialog"
+              />
+              <el-button
+                :icon="ExternalLink"
                 title="在新标签页中打开链接"
                 :disabled="!form.share_url"
                 @click="openExternalLink(form.share_url, form.extract_code)"
               />
-            </template>
-          </el-input>
+            </el-button-group>
+          </div>
         </el-form-item>
 
         <el-row :gutter="20">
@@ -314,39 +321,56 @@
       </template>
     </el-dialog>
 
-    <!-- 选择起始文件独立弹窗 -->
-    <el-dialog 
-      v-model="startFileDialogVisible" 
-      title="选择起始转存文件" 
+    <!-- 选择起始文件 / 浏览分享内容弹窗 -->
+    <el-dialog
+      v-model="startFileDialogVisible"
+      :title="browseMode === 'selectShareUrl' ? '浏览分享内容' : '选择起始转存文件'"
       width="900px"
       append-to-body
       destroy-on-close
     >
       <div class="share-files-dialog-content">
-        <el-alert title="逻辑说明" type="info" :closable="false" show-icon style="margin-bottom: 15px">
-          系统将从选中的文件开始，按更新时间向前转存所有更新的文件（含所选文件本身）。<b>此处已应用您的重命名规则并执行同名预检。</b>
+        <!-- 面包屑导航 -->
+        <div class="breadcrumb-nav" style="margin-bottom: 12px;">
+          <el-breadcrumb separator="/">
+            <el-breadcrumb-item>
+              <a href="#" @click.prevent="navigateToBreadcrumb(-1)" class="breadcrumb-link">根目录</a>
+            </el-breadcrumb-item>
+            <el-breadcrumb-item v-for="(crumb, index) in breadcrumbs" :key="crumb.id">
+              <a href="#" @click.prevent="navigateToBreadcrumb(index)" class="breadcrumb-link">{{ crumb.name }}</a>
+            </el-breadcrumb-item>
+          </el-breadcrumb>
+        </div>
+
+        <el-alert v-if="browseMode === 'selectShareUrl'" title="选择目录" type="info" :closable="false" show-icon style="margin-bottom: 15px">
+          点击文件夹进入子目录，选择目标文件夹后点击"选择为分享链接"，将更新分享链接为该目录的地址。
         </el-alert>
-        
-        <el-table 
-          :data="shareFiles" 
-          max-height="500" 
-          size="default" 
-          border 
-          stripe 
+        <el-alert v-else title="逻辑说明" type="info" :closable="false" show-icon style="margin-bottom: 15px">
+          系统将从选中的文件开始，按更新时间向前转存所有更新的文件（含所选文件本身）。<b>此处已应用您的重命名规则并执行同名预检。</b> 点击文件夹可进入子目录。
+        </el-alert>
+
+        <el-table
+          :data="shareFiles"
+          max-height="500"
+          size="default"
+          border
+          stripe
           v-loading="parsingShare"
           highlight-current-row
           :row-class-name="tableRowClassName"
           @current-change="handleStartFileTableChange"
+          @row-dblclick="handleRowDblClick"
         >
-          <el-table-column width="40" align="center">
+          <!-- startFile 模式且在初始目录时显示 radio 列 -->
+          <el-table-column v-if="browseMode === 'startFile' && isInitialDir" width="40" align="center">
             <template #default="{ row }">
-              <el-radio v-model="tempStartFileId" :label="row.id" class="naked-radio"><span></span></el-radio>
+              <el-radio v-if="!row.is_folder" v-model="tempStartFileId" :label="row.id" class="naked-radio"><span></span></el-radio>
             </template>
           </el-table-column>
-          
+
           <el-table-column label="原始文件名" show-overflow-tooltip min-width="180">
             <template #default="{ row }">
-              <div class="name-main">
+              <div class="name-main" :class="{ 'folder-clickable': row.is_folder }" @click="row.is_folder && enterFolder(row)" @dblclick="!row.is_folder && handleRowDblClick(row)">
                 <el-icon size="16">
                   <Folder v-if="row.is_folder" color="#eab308" />
                   <File v-else color="#64748b" />
@@ -358,7 +382,7 @@
 
           <el-table-column label="预览文件名 (入库名)" show-overflow-tooltip min-width="220">
             <template #default="{ row }">
-              <span :style="{ 
+              <span :style="{
                 fontWeight: row.is_folder ? '600' : 'normal',
                 color: (row.new_name && row.new_name !== row.name) ? 'var(--el-color-primary)' : 'inherit'
               }">
@@ -374,21 +398,37 @@
               </el-tag>
             </template>
           </el-table-column>
-          
+
           <el-table-column label="状态" width="100" align="center">
             <template #default="{ row }">
               <el-tag v-if="row.is_existed" size="small" type="success" effect="light">已在网盘</el-tag>
               <el-tag v-else size="small" type="info" effect="plain">待转存</el-tag>
             </template>
           </el-table-column>
-          
+
           <el-table-column prop="updated_at" label="分享更新时间" width="160" sortable />
+
+          <!-- selectShareUrl 模式显示进入按钮 -->
+          <el-table-column v-if="browseMode === 'selectShareUrl'" label="操作" width="80" align="center">
+            <template #default="{ row }">
+              <el-button v-if="row.is_folder" type="primary" link size="small" @click="enterFolder(row)">
+                进入
+              </el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </div>
       <template #footer>
         <el-button @click="startFileDialogVisible = false">取消</el-button>
-        <el-button @click="clearStartFile">清除选择</el-button>
-        <el-button type="primary" @click="confirmStartFileSelection">确认选择</el-button>
+        <template v-if="browseMode === 'selectShareUrl'">
+          <el-button type="primary" @click="confirmSelectShareUrl">
+            选择当前目录（{{ currentDirName }}）
+          </el-button>
+        </template>
+        <template v-else>
+          <el-button @click="clearStartFile">清除选择</el-button>
+          <el-button type="primary" @click="confirmStartFileSelection" :disabled="!tempStartFileId">确认选择</el-button>
+        </template>
       </template>
     </el-dialog>
 
@@ -421,7 +461,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { Plus, Play, Edit, Trash2, RefreshCw, Folder, File, Info, Cloud, ExternalLink, AlertTriangle, Clock } from 'lucide-vue-next'
+import { Plus, Play, Edit, Trash2, RefreshCw, Folder, File, Info, Cloud, ExternalLink, AlertTriangle, Clock, FolderOpen } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTasks, createTask, updateTask, deleteTask, runTask, runAllTasks, previewTask, parseShareLink, getScheduleSettings } from '../api/task'
 import { getAccounts, getFolders, createFolder } from '../api/account'
@@ -487,6 +527,20 @@ const parsingShare = ref(false)
 const startFileDialogVisible = ref(false)
 const selectedStartFileName = ref('')
 const tempStartFileId = ref('')
+
+// 子目录浏览相关
+const breadcrumbs = ref([]) // [{ id, name }]
+const currentParentId = ref('')
+const browseMode = ref('startFile') // 'startFile' | 'selectShareUrl'
+const isInitialDir = ref(true) // 是否在初始目录（用于控制 radio 显示）
+
+// 计算当前目录名称（用于 selectShareUrl 模式的按钮显示）
+const currentDirName = computed(() => {
+  if (breadcrumbs.value.length === 0) {
+    return '根目录'
+  }
+  return breadcrumbs.value[breadcrumbs.value.length - 1].name
+})
 
 // 处理表格行样式
 const tableRowClassName = ({ row }) => {
@@ -593,24 +647,74 @@ const openStartFileDialog = async () => {
   if (!form.value.share_url || !form.value.account_id) {
     return ElMessage.warning('请先填写执行账号和分享链接')
   }
-  
+
+  browseMode.value = 'startFile'
   startFileDialogVisible.value = true
   parsingShare.value = true
   tempStartFileId.value = form.value.start_file_id
   shareFiles.value = []
-  
+  breadcrumbs.value = []
+  isInitialDir.value = true
+
+  // 使用 share_parent_id 作为初始目录（139 平台）
+  // 如果有 share_parent_id，将其作为新的根目录
+  const initialParentId = form.value.share_parent_id || ''
+  currentParentId.value = initialParentId
+
+  await loadShareFiles(initialParentId)
+}
+
+// 打开浏览分享内容对话框（用于选择目录作为新的分享链接）
+const openBrowseShareDialog = async () => {
+  if (!form.value.share_url || !form.value.account_id) {
+    return ElMessage.warning('请先填写执行账号和分享链接')
+  }
+
+  browseMode.value = 'selectShareUrl'
+  startFileDialogVisible.value = true
+  parsingShare.value = true
+  tempStartFileId.value = ''
+  shareFiles.value = []
+  breadcrumbs.value = []
+
+  // 根据当前分享链接确定初始目录
+  const account = accounts.value.find(acc => acc.id === form.value.account_id)
+  let initialParentId = ''
+
+  if (account?.platform === 'quark') {
+    // 夸克平台：从 URL 中解析 pdirFID
+    const match = form.value.share_url.match(/\/s\/(\w+)#\/list\/share\/(\w+)/)
+    if (match && match[2] && match[2] !== '0') {
+      initialParentId = match[2]
+    }
+  } else if (account?.platform === '139') {
+    // 139 平台：使用 share_parent_id
+    initialParentId = form.value.share_parent_id || ''
+  }
+
+  currentParentId.value = initialParentId
+  await loadShareFiles(initialParentId)
+}
+
+// 加载分享文件列表（支持子目录浏览）
+const loadShareFiles = async (parentId) => {
+  parsingShare.value = true
+  shareFiles.value = []
+  currentParentId.value = parentId
+
   try {
     const data = await parseShareLink({
       account_id: form.value.account_id,
       share_url: form.value.share_url,
       extract_code: form.value.extract_code,
+      parent_id: parentId,
       save_path: form.value.save_path,
       pattern: form.value.pattern,
       replacement: form.value.replacement,
       name: form.value.name
     })
     shareFiles.value = data
-    
+
     // 如果已经有选中的 ID，尝试匹配出文件名用于回显
     if (form.value.start_file_id) {
       const selected = data.find(f => f.id === form.value.start_file_id)
@@ -620,16 +724,70 @@ const openStartFileDialog = async () => {
     }
   } catch (err) {
     console.error('解析链接失败:', err)
-    // 移除冗余的提示，交给全局 API 拦截器展示后端清洗后的友好报错
     startFileDialogVisible.value = false
   } finally {
     parsingShare.value = false
   }
 }
 
+// 进入子目录
+const enterFolder = async (folder) => {
+  breadcrumbs.value.push({ id: folder.id, name: folder.name })
+  isInitialDir.value = false
+  await loadShareFiles(folder.id)
+}
+
+// 获取初始目录 ID（根据平台）
+const getInitialDirId = () => {
+  const account = accounts.value.find(acc => acc.id === form.value.account_id)
+
+  if (account?.platform === 'quark') {
+    // 夸克平台：从 URL 中解析 pdirFID
+    const match = form.value.share_url.match(/\/s\/(\w+)#\/list\/share\/(\w+)/)
+    if (match && match[2] && match[2] !== '0') {
+      return match[2]
+    }
+  } else if (account?.platform === '139') {
+    // 139 平台：使用 share_parent_id
+    return form.value.share_parent_id || ''
+  }
+
+  return ''
+}
+
+// 点击面包屑导航
+const navigateToBreadcrumb = async (index) => {
+  if (index === -1) {
+    // 返回根目录
+    breadcrumbs.value = []
+    const rootId = getInitialDirId()
+    currentParentId.value = rootId
+    isInitialDir.value = true
+    await loadShareFiles(rootId)
+  } else {
+    breadcrumbs.value = breadcrumbs.value.slice(0, index + 1)
+    const navigatedId = breadcrumbs.value[index].id
+    currentParentId.value = navigatedId
+    // 判断是否回到了初始目录
+    const initialDirId = getInitialDirId()
+    isInitialDir.value = initialDirId
+      ? navigatedId === initialDirId
+      : breadcrumbs.value.length === 0
+    await loadShareFiles(navigatedId)
+  }
+}
+
 const handleStartFileTableChange = (row) => {
   if (row) {
     tempStartFileId.value = row.id
+  }
+}
+
+// 双击行处理：文件夹进入，文件选中（仅在 startFile 模式的初始目录下）
+const handleRowDblClick = (row) => {
+  if (browseMode.value === 'startFile' && !row.is_folder && isInitialDir.value) {
+    tempStartFileId.value = row.id
+    confirmStartFileSelection()
   }
 }
 
@@ -642,6 +800,47 @@ const confirmStartFileSelection = () => {
       selectedStartFileName.value = selected.name
     }
   }
+  startFileDialogVisible.value = false
+}
+
+// 确认选择目录作为新的分享链接
+const confirmSelectShareUrl = () => {
+  // 根据平台生成新的分享链接
+  const account = accounts.value.find(acc => acc.id === form.value.account_id)
+  if (!account) return
+
+  const originalUrl = form.value.share_url
+  let newUrl = originalUrl
+
+  // 获取当前目录 ID（根目录时使用默认值）
+  const currentDirId = currentParentId.value || ''
+
+  if (account.platform === 'quark') {
+    // 夸克网盘：替换 URL 中的 pdirFID
+    // 格式：https://pan.quark.cn/s/{pwdID}#/list/share/{pdirFID}
+    const match = originalUrl.match(/\/s\/(\w+)/)
+    if (match) {
+      const pwdID = match[1]
+      // 根目录时使用 "0"，子目录时使用 currentDirId
+      const pdirFID = currentDirId || '0'
+      newUrl = `https://pan.quark.cn/s/${pwdID}#/list/share/${pdirFID}`
+    }
+    // 夸克网盘不需要 share_parent_id，清空它
+    form.value.share_parent_id = ''
+  } else if (account.platform === '139') {
+    // 移动云盘：URL 不变，但存储 share_parent_id
+    // 139 通过 pCaID 区分目录，URL 格式不变
+    form.value.share_parent_id = currentDirId || ''
+    newUrl = originalUrl
+  }
+
+  form.value.share_url = newUrl
+  // 清空起始文件选择
+  form.value.start_file_id = ''
+  form.value.start_file_name = ''
+  selectedStartFileName.value = ''
+
+  ElMessage.success(`已选择目录：${currentDirName.value}`)
   startFileDialogVisible.value = false
 }
 
@@ -810,19 +1009,20 @@ const confirmFolderSelection = () => {
 }
 
 const openAddDialog = () => {
-  form.value = { 
-    id: null, 
-    name: '', 
-    account_id: '', 
-    share_url: '', 
-    extract_code: '', 
-    save_path: '/', 
-    pattern: '', 
-    replacement: '', 
-    start_file_id: '', 
-    start_file_name: '', 
-    cron: '', 
-    schedule_mode: 'global' 
+  form.value = {
+    id: null,
+    name: '',
+    account_id: '',
+    share_url: '',
+    extract_code: '',
+    save_path: '/',
+    pattern: '',
+    replacement: '',
+    start_file_id: '',
+    start_file_name: '',
+    share_parent_id: '',
+    cron: '',
+    schedule_mode: 'global'
   }
   shareFiles.value = []
   selectedStartFileName.value = ''
@@ -833,7 +1033,7 @@ const openAddDialog = () => {
 const handleEdit = async (row) => {
   shareFiles.value = []
   
-  form.value = { 
+  form.value = {
     id: row.id,
     name: row.name,
     account_id: row.account_id,
@@ -844,6 +1044,7 @@ const handleEdit = async (row) => {
     replacement: row.replacement,
     start_file_id: row.start_file_id,
     start_file_name: row.start_file_name,
+    share_parent_id: row.share_parent_id || '',
     cron: row.cron,
     schedule_mode: row.schedule_mode || 'global'
   }
@@ -1323,5 +1524,43 @@ html.dark .task-name-cell .name {
 .acc-cap {
   font-size: 12px;
   color: #94a3b8;
+}
+
+.breadcrumb-nav {
+  padding: 8px 0;
+}
+
+.breadcrumb-link {
+  color: var(--el-color-primary);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.breadcrumb-link:hover {
+  text-decoration: underline;
+}
+
+.folder-clickable {
+  cursor: pointer;
+}
+
+.folder-clickable:hover {
+  color: var(--el-color-primary);
+}
+
+.share-url-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.share-url-row .el-input {
+  flex: 1;
+}
+
+.share-url-actions .el-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

@@ -9,7 +9,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 4 : undefined,
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:8080',
@@ -17,14 +17,16 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'setup',
+      testMatch: /global\.setup\.ts/,
+    },
+    {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/user.json',
+      },
+      dependencies: ['setup'],
     },
   ],
-  // 自动启动后端服务（可选，目前假设后端手动启动或在流水线中已启动）
-  /* webServer: {
-    command: 'E2E_TEST_MODE=true ./bin/ucas',
-    url: 'http://localhost:8080',
-    reuseExistingServer: !process.env.CI,
-  }, */
 });

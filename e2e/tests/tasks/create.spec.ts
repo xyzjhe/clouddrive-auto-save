@@ -1,12 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { add139Account, addQuarkAccount } from '../../fixtures/account.fixture';
 
 test.describe('任务管理：创建功能测试', () => {
-  test.beforeEach(async ({ page }) => {
-    await add139Account(page);
-    await addQuarkAccount(page);
-  });
-
   test('创建 139 移动云盘转存任务（包含高级选项）', async ({ page }) => {
     const taskName = `E2E_139_转存_${Date.now()}`;
     await page.goto('/tasks');
@@ -27,10 +21,10 @@ test.describe('任务管理：创建功能测试', () => {
     await expect(page.getByPlaceholder('从该文件开始向前转存 (为空则转存全量)')).toHaveValue('readme.txt');
 
     // 测试：选择保存目录与新建文件夹 (基于已有目录)
-    await page.getByRole('button', { name: '选择目录' }).click();
+    await page.getByRole('button', { name: '选择目录', exact: true }).click();
     const folderDialog = page.getByRole('dialog', { name: '选择保存目录' });
     await expect(folderDialog).toBeVisible();
-    
+
     // 等待已有目录渲染并点击选中
     await expect(folderDialog.getByText('139已有目录')).toBeVisible();
     await folderDialog.getByText('139已有目录').click();
@@ -73,10 +67,10 @@ test.describe('任务管理：创建功能测试', () => {
     await expect(page.getByPlaceholder('从该文件开始向前转存 (为空则转存全量)')).toHaveValue('readme.txt');
 
     // 测试：选择保存目录与新建文件夹 (基于已有目录)
-    await page.getByRole('button', { name: '选择目录' }).click();
+    await page.getByRole('button', { name: '选择目录', exact: true }).click();
     const folderDialog = page.getByRole('dialog', { name: '选择保存目录' });
     await expect(folderDialog).toBeVisible();
-    
+
     // 等待已有目录渲染并点击选中
     await expect(folderDialog.getByText('夸克已有目录')).toBeVisible();
     await folderDialog.getByText('夸克已有目录').click();

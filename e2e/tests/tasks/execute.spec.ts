@@ -1,12 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { add139Account, addQuarkAccount } from '../../fixtures/account.fixture';
 
 test.describe('任务管理：状态机与执行测试', () => {
-  test.beforeEach(async ({ page }) => {
-    await add139Account(page);
-    await addQuarkAccount(page);
-  });
-
   test('手动执行 139 转存任务并验证成功状态及文件入库', async ({ page }) => {
     const taskName = `E2E_139_成功_${Date.now()}`;
     const shareUrl = 'https://yun.139.com/w/#/share/link/mock_success';
@@ -103,7 +97,6 @@ test.describe('任务管理：状态机与执行测试', () => {
     const taskRow = page.locator('tr').filter({ hasText: taskName });
     await taskRow.getByRole('button', { name: '运行' }).click();
 
-    await page.waitForTimeout(5000);
     await page.reload();
 
     const updatedTaskRow = page.locator('tr').filter({ hasText: taskName });
@@ -127,7 +120,6 @@ test.describe('任务管理：状态机与执行测试', () => {
     const taskRow = page.locator('tr').filter({ hasText: taskName });
     await taskRow.getByRole('button', { name: '运行' }).click();
 
-    await page.waitForTimeout(5000);
     await page.reload();
 
     const updatedTaskRow = page.locator('tr').filter({ hasText: taskName });
@@ -151,7 +143,6 @@ test.describe('任务管理：状态机与执行测试', () => {
     const taskRow = page.locator('tr').filter({ hasText: taskName });
     await taskRow.getByRole('button', { name: '运行' }).click();
 
-    await page.waitForTimeout(5000);
     await page.reload();
 
     const updatedTaskRow = page.locator('tr').filter({ hasText: taskName });
@@ -175,7 +166,6 @@ test.describe('任务管理：状态机与执行测试', () => {
     const taskRow = page.locator('tr').filter({ hasText: taskName });
     await taskRow.getByRole('button', { name: '运行' }).click();
 
-    await page.waitForTimeout(5000);
     await page.reload();
 
     const updatedTaskRow = page.locator('tr').filter({ hasText: taskName });
@@ -199,7 +189,6 @@ test.describe('任务管理：状态机与执行测试', () => {
     const taskRow = page.locator('tr').filter({ hasText: taskName });
     await taskRow.getByRole('button', { name: '运行' }).click();
 
-    await page.waitForTimeout(5000);
     await page.reload();
 
     const updatedTaskRow = page.locator('tr').filter({ hasText: taskName });
@@ -223,7 +212,6 @@ test.describe('任务管理：状态机与执行测试', () => {
     const taskRow = page.locator('tr').filter({ hasText: taskName });
     await taskRow.getByRole('button', { name: '运行' }).click();
 
-    await page.waitForTimeout(5000);
     await page.reload();
 
     const updatedTaskRow = page.locator('tr').filter({ hasText: taskName });

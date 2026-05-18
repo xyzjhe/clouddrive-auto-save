@@ -1,12 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { add139Account, addQuarkAccount } from '../../fixtures/account.fixture';
 
 test.describe('任务管理：重命名预览测试', () => {
-  test.beforeEach(async ({ page }) => {
-    await add139Account(page);
-    await addQuarkAccount(page);
-  });
-
   test('验证 139 移动云盘分享链接解析与重命名预览', async ({ page }) => {
     await page.goto('/tasks');
     await page.getByRole('button', { name: '创建任务' }).last().click();
