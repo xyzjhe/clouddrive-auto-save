@@ -56,6 +56,9 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - `E2E_TEST_MODE=true` 激活 `internal/core/mock_http.go`，替换 `http.DefaultTransport` 拦截所有云盘 API 调用并返回预设响应
 - Playwright 测试用例位于 `e2e/tests/`，覆盖账号、仪表盘、任务和设置模块
 - Playwright 选择器：当多个按钮的可访问名称有包含关系时（如"选择目录" vs "浏览分享内容并选择目录"），必须使用 `getByRole('button', { name: '...', exact: true })` 避免严格模式冲突
+- 账号通过 `e2e/tests/global.setup.ts` 预置并保存 storageState，各测试文件无需重复创建
+- 表格中"原始文件名"和"预览文件名"列显示相同文本时，`getByText` 会匹配多个元素，需使用 `.first()` 限定
+- 139 平台 mock 中文件夹 ID 是完整 path（如 `root/139_sub_dir`），不是短 ID（`139_sub_dir`）
 
 ### 前端注意事项
 
