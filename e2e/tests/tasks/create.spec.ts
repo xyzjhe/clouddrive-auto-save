@@ -1,12 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { add139Account, addQuarkAccount } from '../../fixtures/account.fixture';
 
 test.describe('任务管理：创建功能测试', () => {
-  test.beforeEach(async ({ page }) => {
-    await add139Account(page);
-    await addQuarkAccount(page);
-  });
-
   test('创建 139 移动云盘转存任务（包含高级选项）', async ({ page }) => {
     const taskName = `E2E_139_转存_${Date.now()}`;
     await page.goto('/tasks');

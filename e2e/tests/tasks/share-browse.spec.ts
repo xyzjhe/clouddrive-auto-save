@@ -1,12 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { add139Account, addQuarkAccount } from '../../fixtures/account.fixture';
 
 test.describe('分享链接子目录浏览测试', () => {
-  test.beforeEach(async ({ page }) => {
-    await add139Account(page);
-    await addQuarkAccount(page);
-  });
-
   test('139 平台：浏览分享内容弹窗展示根目录内容并可选择目录', async ({ page }) => {
     await page.goto('/tasks');
     await page.getByRole('button', { name: '创建任务' }).last().click();
