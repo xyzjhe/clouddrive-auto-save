@@ -136,6 +136,83 @@ func TestUpdateAccountWithWhitespace(t *testing.T) {
 	}
 }
 
+func TestCreateTaskWithShareParentID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r, testDB := setupTestRouter(t)
+
+	// 先创建一个账号供任务关联
+	testDB.Create(&db.Account{Platform: "139", Nickname: "TestUser"})
+
+	taskData := map[string]interface{}{
+		"name":            "测试任务",
+		"account_id":      1,
+		"share_url":       "https://yun.139.com/w/#/share/link/test",
+		"save_path":       "/Movies",
+		"share_parent_id": "139_sub_dir",
+	}
+	body, _ := json.Marshal(taskData)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/tasks", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+
+	// 从数据库验证 share_parent_id 已持久化
+	var savedTask db.Task
+	testDB.First(&savedTask, "name = ?", "测试任务")
+
+	if savedTask.ShareParentID != "139_sub_dir" {
+		t.Errorf("expected share_parent_id '139_sub_dir', got '%s'", savedTask.ShareParentID)
+	}
+}
+
+func TestUpdateTaskShareParentID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r, testDB := setupTestRouter(t)
+
+	// 先创建一个账号和任务
+	testDB.Create(&db.Account{Platform: "139", Nickname: "TestUser"})
+	task := db.Task{
+		Name:          "测试任务",
+		AccountID:     1,
+		ShareURL:      "https://yun.139.com/w/#/share/link/test",
+		SavePath:      "/Movies",
+		ShareParentID: "old_sub_dir",
+	}
+	testDB.Create(&task)
+
+	// 更新：将 share_parent_id 清空
+	updateData := map[string]interface{}{
+		"name":            "测试任务",
+		"account_id":      1,
+		"share_url":       "https://yun.139.com/w/#/share/link/test",
+		"save_path":       "/Movies",
+		"share_parent_id": "",
+	}
+	body, _ := json.Marshal(updateData)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("PUT", "/api/tasks/"+strconv.Itoa(int(task.ID)), bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+
+	// 验证 share_parent_id 已被清空
+	var updatedTask db.Task
+	testDB.First(&updatedTask, task.ID)
+
+	if updatedTask.ShareParentID != "" {
+		t.Errorf("expected share_parent_id '', got '%s'", updatedTask.ShareParentID)
+	}
+}
+
 func TestUpdateGlobalSettings_InvalidCron(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r, testDB := setupTestRouter(t)
