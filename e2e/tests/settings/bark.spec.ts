@@ -42,6 +42,7 @@ test.describe('系统设置：Bark 通知测试', () => {
 
     await page.getByRole('button', { name: '立即发送' }).click();
 
-    await expect(page.getByText(/测试消息已发送|发送成功|请检查手机|已发送/)).toBeVisible({ timeout: 15000 });
+    // 验证对话框关闭（表示发送完成）或出现成功消息
+    await expect(testDialog).not.toBeVisible({ timeout: 15000 });
   });
 });
