@@ -1088,6 +1088,7 @@ const openAddDialog = () => {
   }
   shareFiles.value = []
   selectedStartFileName.value = ''
+  selectedDirName.value = ''
   cronPreset.value = ''
   dialogVisible.value = true
 }
@@ -1123,6 +1124,15 @@ const handleEdit = async (row) => {
     selectedStartFileName.value = row.start_file_name || `ID: ${row.start_file_id} (文件名未记录)`
   } else {
     selectedStartFileName.value = ''
+  }
+
+  // 如果已有子目录选择，初始化目录名称（无法从 ID 反推，显示占位文本）
+  if (row.share_parent_id) {
+    selectedDirName.value = '已选子目录'
+  } else {
+    // Quark 平台检查 URL 中的 pdirFID
+    const match = (row.share_url || '').match(/\/s\/(\w+)#\/list\/share\/(\w+)/)
+    selectedDirName.value = (match && match[2] && match[2] !== '0') ? '已选子目录' : ''
   }
 
   dialogVisible.value = true
