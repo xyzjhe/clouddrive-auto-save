@@ -46,7 +46,7 @@ test.describe('任务管理：编辑测试', () => {
     await taskRow.getByRole('button', { name: '编辑' }).click();
     const editDialog = page.getByRole('dialog', { name: '编辑任务' });
     await expect(editDialog).toBeVisible();
-    await editDialog.getByRole('radio', { name: '自定义频率' }).click();
+    await editDialog.getByText('自定义频率').click();
     await expect(editDialog.getByLabel('自定义频率 (Cron)')).toBeVisible();
     await page.getByRole('button', { name: '确认并保存' }).click();
 

@@ -17,7 +17,7 @@ test.describe('任务管理：删除测试', () => {
 
     await taskRow.getByRole('button', { name: '删除' }).click();
     await expect(page.getByText('确定要删除此转存任务吗？')).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: '确定', exact: true }).click();
+    await page.getByText('确定', { exact: true }).click();
 
     await expect(taskRow).not.toBeVisible();
   });
@@ -38,7 +38,7 @@ test.describe('任务管理：删除测试', () => {
 
     await taskRow.getByRole('button', { name: '删除' }).click();
     await expect(page.getByText('确定要删除此转存任务吗？')).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: '取消', exact: true }).click();
+    await page.getByText('取消', { exact: true }).click();
 
     await expect(taskRow).toBeVisible();
   });
