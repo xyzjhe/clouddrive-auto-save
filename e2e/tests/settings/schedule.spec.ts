@@ -18,7 +18,7 @@ test.describe('系统设置：调度配置测试', () => {
 
     await scheduleCard.getByRole('button', { name: '保存配置' }).click();
 
-    await expect(page.getByText('保存成功')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('全局调度设置已保存')).toBeVisible({ timeout: 5000 });
   });
 
   test('设置自定义 Cron 表达式', async ({ page }) => {
@@ -36,7 +36,7 @@ test.describe('系统设置：调度配置测试', () => {
     await page.getByLabel('全局 Cron 表达式').fill('0 0 */6 * * *');
 
     await scheduleCard.getByRole('button', { name: '保存配置' }).click();
-    await expect(page.getByText('保存成功')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('全局调度设置已保存')).toBeVisible({ timeout: 5000 });
   });
 
   test('禁用全局调度', async ({ page }) => {
@@ -50,6 +50,6 @@ test.describe('系统设置：调度配置测试', () => {
     }
 
     await scheduleCard.getByRole('button', { name: '保存配置' }).click();
-    await expect(page.getByText('保存成功')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('全局调度设置已保存')).toBeVisible({ timeout: 5000 });
   });
 });

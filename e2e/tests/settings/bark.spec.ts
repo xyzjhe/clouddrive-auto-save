@@ -15,7 +15,7 @@ test.describe('系统设置：Bark 通知测试', () => {
     await page.getByLabel('Device Key').fill('mock_device_key');
 
     await barkCard.getByRole('button', { name: '保存配置' }).click();
-    await expect(page.getByText('保存成功')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Bark 推送设置已保存')).toBeVisible({ timeout: 5000 });
   });
 
   test('发送测试消息', async ({ page }) => {
@@ -30,7 +30,7 @@ test.describe('系统设置：Bark 通知测试', () => {
     await page.getByLabel('Bark 服务器地址').fill('https://api.day.app');
     await page.getByLabel('Device Key').fill('mock_device_key');
     await barkCard.getByRole('button', { name: '保存配置' }).click();
-    await expect(page.getByText('保存成功')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Bark 推送设置已保存')).toBeVisible({ timeout: 5000 });
 
     await page.getByRole('button', { name: '发送测试消息' }).click();
 
@@ -42,6 +42,6 @@ test.describe('系统设置：Bark 通知测试', () => {
 
     await page.getByRole('button', { name: '立即发送' }).click();
 
-    await expect(page.getByText(/发送成功|测试消息已发送/)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/测试消息已发送|发送成功/)).toBeVisible({ timeout: 10000 });
   });
 });
