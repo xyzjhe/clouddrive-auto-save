@@ -7,7 +7,7 @@ test.describe('系统设置：Bark 通知测试', () => {
     const barkCard = page.locator('.el-card').filter({ hasText: 'Bark 消息推送' });
 
     const barkSwitch = barkCard.locator('.el-switch').first();
-    if (!(await barkSwitch.isChecked())) {
+    if (!(await barkSwitch.evaluate(el => el.classList.contains('is-checked')))) {
       await barkSwitch.click();
     }
 
@@ -24,7 +24,7 @@ test.describe('系统设置：Bark 通知测试', () => {
     const barkCard = page.locator('.el-card').filter({ hasText: 'Bark 消息推送' });
 
     const barkSwitch = barkCard.locator('.el-switch').first();
-    if (!(await barkSwitch.isChecked())) {
+    if (!(await barkSwitch.evaluate(el => el.classList.contains('is-checked')))) {
       await barkSwitch.click();
     }
     await page.getByLabel('Bark 服务器地址').fill('https://api.day.app');

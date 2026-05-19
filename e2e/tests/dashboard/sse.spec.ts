@@ -20,6 +20,6 @@ test.describe('仪表盘：SSE 实时更新测试', () => {
 
     await expect(page.getByText(taskName).first()).toBeVisible({ timeout: 15000 });
 
-    await expect(page.locator('.el-tag').filter({ hasText: 'SUCCESS' })).toBeVisible({ timeout: 60000 });
+    await expect(page.locator('.el-tag').filter({ hasText: 'SUCCESS' }).first()).toBeVisible({ timeout: 60000 });
   });
 });
