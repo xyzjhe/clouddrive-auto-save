@@ -46,7 +46,8 @@ type CloudDrive interface {
 	// SaveFileTo 将特定的分享文件保存到目标路径
 	SaveFileTo(ctx context.Context, fileID, targetPath string) error
 	// SaveLink 将分享链接中的文件转存到指定目标目录。如果 fileIDs 不为空，则仅转存指定的文件。
-	SaveLink(ctx context.Context, shareURL, extractCode, targetPath string, fileIDs []string) error
+	// parentID 用于指定分享链接的子目录（139 平台），为空时从 URL 解析或使用根目录。
+	SaveLink(ctx context.Context, shareURL, extractCode, targetPath string, fileIDs []string, parentID string) error
 }
 
 // DriveFactory 用于根据平台创建对应的驱动实例

@@ -57,7 +57,7 @@ func (m *MockDriver) ParseShare(ctx context.Context, shareURL, extractCode, pare
 	}, nil
 }
 
-func (m *MockDriver) SaveLink(ctx context.Context, shareURL, extractCode, targetPath string, fileIDs []string) error {
+func (m *MockDriver) SaveLink(ctx context.Context, shareURL, extractCode, targetPath string, fileIDs []string, parentID string) error {
 	// 模拟网络延迟
 	time.Sleep(200 * time.Millisecond)
 	m.SaveLinkCalls++

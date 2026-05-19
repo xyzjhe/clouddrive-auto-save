@@ -712,7 +712,7 @@ func (c *Cloud139) SaveFileTo(ctx context.Context, fileID, targetPath string) er
 	return fmt.Errorf("139 driver prefers batch SaveLink operation")
 }
 
-func (c *Cloud139) SaveLink(ctx context.Context, shareURL, extractCode, targetPath string, fileIDs []string) error {
+func (c *Cloud139) SaveLink(ctx context.Context, shareURL, extractCode, targetPath string, fileIDs []string, parentID string) error {
 	phone := c.getPhone()
 	if phone == "" {
 		return fmt.Errorf("139 SaveLink error: 无法获取合法的 11 位手机号")
@@ -724,6 +724,9 @@ func (c *Cloud139) SaveLink(ctx context.Context, shareURL, extractCode, targetPa
 	}
 	if extractCode != "" {
 		passwd = extractCode
+	}
+	if parentID != "" {
+		pCaID = parentID
 	}
 
 	info, err := c.getShareInfo(ctx, linkID, passwd, pCaID)
