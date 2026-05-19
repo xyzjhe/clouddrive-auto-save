@@ -163,6 +163,13 @@
           </div>
         </el-form-item>
 
+        <div v-if="isSubDirMode" class="subdir-hint">
+          <el-tag type="warning" effect="light" closable @close="resetToShareRoot">
+            <el-icon style="margin-right: 4px; vertical-align: middle;"><FolderOpen /></el-icon>
+            当前目录：{{ selectedDirName || '子目录' }}
+          </el-tag>
+        </div>
+
         <el-row :gutter="20">
           <el-col :span="24">
             <el-form-item label="提取码">
@@ -1622,5 +1629,13 @@ html.dark .existed-row {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.subdir-hint {
+  margin-top: 6px;
+}
+
+.subdir-hint .el-tag {
+  cursor: default;
 }
 </style>
