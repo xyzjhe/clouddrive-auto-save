@@ -533,6 +533,7 @@ const breadcrumbs = ref([]) // [{ id, name }]
 const currentParentId = ref('')
 const browseMode = ref('startFile') // 'startFile' | 'selectShareUrl'
 const isInitialDir = ref(true) // 是否在初始目录（用于控制 radio 显示）
+const selectedDirName = ref('') // 记录用户选择的子目录名称，用于提示条显示
 
 // 计算当前目录名称（用于 selectShareUrl 模式的按钮显示）
 const currentDirName = computed(() => {
@@ -540,6 +541,21 @@ const currentDirName = computed(() => {
     return '根目录'
   }
   return breadcrumbs.value[breadcrumbs.value.length - 1].name
+})
+
+// 判断当前是否处于子目录模式
+const isSubDirMode = computed(() => {
+  const account = accounts.value.find(acc => acc.id === form.value.account_id)
+  if (!account) return false
+
+  if (account.platform === 'quark') {
+    // Quark：从 URL 中解析 pdirFID，非 '0' 且非空则为子目录模式
+    const match = form.value.share_url.match(/\/s\/(\w+)#\/list\/share\/(\w+)/)
+    return match && match[2] && match[2] !== '0'
+  } else {
+    // 139：share_parent_id 非空则为子目录模式
+    return !!form.value.share_parent_id
+  }
 })
 
 // 处理表格行样式
