@@ -630,6 +630,8 @@ const handleUrlChange = () => {
   form.value.start_file_id = ''
   form.value.start_file_name = ''
   selectedStartFileName.value = ''
+  form.value.share_parent_id = ''
+  selectedDirName.value = ''
 }
 
 const openExternalLink = async (url, extractCode) => {
