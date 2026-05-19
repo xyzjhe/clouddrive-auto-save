@@ -19,6 +19,15 @@ test.describe('系统设置：Bark 通知测试', () => {
   });
 
   test('发送测试消息', async ({ page }) => {
+    // Mock bark API to avoid real network calls
+    await page.route('**/api/settings/test_bark', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: '测试消息已发送' }),
+      });
+    });
+
     await page.goto('/settings');
 
     const barkCard = page.locator('.el-card').filter({ hasText: 'Bark 消息推送' });
@@ -42,7 +51,7 @@ test.describe('系统设置：Bark 通知测试', () => {
 
     await page.getByRole('button', { name: '立即发送' }).click();
 
-    // 验证对话框关闭（表示发送完成）或出现成功消息
-    await expect(testDialog).not.toBeVisible({ timeout: 15000 });
+    // 验证对话框关闭（表示发送完成）
+    await expect(testDialog).not.toBeVisible({ timeout: 10000 });
   });
 });
