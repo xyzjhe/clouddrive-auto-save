@@ -658,7 +658,7 @@ func (q *Quark) SaveFileTo(ctx context.Context, fileID, targetPath string) error
 	return fmt.Errorf("quark driver prefers batch SaveLink operation")
 }
 
-func (q *Quark) SaveLink(ctx context.Context, shareURL, extractCode, targetPath string, fileIDs []string) error {
+func (q *Quark) SaveLink(ctx context.Context, shareURL, extractCode, targetPath string, fileIDs []string, parentID string) error {
 	pwdID, pdirFID := q.extractShareParams(shareURL)
 	if pwdID == "" {
 		return fmt.Errorf("invalid quark share url: %s", shareURL)

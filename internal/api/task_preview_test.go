@@ -34,7 +34,9 @@ func (m *apiMockDriver) DeleteFile(ctx context.Context, id string) error { retur
 func (m *apiMockDriver) ParseShare(ctx context.Context, u, p, parentID string) ([]core.FileInfo, error) {
 	return m.Files, nil
 }
-func (m *apiMockDriver) SaveLink(ctx context.Context, u, p, t string, ids []string) error { return nil }
+func (m *apiMockDriver) SaveLink(ctx context.Context, u, p, t string, ids []string, pid string) error {
+	return nil
+}
 func (m *apiMockDriver) RenameFile(ctx context.Context, id, n string) error               { return nil }
 func (m *apiMockDriver) SaveFileTo(ctx context.Context, id, t string) error               { return nil }
 func (m *apiMockDriver) PrepareTargetPath(ctx context.Context, p string) (string, error) {
