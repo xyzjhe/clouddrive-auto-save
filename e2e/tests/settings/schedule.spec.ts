@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('系统设置：调度配置测试', () => {
   test('启用全局调度并设置简易定时', async ({ page }) => {
     await page.goto('/settings');
-    await expect(page.getByText('系统设置')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '系统设置 ⚙️' })).toBeVisible();
 
     const scheduleCard = page.locator('.el-card').filter({ hasText: '全局定时任务' });
 
@@ -12,7 +12,7 @@ test.describe('系统设置：调度配置测试', () => {
       await scheduleSwitch.click();
     }
 
-    await page.getByRole('radio', { name: '简易定时' }).click();
+    await page.getByText('简易定时').click();
 
     await page.getByRole('button', { name: '凌晨' }).click();
 
@@ -31,7 +31,7 @@ test.describe('系统设置：调度配置测试', () => {
       await scheduleSwitch.click();
     }
 
-    await page.getByRole('radio', { name: '高级 Cron' }).click();
+    await page.getByText('高级 Cron').click();
 
     await page.getByLabel('全局 Cron 表达式').fill('0 0 */6 * * *');
 
