@@ -856,6 +856,9 @@ const confirmSelectShareUrl = () => {
   form.value.start_file_name = ''
   selectedStartFileName.value = ''
 
+  // 记录选中的目录名称
+  selectedDirName.value = currentDirName.value
+
   ElMessage.success(`已选择目录：${currentDirName.value}`)
   startFileDialogVisible.value = false
 }
