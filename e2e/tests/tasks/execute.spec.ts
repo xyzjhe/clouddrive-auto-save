@@ -43,6 +43,62 @@ test.describe('任务管理：状态机与执行测试', () => {
     await expect(existedTag).toBeVisible({ timeout: 20000 });
   });
 
+  test('139 子目录任务：执行时从子目录转存而非根目录', async ({ page }) => {
+    const taskName = `E2E_139_子目录执行_${Date.now()}`;
+    const shareUrl = 'https://yun.139.com/w/#/share/link/mock_success';
+
+    await page.goto('/tasks');
+    await page.getByRole('button', { name: '创建任务' }).last().click();
+    await page.locator('.el-select').first().click();
+    await page.getByRole('option', { name: 'E2E移动云盘用户' }).first().click();
+    await page.getByLabel('任务名称').fill(taskName);
+    await page.getByLabel('分享链接').fill(shareUrl);
+    await page.getByLabel('保存路径').fill('/139_sub_exec');
+
+    // 浏览分享内容，进入子目录并选择
+    await page.getByRole('button', { name: '浏览分享内容并选择目录' }).click();
+    const dialog = page.getByRole('dialog', { name: '浏览分享内容' });
+    await expect(dialog).toBeVisible();
+    await dialog.getByText('139分享子目录').first().click();
+    await dialog.getByRole('button', { name: '进入' }).click();
+    await dialog.getByRole('button', { name: /选择当前目录/ }).click();
+
+    await page.getByRole('button', { name: '确认并保存' }).click();
+
+    const taskRow = page.locator('tr').filter({ hasText: taskName });
+    await expect(taskRow).toBeVisible();
+
+    // 执行任务
+    await taskRow.getByRole('button', { name: '运行' }).click();
+
+    // 验证状态为 SUCCESS
+    const updatedTaskRow = page.locator('tr').filter({ hasText: taskName });
+    await expect(updatedTaskRow.locator('.el-tag').filter({ hasText: 'SUCCESS' })).toBeVisible({ timeout: 60000 });
+
+    // 验证子目录文件被转存：打开新的创建任务对话框，检查目标目录中已有子目录文件
+    await page.getByRole('button', { name: '创建任务' }).last().click();
+    await page.locator('.el-select').first().click();
+    await page.getByRole('option', { name: 'E2E移动云盘用户' }).first().click();
+    await page.getByLabel('分享链接').fill(shareUrl);
+    await page.getByLabel('保存路径').fill('/139_sub_exec');
+
+    // 浏览分享内容进入子目录，然后选择起始文件
+    await page.getByRole('button', { name: '浏览分享内容并选择目录' }).click();
+    const browseDialog = page.getByRole('dialog', { name: '浏览分享内容' });
+    await expect(browseDialog).toBeVisible();
+    await browseDialog.getByText('139分享子目录').first().click();
+    await browseDialog.getByRole('button', { name: '进入' }).click();
+    await browseDialog.getByRole('button', { name: /选择当前目录/ }).click();
+
+    await page.getByRole('button', { name: '选择文件' }).click();
+    const startFileDialog = page.getByRole('dialog', { name: '选择起始转存文件' });
+    await expect(startFileDialog).toBeVisible();
+
+    // 应显示子目录文件 sub_readme.txt 为"已在网盘"
+    const existedTag = startFileDialog.getByText('已在网盘').first();
+    await expect(existedTag).toBeVisible({ timeout: 20000 });
+  });
+
   test('手动执行夸克网盘转存任务并验证成功状态及文件入库', async ({ page }) => {
     const taskName = `E2E_Quark_成功_${Date.now()}`;
     const shareUrl = 'https://pan.quark.cn/s/mock_success';

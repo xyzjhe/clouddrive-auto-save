@@ -199,9 +199,20 @@ func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			respBody = `{"code": "0", "data": {"coLst": [{"coID": "f1", "contentID": "f1", "parentCatalogID": "root", "path": "root/f1", "coName": "[2024.04.20] E2E测试电影.mp4", "size": 1024, "udTime": "20240420120000"}, {"coID": "f2", "contentID": "f2", "parentCatalogID": "root", "path": "root/f2", "coName": "readme.txt", "size": 100, "udTime": "20240420120100"}], "caLst": [{"caID": "139_sub_dir", "caName": "139分享子目录", "path": "root/139_sub_dir", "udTime": "20240420120000"}]}}`
 		}
 	} else if strings.Contains(url, "share-kd-njs.yun.139.com/yun-share/richlifeApp/devapp/IBatchOprTask/createOuterLinkBatchOprTask") {
+		bodyBytes, _ := io.ReadAll(req.Body)
+		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+		bodyStr := string(bodyBytes)
 		savedFilesMu.Lock()
-		savedFiles["f1"] = true
-		savedFiles["f2"] = true
+		// 根据请求体中的 contentInfoList 和 catalogInfoList 标记实际转存的文件
+		if strings.Contains(bodyStr, "root/f1") {
+			savedFiles["f1"] = true
+		}
+		if strings.Contains(bodyStr, "root/f2") {
+			savedFiles["f2"] = true
+		}
+		if strings.Contains(bodyStr, "root/139_sub_dir/sub_f1") {
+			savedFiles["sub_f1"] = true
+		}
 		savedFilesMu.Unlock()
 		respBody = `{"success": true}`
 	} else if strings.Contains(url, "personal-kd-njs.yun.139.com/hcy/file/list") {
@@ -214,8 +225,16 @@ func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			respBody = `{"code": "0", "success": true, "data": {"items": [{"fileId": "139_new_folder", "name": "139_new_folder", "type": "folder", "category": "folder", "size": 0, "updatedAt": "2024-04-20 12:00:01"}]}}`
 		} else {
 			savedFilesMu.Lock()
+			items := []string{}
 			if savedFiles["f1"] {
-				respBody = `{"code": "0", "success": true, "data": {"items": [{"fileId": "f1", "name": "[2024.04.20] E2E测试电影.mp4", "type": "file", "size": 1024, "updatedAt": "2024-04-20 12:00:00"}, {"fileId": "f2", "name": "readme.txt", "type": "file", "size": 100, "updatedAt": "2024-04-20 12:00:00"}]}}`
+				items = append(items, `{"fileId": "f1", "name": "[2024.04.20] E2E测试电影.mp4", "type": "file", "size": 1024, "updatedAt": "2024-04-20 12:00:00"}`)
+				items = append(items, `{"fileId": "f2", "name": "readme.txt", "type": "file", "size": 100, "updatedAt": "2024-04-20 12:00:00"}`)
+			}
+			if savedFiles["sub_f1"] {
+				items = append(items, `{"fileId": "sub_f1", "name": "sub_readme.txt", "type": "file", "size": 200, "updatedAt": "2024-04-20 13:00:00"}`)
+			}
+			if len(items) > 0 {
+				respBody = `{"code": "0", "success": true, "data": {"items": [` + strings.Join(items, ",") + `]}}`
 			} else {
 				respBody = `{"code": "0", "success": true, "data": {"items": []}}`
 			}
