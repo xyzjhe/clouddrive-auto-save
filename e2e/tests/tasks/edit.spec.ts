@@ -70,7 +70,7 @@ test.describe('任务管理：编辑测试', () => {
 
     await expect(page.getByText('当前目录：')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Close' }).click();
+    await page.getByRole('button', { name: 'Close this tag' }).click();
 
     await expect(page.getByText('当前目录：')).not.toBeVisible();
   });

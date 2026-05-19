@@ -22,6 +22,6 @@ test.describe('任务管理：忽略失败任务测试', () => {
     await expect(updatedRow.locator('.el-tag--danger').filter({ hasText: 'LINK ERROR' })).toBeVisible({ timeout: 15000 });
 
     await page.goto('/');
-    await expect(page.getByText(taskName)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(taskName).first()).toBeVisible({ timeout: 15000 });
   });
 });

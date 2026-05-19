@@ -7,7 +7,7 @@ test.describe('系统设置：调度配置测试', () => {
 
     const scheduleCard = page.locator('.el-card').filter({ hasText: '全局定时任务' });
 
-    const scheduleSwitch = scheduleCard.locator('.el-switch');
+    const scheduleSwitch = scheduleCard.locator('.el-switch').first();
     if (!(await scheduleSwitch.isChecked())) {
       await scheduleSwitch.click();
     }
@@ -26,7 +26,7 @@ test.describe('系统设置：调度配置测试', () => {
 
     const scheduleCard = page.locator('.el-card').filter({ hasText: '全局定时任务' });
 
-    const scheduleSwitch = scheduleCard.locator('.el-switch');
+    const scheduleSwitch = scheduleCard.locator('.el-switch').first();
     if (!(await scheduleSwitch.isChecked())) {
       await scheduleSwitch.click();
     }
@@ -43,7 +43,7 @@ test.describe('系统设置：调度配置测试', () => {
     await page.goto('/settings');
 
     const scheduleCard = page.locator('.el-card').filter({ hasText: '全局定时任务' });
-    const scheduleSwitch = scheduleCard.locator('.el-switch');
+    const scheduleSwitch = scheduleCard.locator('.el-switch').first();
 
     if (await scheduleSwitch.isChecked()) {
       await scheduleSwitch.click();
