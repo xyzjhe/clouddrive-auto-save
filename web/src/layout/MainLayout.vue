@@ -6,7 +6,7 @@
         <CloudLogo :size="36" id="sidebar-grad" />
         <span>UCAS</span>
       </div>
-      
+
       <el-menu
         :default-active="activeMenu"
         class="side-menu"
@@ -42,9 +42,9 @@
           </el-breadcrumb>
         </div>
         <div class="header-right">
-          <el-button 
-            circle 
-            :icon="isDark ? Sun : Moon" 
+          <el-button
+            circle
+            :icon="isDark ? Sun : Moon"
             @click="toggleDark()"
             class="theme-toggle"
           />
@@ -71,13 +71,13 @@ import { useRoute } from 'vue-router'
 import CloudLogo from '../components/CloudLogo.vue'
 import SidebarFooter from '../components/SidebarFooter.vue'
 import { useDark, useToggle } from '@vueuse/core'
-import { 
-  LayoutDashboard, 
-  User, 
-  ListChecks, 
+import {
+  LayoutDashboard,
+  User,
+  ListChecks,
   Settings as SettingsIcon,
-  Moon, 
-  Sun 
+  Moon,
+  Sun
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -102,15 +102,16 @@ const currentPageTitle = computed(() => {
 }
 
 .sidebar {
-  background: white;
-  border-right: 1px solid rgba(0, 0, 0, 0.05);
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--neutral-200);
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 20;
 }
 
 html.dark .sidebar {
-  background: #111827;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .logo {
@@ -119,47 +120,63 @@ html.dark .sidebar {
   align-items: center;
   padding: 0 24px;
   gap: 12px;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
-  color: var(--el-color-primary);
+  color: var(--brand-600);
+  letter-spacing: -0.02em;
 }
 
 .side-menu {
   border-right: none;
   padding: 0 12px;
+  flex: 1;
 }
 
 .el-menu-item {
-  height: 48px;
-  line-height: 48px;
-  margin: 4px 0;
-  border-radius: 8px;
-  color: #64748b;
+  height: 44px;
+  line-height: 44px;
+  margin: 2px 0;
+  border-radius: 10px;
+  color: var(--neutral-500);
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.el-menu-item:hover {
+  background: var(--neutral-100);
+  color: var(--neutral-700);
+}
+
+html.dark .el-menu-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--neutral-300);
 }
 
 .el-menu-item.is-active {
-  background: #f1f5f9;
-  color: var(--el-color-primary);
+  background: var(--brand-50);
+  color: var(--brand-600);
+  font-weight: 600;
 }
 
 html.dark .el-menu-item.is-active {
-  background: rgba(79, 70, 229, 0.1);
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--brand-400);
 }
 
 .navbar {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: var(--bg-navbar);
+  backdrop-filter: blur(16px) saturate(1.2);
+  border-bottom: 1px solid var(--neutral-200);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 28px;
   z-index: 10;
 }
 
 html.dark .navbar {
-  background: rgba(17, 24, 39, 0.8);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .header-right {
@@ -168,18 +185,43 @@ html.dark .navbar {
   gap: 16px;
 }
 
+.theme-toggle {
+  border: 1px solid var(--neutral-200) !important;
+  background: var(--bg-content) !important;
+  color: var(--neutral-600) !important;
+  transition: all 0.2s;
+}
+
+.theme-toggle:hover {
+  border-color: var(--brand-200) !important;
+  color: var(--brand-600) !important;
+  background: var(--brand-50) !important;
+}
+
+html.dark .theme-toggle {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: var(--neutral-400) !important;
+}
+
+html.dark .theme-toggle:hover {
+  border-color: var(--brand-400) !important;
+  color: var(--brand-400) !important;
+  background: rgba(99, 102, 241, 0.1) !important;
+}
+
 .fade-transform-enter-active,
 .fade-transform-leave-active {
-  transition: all 0.3s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fade-transform-enter-from {
   opacity: 0;
-  transform: translateX(-20px);
+  transform: translateX(-12px);
 }
 
 .fade-transform-leave-to {
   opacity: 0;
-  transform: translateX(20px);
+  transform: translateX(12px);
 }
 </style>
