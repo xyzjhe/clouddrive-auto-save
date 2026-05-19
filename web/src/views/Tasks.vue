@@ -860,6 +860,30 @@ const confirmSelectShareUrl = () => {
   startFileDialogVisible.value = false
 }
 
+// 重置为根目录
+const resetToShareRoot = () => {
+  const account = accounts.value.find(acc => acc.id === form.value.account_id)
+  if (!account) return
+
+  if (account.platform === 'quark') {
+    // 从 URL 中提取 pwdID，重建根目录 URL
+    const match = form.value.share_url.match(/\/s\/([^#]+)/)
+    if (match) {
+      form.value.share_url = `https://pan.quark.cn/s/${match[1]}#/list/share/0`
+    }
+  } else {
+    // 139 平台：清空 share_parent_id
+    form.value.share_parent_id = ''
+  }
+  // 清空起始文件选择
+  form.value.start_file_id = ''
+  form.value.start_file_name = ''
+  selectedStartFileName.value = ''
+  // 清空目录名称记录
+  selectedDirName.value = ''
+  ElMessage.success('已重置为根目录')
+}
+
 const clearStartFile = () => {
   form.value.start_file_id = ''
   form.value.start_file_name = ''
