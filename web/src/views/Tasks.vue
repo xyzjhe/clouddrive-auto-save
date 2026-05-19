@@ -347,6 +347,16 @@
               <a href="#" @click.prevent="navigateToBreadcrumb(index)" class="breadcrumb-link">{{ crumb.name }}</a>
             </el-breadcrumb-item>
           </el-breadcrumb>
+          <el-button
+            v-if="isSubDirMode"
+            type="warning"
+            link
+            size="small"
+            @click="resetToShareRoot(); startFileDialogVisible = false"
+            style="margin-left: auto;"
+          >
+            重置为根目录
+          </el-button>
         </div>
 
         <el-alert v-if="browseMode === 'selectShareUrl'" title="选择目录" type="info" :closable="false" show-icon style="margin-bottom: 15px">
@@ -1594,6 +1604,8 @@ html.dark .existed-row {
 
 .breadcrumb-nav {
   padding: 8px 0;
+  display: flex;
+  align-items: center;
 }
 
 .breadcrumb-link {
