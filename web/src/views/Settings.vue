@@ -566,22 +566,28 @@ onMounted(() => {
 }
 
 .welcome-section h2 {
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 26px;
+  font-weight: 800;
   margin-bottom: 8px;
-  color: var(--el-text-color-primary);
+  color: var(--neutral-800);
+  letter-spacing: -0.02em;
 }
 
 .welcome-section p {
-  color: var(--el-text-color-secondary);
+  color: var(--neutral-500);
+  font-size: 15px;
 }
 
 .settings-card {
   margin-bottom: 24px;
-  border-radius: 12px;
+  border-radius: 14px;
   border: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: transform 0.3s ease;
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.settings-card:hover {
+  box-shadow: var(--shadow-lg);
 }
 
 .card-header {
@@ -595,7 +601,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 16px;
 }
 
@@ -603,20 +609,25 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: var(--el-color-primary-light-9);
-  color: var(--el-color-primary);
+  background-color: var(--brand-50);
+  color: var(--brand-600);
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: 10px;
   margin-bottom: 20px;
   font-size: 13px;
   font-weight: 500;
-  border: 1px solid var(--el-color-primary-light-8);
+  border: 1px solid var(--brand-100);
 }
 
 .schedule-summary.is-disabled {
-  background-color: var(--el-fill-color-lighter);
-  color: var(--el-text-color-secondary);
-  border-color: var(--el-border-color-lighter);
+  background-color: var(--neutral-100);
+  color: var(--neutral-500);
+  border-color: var(--neutral-200);
+}
+
+html.dark .schedule-summary.is-disabled {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
 .summary-text {
@@ -625,7 +636,7 @@ onMounted(() => {
 
 .form-tip {
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: var(--neutral-500);
   margin-top: 8px;
 }
 
@@ -651,9 +662,13 @@ onMounted(() => {
 :deep(.advanced-collapse .el-collapse-item__header) {
   height: 40px;
   border-bottom: none;
-  background-color: var(--el-fill-color-light);
+  background-color: var(--neutral-100);
   padding: 0 12px;
   border-radius: 8px;
+}
+
+html.dark :deep(.advanced-collapse .el-collapse-item__header) {
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 :deep(.advanced-collapse .el-collapse-item__wrap) {
@@ -664,7 +679,7 @@ onMounted(() => {
 .collapse-title {
   font-size: 13px;
   font-weight: 500;
-  color: var(--el-text-color-secondary);
+  color: var(--neutral-500);
 }
 
 .dialog-footer {

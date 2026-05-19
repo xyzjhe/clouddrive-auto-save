@@ -454,51 +454,91 @@ const getStatusText = (status) => {
 
 .welcome-section h2 {
   margin: 0;
-  font-size: 24px;
-  color: #1e293b;
-}
-
-html.dark .welcome-section h2 {
-  color: #f1f5f9;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--neutral-800);
+  letter-spacing: -0.02em;
 }
 
 .welcome-section p {
-  color: #64748b;
+  color: var(--neutral-500);
   margin: 8px 0 0 0;
+  font-size: 15px;
 }
 
+/* 统计卡片 */
 .stat-card {
   display: flex;
   align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  opacity: 0.06;
+  transition: all 0.3s;
+}
+
+.stat-card:hover::before {
+  transform: scale(1.4);
+  opacity: 0.1;
 }
 
 .stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-right: 16px;
+  transition: transform 0.2s;
+  flex-shrink: 0;
 }
 
-.stat-icon.purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
-.stat-icon.blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-.stat-icon.green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-.stat-icon.orange { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+.stat-card:hover .stat-icon {
+  transform: scale(1.05);
+}
+
+.stat-icon.purple {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.06));
+  color: var(--color-purple);
+}
+.stat-icon.blue {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.06));
+  color: var(--color-info);
+}
+.stat-icon.green {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.06));
+  color: var(--color-success);
+}
+.stat-icon.orange {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.06));
+  color: var(--color-warning);
+}
 
 .stat-label {
-  font-size: 14px;
-  color: #64748b;
+  font-size: 13px;
+  color: var(--neutral-500);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .stat-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: #1e293b;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--neutral-800);
+  letter-spacing: -0.02em;
+  margin-top: 2px;
 }
-
-html.dark .stat-value { color: #f1f5f9; }
 
 .content-row {
   margin-top: 24px;
@@ -508,11 +548,11 @@ html.dark .stat-value { color: #f1f5f9; }
   height: 520px;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dashboard-main-card:hover {
-  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-xl);
 }
 
 .dashboard-main-card :deep(.el-card__body) {
@@ -528,13 +568,16 @@ html.dark .stat-value { color: #f1f5f9; }
   padding-right: 8px;
 }
 
-/* 自定义滚动条样式 */
 .monitor-scroll-area::-webkit-scrollbar {
   width: 5px;
 }
 .monitor-scroll-area::-webkit-scrollbar-thumb {
-  background: var(--el-border-color-lighter);
+  background: var(--neutral-300);
   border-radius: 10px;
+}
+
+html.dark .monitor-scroll-area::-webkit-scrollbar-thumb {
+  background: var(--neutral-600);
 }
 
 .card-header {
@@ -547,53 +590,81 @@ html.dark .stat-value { color: #f1f5f9; }
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 15px;
 }
 
 /* 日志终端样式 */
 .terminal-window {
   flex: 1;
-  background-color: #0f172a;
+  background: var(--bg-terminal);
   color: #e2e8f0;
-  padding: 16px;
-  font-family: 'Fira Code', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.6;
+  padding: 20px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
   overflow-y: auto;
-  border-radius: 0 0 8px 8px;
+  border-radius: 0 0 10px 10px;
+  position: relative;
+}
+
+.terminal-window::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+  pointer-events: none;
 }
 
 .log-line {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   display: flex;
   gap: 12px;
+  padding: 2px 0;
+  border-radius: 3px;
+  transition: background 0.15s;
+}
+
+.log-line:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .log-timestamp {
-  color: #64748b;
+  color: var(--neutral-600);
   flex-shrink: 0;
+  opacity: 0.6;
 }
 
-.log-success { color: #10b981; }
-.log-error { color: #ef4444; }
-.log-warn { color: #f59e0b; }
+.log-success { color: var(--color-success); }
+.log-error { color: var(--color-danger); }
+.log-warn { color: var(--color-warning); }
 
 .terminal-empty {
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #475569;
+  color: var(--neutral-600);
   font-style: italic;
+  font-size: 13px;
 }
 
 /* 任务监控样式 */
 .task-progress-card {
-  background-color: var(--el-fill-color-lighter);
+  background-color: var(--neutral-100);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
-  border: 1px solid var(--el-border-color-lighter);
+  border: 1px solid var(--neutral-200);
+  transition: all 0.2s;
+}
+
+html.dark .task-progress-card {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
 .task-info {
@@ -611,8 +682,8 @@ html.dark .stat-value { color: #f1f5f9; }
 
 .task-name {
   font-weight: 600;
-  font-size: 14px;
-  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 13px;
+  font-family: var(--font-mono);
 }
 
 .task-stage {
@@ -624,11 +695,11 @@ html.dark .stat-value { color: #f1f5f9; }
 
 .stage-msg {
   font-size: 12px;
-  color: #64748b;
+  color: var(--neutral-500);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: 'Fira Code', 'Courier New', monospace;
+  font-family: var(--font-mono);
 }
 
 .monitor-empty {
@@ -647,7 +718,7 @@ html.dark .stat-value { color: #f1f5f9; }
 }
 
 .activity-name {
-  font-family: 'Fira Code', 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
 }
 
@@ -662,12 +733,13 @@ html.dark .stat-value { color: #f1f5f9; }
 .fab-main {
   width: 56px;
   height: 56px;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-  transition: transform 0.3s;
+  box-shadow: var(--shadow-brand);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fab-main:hover {
-  transform: scale(1.1);
+  transform: scale(1.08) translateY(-2px);
+  box-shadow: 0 12px 32px -4px rgba(99, 102, 241, 0.35);
 }
 
 .is-loading {

@@ -1219,20 +1219,23 @@ onUnmounted(() => {
 }
 
 .title-section h2 {
-
   margin: 0;
-  font-size: 24px;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--neutral-800);
+  letter-spacing: -0.02em;
 }
 
 .title-section p {
-  color: #64748b;
+  color: var(--neutral-500);
   margin: 4px 0 0 0;
+  font-size: 15px;
 }
 
 .global-settings-card {
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--el-color-primary-light-9) 0%, var(--el-color-white) 100%);
-  border: 1px solid var(--el-color-primary-light-7);
+  background: linear-gradient(135deg, var(--brand-50) 0%, var(--bg-content) 100%);
+  border: 1px solid var(--brand-200);
 }
 
 .global-settings-content {
@@ -1251,11 +1254,11 @@ onUnmounted(() => {
 
 .setting-icon {
   font-size: 24px;
-  color: var(--el-color-primary);
-  background: var(--el-color-white);
+  color: var(--brand-600);
+  background: var(--bg-content);
   padding: 10px;
   border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .setting-text {
@@ -1264,14 +1267,14 @@ onUnmounted(() => {
 }
 
 .setting-title {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 16px;
-  color: var(--el-text-color-primary);
+  color: var(--neutral-800);
 }
 
 .setting-desc {
   font-size: 13px;
-  color: var(--el-text-color-secondary);
+  color: var(--neutral-500);
   margin-top: 2px;
 }
 
@@ -1289,7 +1292,7 @@ onUnmounted(() => {
 
 .action-label {
   font-size: 13px;
-  color: var(--el-text-color-regular);
+  color: var(--neutral-600);
   font-weight: 500;
 }
 
@@ -1301,12 +1304,12 @@ onUnmounted(() => {
 
 .schedule-sub {
   font-size: 11px;
-  color: var(--el-text-color-secondary);
-  font-family: monospace;
+  color: var(--neutral-500);
+  font-family: var(--font-mono);
 }
 
 .schedule-sub.disabled {
-  color: var(--el-color-danger);
+  color: var(--color-danger);
 }
 
 .schedule-mode-selector {
@@ -1320,12 +1323,8 @@ onUnmounted(() => {
 }
 
 .task-name-cell .name {
-  font-weight: 600;
-  color: #1e293b;
-}
-
-html.dark .task-name-cell .name {
-  color: #f1f5f9;
+  font-weight: 700;
+  color: var(--neutral-800);
 }
 
 .status-inner {
@@ -1352,18 +1351,18 @@ html.dark .task-name-cell .name {
 .start-id-tip {
   margin-top: 6px;
   font-size: 12px;
-  color: #64748b;
+  color: var(--neutral-500);
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 .id-code {
-  background-color: var(--el-fill-color-light);
+  background-color: var(--neutral-100);
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: monospace;
-  color: var(--el-color-primary);
+  font-family: var(--font-mono);
+  color: var(--brand-600);
   max-width: 300px;
   display: inline-block;
   vertical-align: bottom;
@@ -1372,13 +1371,17 @@ html.dark .task-name-cell .name {
   white-space: nowrap;
 }
 
+html.dark .id-code {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
 .share-files-dialog-content {
   padding: 10px 0;
 }
 
 .share-tips {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--neutral-400);
   margin-top: 8px;
 }
 
@@ -1387,17 +1390,25 @@ html.dark .task-name-cell .name {
 }
 
 .save-path-input :deep(.el-input-group__prepend) {
-  background-color: var(--el-fill-color-light);
-  color: var(--el-text-color-regular);
-  font-weight: bold;
+  background-color: var(--neutral-100);
+  color: var(--neutral-600);
+  font-weight: 700;
+}
+
+html.dark .save-path-input :deep(.el-input-group__prepend) {
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 .folder-tree-container {
   height: 400px;
   overflow-y: auto;
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 8px;
   padding: 8px;
+}
+
+html.dark .folder-tree-container {
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
 .folder-dialog-footer {
@@ -1425,7 +1436,7 @@ html.dark .task-name-cell .name {
 
 .preview-tips {
   margin-top: 16px;
-  color: #64748b;
+  color: var(--neutral-500);
   font-size: 13px;
 }
 
@@ -1434,22 +1445,26 @@ html.dark .task-name-cell .name {
 }
 
 .filtered-text {
-  color: #94a3b8;
+  color: var(--neutral-400);
   font-style: italic;
 }
 
 .matched-text {
-  color: #10b981;
+  color: var(--color-success);
   font-weight: 500;
 }
 
 .unmatched-text {
-  color: #f59e0b;
+  color: var(--color-warning);
 }
 
 .existed-row {
-  background-color: var(--el-fill-color-lighter) !important;
-  color: #94a3b8;
+  background-color: var(--neutral-100) !important;
+  color: var(--neutral-400);
+}
+
+html.dark .existed-row {
+  background-color: rgba(255, 255, 255, 0.03) !important;
 }
 
 .existed-row span {
@@ -1461,7 +1476,6 @@ html.dark .task-name-cell .name {
   flex-shrink: 0;
 }
 
-/* 彻底关闭目录树展开动画，消除“一行行刷新”的视觉差 */
 :deep(.el-tree-node__children) {
   transition: none !important;
 }
@@ -1490,7 +1504,7 @@ html.dark .task-name-cell .name {
 
 .name-sub-column {
   font-size: 13px;
-  color: #64748b;
+  color: var(--neutral-500);
 }
 
 .account-option-item {
@@ -1523,7 +1537,7 @@ html.dark .task-name-cell .name {
 
 .acc-cap {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--neutral-400);
 }
 
 .breadcrumb-nav {
@@ -1531,9 +1545,10 @@ html.dark .task-name-cell .name {
 }
 
 .breadcrumb-link {
-  color: var(--el-color-primary);
+  color: var(--brand-600);
   cursor: pointer;
   text-decoration: none;
+  font-weight: 500;
 }
 
 .breadcrumb-link:hover {
@@ -1545,7 +1560,7 @@ html.dark .task-name-cell .name {
 }
 
 .folder-clickable:hover {
-  color: var(--el-color-primary);
+  color: var(--brand-600);
 }
 
 .share-url-row {

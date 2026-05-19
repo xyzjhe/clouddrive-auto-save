@@ -373,17 +373,16 @@ onMounted(() => {
 
 .title-section h2 {
   margin: 0;
-  font-size: 24px;
-  color: #1e293b;
-}
-
-html.dark .title-section h2 {
-  color: #f1f5f9;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--neutral-800);
+  letter-spacing: -0.02em;
 }
 
 .title-section p {
-  color: #64748b;
+  color: var(--neutral-500);
   margin: 4px 0 0 0;
+  font-size: 15px;
 }
 
 .header-actions {
@@ -402,13 +401,31 @@ html.dark .title-section h2 {
   border-radius: 16px;
   margin-bottom: 20px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid var(--el-border-color-lighter);
+  border: 1px solid var(--neutral-200);
+  position: relative;
+  overflow: hidden;
+}
+
+.account-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand-500), var(--color-info));
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
 .account-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.1);
-  border-color: var(--el-color-primary-light-5);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--brand-200);
+}
+
+.account-card:hover::after {
+  opacity: 1;
 }
 
 .account-card .card-header {
@@ -430,9 +447,9 @@ html.dark .title-section h2 {
 }
 
 .account-info .nickname {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 16px;
-  color: var(--el-text-color-primary);
+  color: var(--neutral-800);
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -441,7 +458,7 @@ html.dark .title-section h2 {
 
 .account-info .platform-tag {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--neutral-400);
   margin-top: 2px;
 }
 
@@ -454,11 +471,11 @@ html.dark .title-section h2 {
   justify-content: space-between;
   font-size: 12px;
   margin-bottom: 8px;
-  color: #64748b;
+  color: var(--neutral-500);
 }
 
 .capacity-section .remaining {
-  color: #10b981;
+  color: var(--color-success);
   font-weight: 600;
 }
 
@@ -468,21 +485,30 @@ html.dark .title-section h2 {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background-color: var(--el-fill-color-lighter);
-  border-radius: 8px;
-  color: #94a3b8;
+  background-color: var(--neutral-100);
+  border-radius: 10px;
+  color: var(--neutral-400);
   font-size: 13px;
   margin-bottom: 20px;
 }
 
+html.dark .empty-capacity {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
 .meta-info {
-  background-color: var(--el-fill-color-blank);
+  background-color: var(--neutral-50);
   border-radius: 12px;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  border: 1px dashed var(--el-border-color-lighter);
+  border: 1px dashed var(--neutral-200);
+}
+
+html.dark .meta-info {
+  background-color: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .meta-item {
@@ -493,19 +519,23 @@ html.dark .title-section h2 {
 }
 
 .meta-item .label {
-  color: #94a3b8;
+  color: var(--neutral-400);
 }
 
 .meta-item .value {
-  color: var(--el-text-color-regular);
+  color: var(--neutral-600);
 }
 
 .card-footer {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid var(--el-border-color-extra-light);
+  border-top: 1px solid var(--neutral-200);
   display: flex;
   justify-content: space-around;
+}
+
+html.dark .card-footer {
+  border-top-color: rgba(255, 255, 255, 0.06);
 }
 
 .table-card {
@@ -526,12 +556,12 @@ html.dark .title-section h2 {
 
 .platform-icon.quark {
   background-color: rgba(103, 194, 58, 0.1);
-  color: #67c23a;
+  color: var(--color-quark);
 }
 
 .platform-icon.\31 39 {
   background-color: rgba(230, 162, 60, 0.1);
-  color: #e6a23c;
+  color: var(--color-139);
 }
 
 .capacity-container {
@@ -547,11 +577,11 @@ html.dark .title-section h2 {
 }
 
 .capacity-used {
-  color: #64748b;
+  color: var(--neutral-500);
 }
 
 .capacity-remaining {
-  color: #10b981;
+  color: var(--color-success);
   font-weight: 500;
 }
 
@@ -564,27 +594,24 @@ html.dark .title-section h2 {
   transition: all 0.3s;
 }
 
-/* 正常状态 (Green) */
 .gradient-progress.is-success :deep(.el-progress-bar__inner) {
   background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
 }
 
-/* 预警状态 (Yellow) */
 .gradient-progress.is-warning :deep(.el-progress-bar__inner) {
   background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
 }
 
-/* 危险/超额状态 (Red) */
 .gradient-progress.is-exception :deep(.el-progress-bar__inner) {
   background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
 }
 
 .capacity-remaining.is-over, .remaining.is-over {
-  color: #ef4444 !important;
+  color: var(--color-danger) !important;
 }
 
 .empty-text {
-  color: #94a3b8;
+  color: var(--neutral-400);
   font-style: italic;
   font-size: 13px;
 }
@@ -613,7 +640,7 @@ html.dark .title-section h2 {
   text-align: center;
   margin: 15px 0;
   position: relative;
-  color: #94a3b8;
+  color: var(--neutral-400);
   font-size: 12px;
 }
 
@@ -624,7 +651,7 @@ html.dark .title-section h2 {
   top: 50%;
   width: 40%;
   height: 1px;
-  background-color: var(--el-border-color-lighter);
+  background-color: var(--neutral-200);
 }
 
 .form-or-divider::before {
