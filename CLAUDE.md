@@ -59,6 +59,9 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - 账号通过 `e2e/tests/global.setup.ts` 预置并保存 storageState，各测试文件无需重复创建
 - 表格中"原始文件名"和"预览文件名"列显示相同文本时，`getByText` 会匹配多个元素，需使用 `.first()` 限定
 - 139 平台 mock 中文件夹 ID 是完整 path（如 `root/139_sub_dir`），不是短 ID（`139_sub_dir`）
+- Element Plus `ElMessageBox.confirm` 的按钮不在 `dialog` role 内，需用 `.el-message-box` CSS 选择器定位容器，再用 `.el-button--primary` 定位确认按钮
+- Element Plus `el-switch` 不是 checkbox/radio，不能用 `isChecked()`，需用 `evaluate(el => el.classList.contains('is-checked'))` 判断状态
+- Element Plus `el-radio` 的 input 被 label span 遮挡，点击时用 `getByText('标签文字')` 而非 `getByRole('radio')`
 
 ### 前端注意事项
 
