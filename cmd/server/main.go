@@ -7,7 +7,10 @@ import (
 
 	"github.com/zcq/clouddrive-auto-save/internal/api"
 	"github.com/zcq/clouddrive-auto-save/internal/core"
+	"github.com/zcq/clouddrive-auto-save/internal/core/plugin"
 	"github.com/zcq/clouddrive-auto-save/internal/core/scheduler"
+	"github.com/zcq/clouddrive-auto-save/internal/core/search"
+	"github.com/zcq/clouddrive-auto-save/internal/core/telegram"
 	"github.com/zcq/clouddrive-auto-save/internal/core/worker"
 	"github.com/zcq/clouddrive-auto-save/internal/db"
 	"github.com/zcq/clouddrive-auto-save/internal/utils"
@@ -93,7 +96,29 @@ func main() {
 		scheduler.Global.UpdateTask(t.ID, t.ScheduleMode, t.Cron)
 	}
 
-	// 3. 启动 API 服务
+	// 3. 初始化插件管理器
+	slog.Info("Initializing plugin manager...")
+	pluginManager := plugin.NewManager()
+	api.InitPluginHandler(pluginManager)
+
+	// 4. 初始化 Telegram 机器人
+	slog.Info("Initializing Telegram bot...")
+	telegramConfig := telegram.DefaultConfig()
+	// TODO: 从数据库加载 Telegram 配置
+	telegramBot := telegram.NewBot(telegramConfig)
+	if telegramConfig.Enabled {
+		if err := telegramBot.Start(); err != nil {
+			slog.Error("启动 Telegram 机器人失败", "error", err)
+		}
+	}
+	api.InitTelegramHandler(telegramBot)
+
+	// 5. 初始化搜索客户端
+	slog.Info("Initializing search client...")
+	searchClient := search.NewClient()
+	api.InitSearchHandler(searchClient)
+
+	// 6. 启动 API 服务
 	listenAddr := os.Getenv("LISTEN_ADDR")
 	if listenAddr == "" {
 		listenAddr = "0.0.0.0:8080"
