@@ -17,7 +17,7 @@
           </div>
         </el-card>
       </el-col>
-      
+
       <el-col :xs="24" :sm="12" :md="6">
         <el-card class="stat-card" body-style="padding: 20px">
           <div class="stat-icon blue">
@@ -51,6 +51,37 @@
             <div class="stat-label">活跃账号</div>
             <div class="stat-value">{{ stats.active_accounts }}</div>
           </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 图表区域 -->
+    <el-row :gutter="24" class="charts-row">
+      <el-col :xs="24" :lg="16">
+        <el-card class="chart-card" body-style="padding: 20px">
+          <template #header>
+            <div class="card-header">
+              <div class="header-title">
+                <el-icon><TrendingUp /></el-icon>
+                <span>任务执行趋势（最近7天）</span>
+              </div>
+            </div>
+          </template>
+          <TrendChart :data="trendData" />
+        </el-card>
+      </el-col>
+
+      <el-col :xs="24" :lg="8">
+        <el-card class="chart-card" body-style="padding: 20px">
+          <template #header>
+            <div class="card-header">
+              <div class="header-title">
+                <el-icon><PieChart /></el-icon>
+                <span>存储空间分布</span>
+              </div>
+            </div>
+          </template>
+          <StorageChart :data="storageData" />
         </el-card>
       </el-col>
     </el-row>
@@ -96,7 +127,7 @@
               <el-tag size="small" type="primary" effect="light">{{ runningTasks.length }} 活跃</el-tag>
             </div>
           </template>
-          
+
           <div class="monitor-scroll-area">
             <!-- 仅当有活跃任务时显示该区域 -->
             <div v-if="runningTasks.length > 0" class="running-tasks-list">
@@ -116,8 +147,8 @@
                   <el-tag size="small" :type="getStageTagType(task.stage)" effect="dark">{{ task.stage }}</el-tag>
                   <span class="stage-msg">{{ task.message }}</span>
                 </div>
-                <el-progress 
-                  :percentage="task.percent" 
+                <el-progress
+                  :percentage="task.percent"
                   :status="task.stage === 'Failed' ? 'exception' : (task.percent === 100 ? 'success' : '')"
                   :stroke-width="8"
                   striped
@@ -129,10 +160,10 @@
 
             <!-- 如果没有活跃任务，这里将置顶 -->
             <el-timeline class="compact-timeline">
-              <el-timeline-item 
-                v-for="activity in stats.recent_activities" 
+              <el-timeline-item
+                v-for="activity in stats.recent_activities"
                 :key="activity.id"
-                :timestamp="formatRelativeTime(activity.last_run)" 
+                :timestamp="formatRelativeTime(activity.last_run)"
                 :type="getStatusType(activity.status)"
               >
                 <div class="timeline-content">
@@ -141,7 +172,7 @@
                 </div>
               </el-timeline-item>
             </el-timeline>
-            
+
             <div v-if="runningTasks.length === 0 && stats.recent_activities.length === 0" class="monitor-empty">
               <el-empty :image-size="40" description="暂无活动记录" />
             </div>
@@ -170,10 +201,10 @@
 
 <script setup>
 import { onMounted, onUnmounted, reactive, ref, nextTick } from 'vue'
-import { 
-  Activity, 
-  HardDrive, 
-  RefreshCw, 
+import {
+  Activity,
+  HardDrive,
+  RefreshCw,
   User,
   Terminal,
   Trash2,
@@ -181,11 +212,15 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  X
+  X,
+  TrendingUp,
+  PieChart
 } from 'lucide-vue-next'
 import { getStats, clearLogsAPI } from '../api/dashboard'
 import { runTask, dismissTask as runDismissTask } from '../api/task'
 import { ElMessage } from 'element-plus'
+import TrendChart from '../components/charts/TrendChart.vue'
+import StorageChart from '../components/charts/StorageChart.vue'
 
 const stats = reactive({
   scheduled_tasks: 0,
@@ -195,6 +230,23 @@ const stats = reactive({
   recent_activities: [],
   running_tasks_list: []
 })
+
+// 趋势数据（最近7天）
+const trendData = ref([
+  { date: '05-13', count: 5 },
+  { date: '05-14', count: 8 },
+  { date: '05-15', count: 3 },
+  { date: '05-16', count: 12 },
+  { date: '05-17', count: 7 },
+  { date: '05-18', count: 9 },
+  { date: '05-19', count: 6 }
+])
+
+// 存储分布数据
+const storageData = ref([
+  { platform: '夸克网盘', used: 1.8, total: 5 },
+  { platform: '移动云盘', used: 0.6, total: 2 }
+])
 
 // 日志与任务监控
 const logs = ref([])
@@ -206,15 +258,15 @@ const fetchStats = async (isPoll = false) => {
   try {
     const data = await getStats()
     Object.assign(stats, data)
-    
+
     // 同步运行中及最近完成的任务列表
     const apiTasks = data.running_tasks_list || []
-      
+
     // 1. 更新现有任务或添加新任务
     apiTasks.forEach(task => {
       const existing = runningTasks.value.find(t => String(t.id) === String(task.id))
       if (existing) {
-        // 仅当 API 返回的进度比前端显示的更“先进”时才覆盖，防止回滚 SSE 的实时跳动
+        // 仅当 API 返回的进度比前端显示的更"先进"时才覆盖，防止回滚 SSE 的实时跳动
         if (task.percent >= existing.percent) {
           existing.name = task.name
           existing.percent = task.percent
@@ -232,9 +284,9 @@ const fetchStats = async (isPoll = false) => {
         })
       }
     })
-    
+
     // 2. 移除 API 不再返回的任务（代表已过期或已隐藏）
-    runningTasks.value = runningTasks.value.filter(t => 
+    runningTasks.value = runningTasks.value.filter(t =>
       apiTasks.some(at => String(at.id) === String(t.id))
     )
   } catch (error) {
@@ -310,17 +362,17 @@ const handleProgressMessage = (msg) => {
   // 协议格式: [PROGRESS:TaskID:Percent:Stage:Message]
   const match = msg.match(/\[PROGRESS:(.+)\]/)
   if (!match) return
-  
+
   const parts = match[1].split(':')
   if (parts.length < 4) return
-  
+
   const taskId = parts[0]
   const percent = parseInt(parts[1])
   const stage = parts[2]
   const info = parts.slice(3).join(':')
-  
+
   const taskIdx = runningTasks.value.findIndex(t => String(t.id) === String(taskId))
-  
+
   if (taskIdx > -1) {
     // 实时更新任务状态
     const task = runningTasks.value[taskIdx]
@@ -329,11 +381,11 @@ const handleProgressMessage = (msg) => {
     task.message = info
   } else if (stage !== 'Success' && stage !== 'Failed' && stage !== 'Finished') {
     // 如果是新任务且尚未完成，加入列表
-    runningTasks.value.push({ 
-      id: taskId, 
-      name: `任务 #${taskId}`, 
-      percent, 
-      stage, 
+    runningTasks.value.push({
+      id: taskId,
+      name: `任务 #${taskId}`,
+      percent,
+      stage,
       message: info,
       timeoutId: null
     })
@@ -379,12 +431,12 @@ const clearLogs = async () => {
     await clearLogsAPI()
     // 1. 清空左侧终端日志
     logs.value = []
-    
+
     // 2. 清理右侧监控面板中已结束的任务，保留运行中的
-    runningTasks.value = runningTasks.value.filter(task => 
+    runningTasks.value = runningTasks.value.filter(task =>
       task.percent < 100 && task.stage !== 'Success' && task.stage !== 'Failed'
     )
-    
+
     ElMessage.success('日志与已完成任务已清空')
   } catch (err) {
     console.error('清空日志失败:', err)
@@ -538,6 +590,27 @@ const getStatusText = (status) => {
   color: var(--neutral-800);
   letter-spacing: -0.02em;
   margin-top: 2px;
+}
+
+/* 图表区域 */
+.charts-row {
+  margin-top: 24px;
+}
+
+.chart-card {
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chart-card:hover {
+  box-shadow: var(--shadow-xl);
+}
+
+.chart-card :deep(.el-card__body) {
+  flex: 1;
+  overflow: hidden;
 }
 
 .content-row {
