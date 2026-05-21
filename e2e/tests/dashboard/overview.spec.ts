@@ -59,6 +59,15 @@ test.describe('仪表盘：数据概览测试', () => {
   });
 
   test('场景三：实时执行与近期动态状态', async ({ page }) => {
+    // Mock SSE 端点，防止真实后端事件触发 fetchStats 竞态
+    await page.route('**/api/dashboard/logs', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: 'data: \n\n',
+      });
+    });
+
     await page.route('**/api/dashboard/stats', async route => {
       await route.fulfill({
         status: 200,
@@ -93,11 +102,12 @@ test.describe('仪表盘：数据概览测试', () => {
 
     // 验证活跃任务 Tag
     await expect(page.getByText('1 活跃')).toBeVisible();
-    
-    // 验证活跃任务详情
-    await expect(page.getByText('正在下载电影合集')).toBeVisible();
-    await expect(page.getByText('Downloading')).toBeVisible();
-    await expect(page.getByText('正在下载 第3集...')).toBeVisible();
+
+    // 等待任务卡片完全渲染
+    const taskCard = page.locator('.task-progress-card').filter({ hasText: '正在下载电影合集' });
+    await expect(taskCard).toBeVisible({ timeout: 10000 });
+    await expect(taskCard.locator('.el-tag').filter({ hasText: 'Downloading' })).toBeVisible({ timeout: 10000 });
+    await expect(taskCard.locator('.stage-msg').filter({ hasText: '正在下载 第3集...' })).toBeVisible();
 
     // 验证近期失败记录及重试按钮
     await expect(page.getByText('失效的转存任务')).toBeVisible();
