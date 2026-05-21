@@ -1,5 +1,12 @@
 # 更新日志 (Changelog)
 
+## [Unreleased]
+
+### 🛡️ 稳定性 (Stability)
+
+- **E2E 测试大幅增强**：新增 26 个测试（48 → 74），覆盖仪表盘 FAB 导航、账号编辑、OpenList 配置、Bark 高级设置、侧边栏导航、暗色模式、提取码、表单验证等场景。
+- **修复 Dashboard 测试 flaky**：Dashboard 的 SSE 长连接会接收真实后端事件触发 `fetchStats()` 与 `page.route` mock 竞态，通过同时 mock SSE 端点 (`/api/dashboard/logs`) 阻断干扰。
+
 ## [1.3.0] - 2026-05-18
 
 ### ✨ 核心特性 (Features)
