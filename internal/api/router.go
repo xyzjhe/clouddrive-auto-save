@@ -19,6 +19,7 @@ import (
 	"github.com/zcq/clouddrive-auto-save/internal/core/openlist"
 	"github.com/zcq/clouddrive-auto-save/internal/core/plugin"
 	_ "github.com/zcq/clouddrive-auto-save/internal/core/quark"
+	"github.com/zcq/clouddrive-auto-save/internal/core/search"
 	"github.com/zcq/clouddrive-auto-save/internal/core/telegram"
 	"github.com/zcq/clouddrive-auto-save/internal/core/scheduler"
 	"github.com/zcq/clouddrive-auto-save/internal/core/worker"
@@ -87,6 +88,10 @@ func InitRouter(wm *worker.Manager, version, commit, date string) *gin.Engine {
 		api.GET("/telegram/config", getTelegramConfig)
 		api.PUT("/telegram/config", updateTelegramConfig)
 		api.POST("/telegram/test", testTelegramConnection)
+
+		// 资源搜索
+		api.GET("/search", searchResources)
+		api.GET("/search/sources", listSearchSources)
 	}
 
 	// 静态资源处理
@@ -793,4 +798,27 @@ func testTelegramConnection(c *gin.Context) {
 		return
 	}
 	telegramHandler.TestConnection(c)
+}
+
+// 搜索处理函数
+var searchHandler *SearchHandler
+
+func InitSearchHandler(client *search.Client) {
+	searchHandler = NewSearchHandler(client)
+}
+
+func searchResources(c *gin.Context) {
+	if searchHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "搜索服务未初始化"})
+		return
+	}
+	searchHandler.Search(c)
+}
+
+func listSearchSources(c *gin.Context) {
+	if searchHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "搜索服务未初始化"})
+		return
+	}
+	searchHandler.ListSources(c)
 }
