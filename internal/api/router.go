@@ -19,6 +19,7 @@ import (
 	"github.com/zcq/clouddrive-auto-save/internal/core/openlist"
 	"github.com/zcq/clouddrive-auto-save/internal/core/plugin"
 	_ "github.com/zcq/clouddrive-auto-save/internal/core/quark"
+	"github.com/zcq/clouddrive-auto-save/internal/core/telegram"
 	"github.com/zcq/clouddrive-auto-save/internal/core/scheduler"
 	"github.com/zcq/clouddrive-auto-save/internal/core/worker"
 	"github.com/zcq/clouddrive-auto-save/internal/db"
@@ -81,6 +82,11 @@ func InitRouter(wm *worker.Manager, version, commit, date string) *gin.Engine {
 		api.GET("/plugins", listPlugins)
 		api.GET("/plugins/:name", getPlugin)
 		api.PUT("/plugins/:name/config", updatePluginConfig)
+
+		// Telegram 配置
+		api.GET("/telegram/config", getTelegramConfig)
+		api.PUT("/telegram/config", updateTelegramConfig)
+		api.POST("/telegram/test", testTelegramConnection)
 	}
 
 	// 静态资源处理
@@ -756,4 +762,35 @@ func updatePluginConfig(c *gin.Context) {
 		return
 	}
 	pluginHandler.UpdatePluginConfig(c)
+}
+
+// Telegram 处理函数
+var telegramHandler *TelegramHandler
+
+func InitTelegramHandler(bot *telegram.Bot) {
+	telegramHandler = NewTelegramHandler(bot)
+}
+
+func getTelegramConfig(c *gin.Context) {
+	if telegramHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "Telegram 未初始化"})
+		return
+	}
+	telegramHandler.GetConfig(c)
+}
+
+func updateTelegramConfig(c *gin.Context) {
+	if telegramHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "Telegram 未初始化"})
+		return
+	}
+	telegramHandler.UpdateConfig(c)
+}
+
+func testTelegramConnection(c *gin.Context) {
+	if telegramHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "Telegram 未初始化"})
+		return
+	}
+	telegramHandler.TestConnection(c)
 }
