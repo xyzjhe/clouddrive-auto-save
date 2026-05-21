@@ -6,6 +6,14 @@
         <p>监控并自动转存移动云盘和夸克网盘的分享资源</p>
       </div>
       <div class="header-actions">
+        <el-radio-group v-model="viewMode" size="default" class="view-toggle" @change="toggleViewMode">
+          <el-radio-button label="table">
+            <el-icon><List /></el-icon>
+          </el-radio-button>
+          <el-radio-button label="card">
+            <el-icon><LayoutGrid /></el-icon>
+          </el-radio-button>
+        </el-radio-group>
         <el-popconfirm
           title="确定要一键启动所有可运行的任务吗？"
           confirm-button-text="确认"
@@ -97,6 +105,30 @@
         <el-button type="primary" :icon="Plus" @click="openAddDialog">创建新任务</el-button>
       </el-empty>
     </el-card>
+
+    <!-- 卡片视图 -->
+    <div v-else class="card-view-container" v-loading="loading">
+      <template v-if="taskList.length > 0 || loading">
+        <el-row :gutter="20">
+          <el-col v-for="row in taskList" :key="row.id" :xs="24" :sm="12" :md="8" :lg="6">
+            <TaskCard
+              :task="{
+                ...row,
+                accountName: row.account ? row.account.nickname : '未知账号',
+                progress: row.percent || 0,
+                progressMessage: row.message || ''
+              }"
+              @run="handleRun"
+              @edit="handleEdit"
+              @delete="handleDelete"
+            />
+          </el-col>
+        </el-row>
+      </template>
+      <el-empty v-else description="当前没有任何转存任务">
+        <el-button type="primary" :icon="Plus" @click="openAddDialog">创建新任务</el-button>
+      </el-empty>
+    </div>
 
     <!-- 创建/编辑任务对话框 -->
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑任务' : '创建新任务'" width="600px">
@@ -478,10 +510,11 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { Plus, Play, Edit, Trash2, RefreshCw, Folder, File, Info, Cloud, ExternalLink, AlertTriangle, Clock, FolderOpen } from 'lucide-vue-next'
+import { Plus, Play, Edit, Trash2, RefreshCw, Folder, File, Info, Cloud, ExternalLink, AlertTriangle, Clock, FolderOpen, List, LayoutGrid } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTasks, createTask, updateTask, deleteTask, runTask, runAllTasks, previewTask, parseShareLink, getScheduleSettings } from '../api/task'
 import { getAccounts, getFolders, createFolder } from '../api/account'
+import TaskCard from '../components/cards/TaskCard.vue'
 
 const taskList = ref([])
 const accounts = ref([])
@@ -489,6 +522,12 @@ const loading = ref(false)
 const runningAll = ref(false)
 const dialogVisible = ref(false)
 const submitting = ref(false)
+const viewMode = ref(localStorage.getItem('taskViewMode') || 'table')
+
+const toggleViewMode = (mode) => {
+  viewMode.value = mode
+  localStorage.setItem('taskViewMode', mode)
+}
 
 // 全局调度设置
 const globalSchedule = ref({
@@ -1659,5 +1698,15 @@ html.dark .existed-row {
 
 .subdir-hint .el-tag {
   cursor: default;
+}
+
+.card-view-container {
+  min-height: 300px;
+}
+
+.view-toggle :deep(.el-radio-button__inner) {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
 }
 </style>
