@@ -27,6 +27,21 @@ const router = createRouter({
           path: 'settings',
           name: 'settings',
           component: () => import('../views/Settings.vue')
+        },
+        {
+          path: 'plugins',
+          name: 'plugins',
+          component: () => import('../views/Plugins.vue')
+        },
+        {
+          path: 'search',
+          name: 'search',
+          component: () => import('../views/Search.vue')
+        },
+        {
+          path: 'notify',
+          name: 'notify',
+          component: () => import('../views/Notify.vue')
         }
       ]
     }
