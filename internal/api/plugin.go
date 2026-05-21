@@ -53,7 +53,7 @@ func (h *PluginHandler) GetPlugin(c *gin.Context) {
 
 // UpdatePluginConfig 更新插件配置
 func (h *PluginHandler) UpdatePluginConfig(c *gin.Context) {
-	name := c.Param("name")
+	_ = c.Param("name")
 
 	var config map[string]interface{}
 	if err := c.ShouldBindJSON(&config); err != nil {

@@ -3,20 +3,20 @@ package telegram
 
 import (
 	"fmt"
-	"log/slog"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/zcq/clouddrive-auto-save/internal/db"
+	"gorm.io/gorm"
 )
 
 // Handler 命令处理器
 type Handler struct {
 	bot *Bot
-	db  *db.DB
+	db  *gorm.DB
 }
 
 // NewHandler 创建命令处理器
-func NewHandler(bot *Bot, db *db.DB) *Handler {
+func NewHandler(bot *Bot, db *gorm.DB) *Handler {
 	return &Handler{
 		bot: bot,
 		db:  db,

@@ -73,7 +73,7 @@ func (m *Manager) ExecuteHook(ctx context.Context, hook HookType, data *HookData
 		}
 
 		// 检查插件是否启用
-		config, exists := m.configs[name]
+		_, exists := m.configs[name]
 		if !exists {
 			continue
 		}
