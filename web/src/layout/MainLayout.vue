@@ -7,28 +7,63 @@
         <span>UCAS</span>
       </div>
 
-      <el-menu
-        :default-active="activeMenu"
-        class="side-menu"
-        router
-      >
-        <el-menu-item index="/">
-          <el-icon><LayoutDashboard :size="20" /></el-icon>
-          <span>仪表盘概览</span>
-        </el-menu-item>
-        <el-menu-item index="/accounts">
-          <el-icon><User :size="20" /></el-icon>
-          <span>账号管理</span>
-        </el-menu-item>
-        <el-menu-item index="/tasks">
-          <el-icon><ListChecks :size="20" /></el-icon>
-          <span>任务列表</span>
-        </el-menu-item>
-        <el-menu-item index="/settings">
-          <el-icon><SettingsIcon :size="20" /></el-icon>
-          <span>系统设置</span>
-        </el-menu-item>
-      </el-menu>
+      <div class="search-wrapper">
+        <el-input
+          v-model="searchQuery"
+          placeholder="搜索功能..."
+          clearable
+          size="small"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+      </div>
+
+      <el-scrollbar class="nav-scrollbar">
+        <div class="nav-groups">
+          <div
+            v-for="group in filteredNavigation"
+            :key="group.name"
+            class="nav-group"
+          >
+            <div
+              class="nav-group-header"
+              @click="toggleGroup(group.name)"
+            >
+              <span class="nav-group-icon">{{ group.icon }}</span>
+              <span class="nav-group-name">{{ group.name }}</span>
+              <el-icon
+                class="nav-group-arrow"
+                :class="{ collapsed: collapsedGroups[group.name] }"
+              >
+                <ArrowDown />
+              </el-icon>
+            </div>
+
+            <transition name="slide">
+              <div
+                v-show="!collapsedGroups[group.name]"
+                class="nav-items"
+              >
+                <div
+                  v-for="item in group.items"
+                  :key="item.path"
+                  class="nav-item"
+                  :class="{ active: isActive(item.path) }"
+                  @click="navigateTo(item.path)"
+                >
+                  <el-icon class="nav-item-icon">
+                    <component :is="item.icon" />
+                  </el-icon>
+                  <span class="nav-item-name">{{ item.name }}</span>
+                </div>
+              </div>
+            </transition>
+          </div>
+        </div>
+      </el-scrollbar>
+
       <SidebarFooter />
     </el-aside>
 
@@ -66,23 +101,60 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import CloudLogo from '../components/CloudLogo.vue'
 import SidebarFooter from '../components/SidebarFooter.vue'
 import { useDark, useToggle } from '@vueuse/core'
+import { navigationConfig } from '../config/navigation'
 import {
   LayoutDashboard,
   User,
   ListChecks,
   Settings as SettingsIcon,
+  Search,
+  Puzzle,
+  Bell,
   Moon,
-  Sun
+  Sun,
+  ArrowDown
 } from 'lucide-vue-next'
 
 const route = useRoute()
+const router = useRouter()
 const isDark = useDark()
 const toggleDark = useToggle(isDark)
+
+// 折叠状态管理
+const collapsedGroups = ref(JSON.parse(localStorage.getItem('collapsedGroups') || '{}'))
+const searchQuery = ref('')
+
+const toggleGroup = (groupName) => {
+  collapsedGroups.value[groupName] = !collapsedGroups.value[groupName]
+  localStorage.setItem('collapsedGroups', JSON.stringify(collapsedGroups.value))
+}
+
+// 过滤导航项
+const filteredNavigation = computed(() => {
+  if (!searchQuery.value) return navigationConfig
+
+  const query = searchQuery.value.toLowerCase()
+  return navigationConfig
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item =>
+        item.name.toLowerCase().includes(query) ||
+        item.description?.toLowerCase().includes(query)
+      )
+    }))
+    .filter(group => group.items.length > 0)
+})
+
+const isActive = (path) => route.path === path
+
+const navigateTo = (path) => {
+  router.push(path)
+}
 
 const activeMenu = computed(() => route.path)
 const currentPageTitle = computed(() => {
@@ -90,7 +162,10 @@ const currentPageTitle = computed(() => {
     '/': '仪表盘',
     '/accounts': '账号管理',
     '/tasks': '任务管理',
-    '/settings': '系统设置'
+    '/settings': '系统设置',
+    '/search': '资源搜索',
+    '/plugins': '插件管理',
+    '/notify': '消息推送'
   }
   return titles[route.path] || '概览'
 })
@@ -126,42 +201,103 @@ html.dark .sidebar {
   letter-spacing: -0.02em;
 }
 
-.side-menu {
-  border-right: none;
-  padding: 0 12px;
+.search-wrapper {
+  padding: 0.75rem 1rem;
+}
+
+.nav-scrollbar {
   flex: 1;
 }
 
-.el-menu-item {
-  height: 44px;
-  line-height: 44px;
-  margin: 2px 0;
-  border-radius: 10px;
-  color: var(--neutral-500);
-  font-weight: 500;
-  font-size: 14px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.nav-groups {
+  padding: 0.5rem;
 }
 
-.el-menu-item:hover {
+.nav-group {
+  margin-bottom: 0.5rem;
+}
+
+.nav-group-header {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.nav-group-header:hover {
+  background: var(--neutral-100);
+}
+
+html.dark .nav-group-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.nav-group-icon {
+  margin-right: 0.5rem;
+  font-size: 1rem;
+}
+
+.nav-group-name {
+  flex: 1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.nav-group-arrow {
+  transition: transform 0.3s;
+}
+
+.nav-group-arrow.collapsed {
+  transform: rotate(-90deg);
+}
+
+.nav-items {
+  overflow: hidden;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  margin: 0.25rem 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-item:hover {
   background: var(--neutral-100);
   color: var(--neutral-700);
 }
 
-html.dark .el-menu-item:hover {
+html.dark .nav-item:hover {
   background: rgba(255, 255, 255, 0.04);
   color: var(--neutral-300);
 }
 
-.el-menu-item.is-active {
+.nav-item.active {
   background: var(--brand-50);
   color: var(--brand-600);
   font-weight: 600;
 }
 
-html.dark .el-menu-item.is-active {
+html.dark .nav-item.active {
   background: rgba(99, 102, 241, 0.1);
   color: var(--brand-400);
+}
+
+.nav-item-icon {
+  margin-right: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.nav-item-name {
+  font-size: 0.9rem;
 }
 
 .navbar {
@@ -223,5 +359,21 @@ html.dark .theme-toggle:hover {
 .fade-transform-leave-to {
   opacity: 0;
   transform: translateX(12px);
+}
+
+.slide-enter-active,
+.slide-leave-active {
+  transition: all 0.3s;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+
+.slide-enter-to,
+.slide-leave-from {
+  max-height: 500px;
 }
 </style>
