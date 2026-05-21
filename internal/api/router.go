@@ -17,6 +17,7 @@ import (
 	_ "github.com/zcq/clouddrive-auto-save/internal/core/cloud139"
 	"github.com/zcq/clouddrive-auto-save/internal/core/notify"
 	"github.com/zcq/clouddrive-auto-save/internal/core/openlist"
+	"github.com/zcq/clouddrive-auto-save/internal/core/plugin"
 	_ "github.com/zcq/clouddrive-auto-save/internal/core/quark"
 	"github.com/zcq/clouddrive-auto-save/internal/core/scheduler"
 	"github.com/zcq/clouddrive-auto-save/internal/core/worker"
@@ -75,6 +76,11 @@ func InitRouter(wm *worker.Manager, version, commit, date string) *gin.Engine {
 		api.POST("/settings/test_bark", testBarkNotification)
 
 		api.POST("/openlist/scan", triggerOpenListScan)
+
+		// 插件管理
+		api.GET("/plugins", listPlugins)
+		api.GET("/plugins/:name", getPlugin)
+		api.PUT("/plugins/:name/config", updatePluginConfig)
 	}
 
 	// 静态资源处理
@@ -719,4 +725,35 @@ func triggerOpenListScan(c *gin.Context) {
 	}
 
 	c.PureJSON(http.StatusOK, gin.H{"message": "扫描已触发"})
+}
+
+// 插件管理处理函数
+var pluginHandler *PluginHandler
+
+func InitPluginHandler(manager *plugin.Manager) {
+	pluginHandler = NewPluginHandler(manager)
+}
+
+func listPlugins(c *gin.Context) {
+	if pluginHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "插件系统未初始化"})
+		return
+	}
+	pluginHandler.ListPlugins(c)
+}
+
+func getPlugin(c *gin.Context) {
+	if pluginHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "插件系统未初始化"})
+		return
+	}
+	pluginHandler.GetPlugin(c)
+}
+
+func updatePluginConfig(c *gin.Context) {
+	if pluginHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "插件系统未初始化"})
+		return
+	}
+	pluginHandler.UpdatePluginConfig(c)
 }
