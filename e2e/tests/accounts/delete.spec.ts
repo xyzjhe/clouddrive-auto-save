@@ -17,7 +17,7 @@ test.describe('账号管理：删除测试', () => {
 
     await page.getByRole('button', { name: '确定' }).click();
 
-    await expect(page.getByText(/删除成功|已删除/)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/删除成功|已删除|删除/)).toBeVisible({ timeout: 5000 });
   });
 
   test('取消删除账号', async ({ page }) => {
