@@ -158,6 +158,25 @@ e2e-test: build
 	kill $$PID || true; \
 	exit $$EXIT_CODE
 
+## unit-test: 运行单元测试
+unit-test:
+	@echo "=> Running unit tests..."
+	go test -v -race -short ./...
+
+## integration-test: 运行集成测试
+integration-test:
+	@echo "=> Running integration tests..."
+	go test -v -race -run Integration ./...
+
+## api-test: 运行 API 测试
+api-test:
+	@echo "=> Running API tests..."
+	go test -v -race -run API ./internal/api/...
+
+## regression-test: 运行完整回归测试
+regression-test: unit-test api-test e2e-test
+	@echo "=> All regression tests passed!"
+
 ## clean: 清理构建产物 (二进制文件、覆盖率报告和前端 dist 目录)
 
 clean:
