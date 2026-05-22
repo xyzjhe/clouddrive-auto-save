@@ -7,15 +7,15 @@ test.describe('布局：侧边栏导航测试', () => {
     await expect(page.getByText('账号管理').first()).toBeVisible({ timeout: 10000 });
 
     // 点击任务列表
-    await page.locator('.el-menu').getByText('任务列表').click();
+    await page.locator('.nav-item').filter({ hasText: '任务列表' }).click();
     await expect(page).toHaveURL(/\/tasks/);
 
     // 点击系统设置
-    await page.locator('.el-menu').getByText('系统设置').click();
+    await page.locator('.nav-item').filter({ hasText: '系统设置' }).click();
     await expect(page).toHaveURL(/\/settings/);
 
     // 点击仪表盘概览
-    await page.locator('.el-menu').getByText('仪表盘概览').click();
+    await page.locator('.nav-item').filter({ hasText: '仪表盘' }).click();
     await expect(page).toHaveURL(/\/$/);
   });
 
