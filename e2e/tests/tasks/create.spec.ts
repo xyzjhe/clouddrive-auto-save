@@ -54,11 +54,11 @@ test.describe('任务管理：创建功能测试', () => {
     await page.goto('/tasks');
     // 等待页面加载完成
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
 
-    // 使用 CSS 选择器找到创建任务按钮
-    const createBtn = page.locator('button:has-text("创建任务")').last();
-    await expect(createBtn).toBeVisible({ timeout: 15000 });
+    // 等待任务页面的创建任务按钮出现
+    const createBtn = page.locator('.header-actions button:has-text("创建任务")');
+    await expect(createBtn).toBeVisible({ timeout: 20000 });
     await createBtn.click();
 
     await expect(page.getByLabel('任务名称')).toBeVisible({ timeout: 5000 });
