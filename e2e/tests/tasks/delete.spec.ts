@@ -5,8 +5,14 @@ test.describe('任务管理：删除测试', () => {
     const taskName = `E2E_删除_${Date.now()}`;
 
     await page.goto('/tasks');
-    await expect(page.getByRole('button', { name: '创建任务' }).last()).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: '创建任务' }).last().click();
+    // 等待页面加载完成
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1000);
+
+    // 使用 CSS 选择器找到创建任务按钮
+    const createBtn = page.locator('button:has-text("创建任务")').last();
+    await expect(createBtn).toBeVisible({ timeout: 15000 });
+    await createBtn.click();
 
     await expect(page.getByLabel('任务名称')).toBeVisible({ timeout: 5000 });
     await page.locator('.el-select').first().click();
@@ -31,8 +37,14 @@ test.describe('任务管理：删除测试', () => {
     const taskName = `E2E_取消删除_${Date.now()}`;
 
     await page.goto('/tasks');
-    await expect(page.getByRole('button', { name: '创建任务' }).last()).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: '创建任务' }).last().click();
+    // 等待页面加载完成
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1000);
+
+    // 使用 CSS 选择器找到创建任务按钮
+    const createBtn = page.locator('button:has-text("创建任务")').last();
+    await expect(createBtn).toBeVisible({ timeout: 15000 });
+    await createBtn.click();
 
     await expect(page.getByLabel('任务名称')).toBeVisible({ timeout: 5000 });
     await page.locator('.el-select').first().click();

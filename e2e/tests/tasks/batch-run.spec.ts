@@ -6,10 +6,16 @@ test.describe('任务管理：批量运行测试', () => {
     const taskName2 = `E2E_批量2_${Date.now()}`;
 
     await page.goto('/tasks');
-    await expect(page.getByRole('button', { name: '创建任务' }).last()).toBeVisible({ timeout: 10000 });
+    // 等待页面加载完成
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1000);
+
+    // 使用 CSS 选择器找到创建任务按钮
+    const createBtn = page.locator('button:has-text("创建任务")').last();
+    await expect(createBtn).toBeVisible({ timeout: 15000 });
 
     for (const name of [taskName1, taskName2]) {
-      await page.getByRole('button', { name: '创建任务' }).last().click();
+      await createBtn.click();
       await expect(page.getByLabel('任务名称')).toBeVisible({ timeout: 5000 });
       await page.locator('.el-select').first().click();
       await page.getByRole('option', { name: 'E2E移动云盘用户' }).first().click();

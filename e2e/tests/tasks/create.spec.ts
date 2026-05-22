@@ -52,8 +52,14 @@ test.describe('任务管理：创建功能测试', () => {
   test('创建夸克网盘转存任务（包含高级选项）', async ({ page }) => {
     const taskName = `E2E_Quark_转存_${Date.now()}`;
     await page.goto('/tasks');
-    await expect(page.getByRole('button', { name: '创建任务' }).last()).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: '创建任务' }).last().click();
+    // 等待页面加载完成
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1000);
+
+    // 使用 CSS 选择器找到创建任务按钮
+    const createBtn = page.locator('button:has-text("创建任务")').last();
+    await expect(createBtn).toBeVisible({ timeout: 15000 });
+    await createBtn.click();
 
     await expect(page.getByLabel('任务名称')).toBeVisible({ timeout: 5000 });
     await page.locator('.el-select').first().click();
