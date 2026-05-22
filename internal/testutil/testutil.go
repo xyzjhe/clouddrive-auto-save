@@ -7,21 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zcq/clouddrive-auto-save/internal/db"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
 // SetupTestDB 创建测试用内存数据库
-func SetupTestDB(t *testing.T) *gorm.DB {
+func SetupTestDB(t *testing.T) {
 	t.Helper()
 
-	gormDB, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	err := db.InitDB("file::memory:?cache=shared")
 	require.NoError(t, err)
-
-	err = db.AutoMigrate(gormDB)
-	require.NoError(t, err)
-
-	return gormDB
 }
 
 // AssertJSONEqual 断言 JSON 相等
