@@ -34,7 +34,7 @@ test.describe('仪表盘：浮动操作按钮 (FAB) 测试', () => {
 
     const fab = page.locator('.el-dropdown').locator('button').first();
     await fab.click();
-    await page.getByText('创建任务').click();
+    await page.getByText('创建任务', { exact: true }).click();
 
     await expect(page).toHaveURL(/\/tasks/);
   });
