@@ -16,7 +16,7 @@ test.describe('布局：侧边栏导航测试', () => {
 
     // 点击仪表盘概览
     await page.locator('.nav-item').filter({ hasText: '仪表盘' }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/dashboard/);
   });
 
   test('面包屑显示当前页面路径', async ({ page }) => {
