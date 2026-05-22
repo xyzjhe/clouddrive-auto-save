@@ -29,7 +29,7 @@
       </div>
     </div>
 
-    <el-card class="table-card">
+    <el-card v-if="viewMode === 'table'" class="table-card">
       <el-table v-if="taskList.length > 0 || loading" :data="taskList" v-loading="loading" style="width: 100%">
         <el-table-column label="任务名称" min-width="180">
           <template #default="{ row }">
@@ -107,7 +107,7 @@
     </el-card>
 
     <!-- 卡片视图 -->
-    <div v-else class="card-view-container" v-loading="loading">
+    <div v-else-if="viewMode === 'card'" class="card-view-container" v-loading="loading">
       <template v-if="taskList.length > 0 || loading">
         <el-row :gutter="20">
           <el-col v-for="row in taskList" :key="row.id" :xs="24" :sm="12" :md="8" :lg="6">
