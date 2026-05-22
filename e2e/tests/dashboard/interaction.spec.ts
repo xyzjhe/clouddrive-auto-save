@@ -17,8 +17,14 @@ test.describe('仪表盘：任务交互测试', () => {
     await expect(taskRow).toBeVisible();
     await taskRow.getByRole('button', { name: '运行' }).click();
 
-    // 等待任务失败
-    await page.reload();
+    // 等待任务失败 - 使用 waitForTimeout 等待任务执行
+    await page.waitForTimeout(5000);
+
+    // 刷新页面查看结果
+    await page.goto('/tasks');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1000);
+
     const updatedRow = page.locator('tr').filter({ hasText: taskName });
     await expect(updatedRow.locator('.el-tag--danger').filter({ hasText: 'LINK ERROR' })).toBeVisible({ timeout: 15000 });
 
