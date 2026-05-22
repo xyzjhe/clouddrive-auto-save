@@ -61,8 +61,12 @@ test.describe('任务管理：创建功能测试', () => {
     await expect(createBtn).toBeVisible({ timeout: 20000 });
     await createBtn.click();
 
+    // 等待对话框打开
+    const dialog = page.locator('.el-dialog');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
     await expect(page.getByLabel('任务名称')).toBeVisible({ timeout: 5000 });
-    await page.locator('.el-select').first().click();
+    await page.locator('.el-dialog .el-select').first().click();
     await page.getByRole('option', { name: 'E2E夸克用户' }).first().click();
 
     await page.getByLabel('任务名称').fill(taskName);
