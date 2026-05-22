@@ -30,13 +30,15 @@ func NewMockPlugin(name string, hooks []HookType) *MockPlugin {
 	}
 }
 
-func (p *MockPlugin) Name() string                                  { return p.name }
-func (p *MockPlugin) Version() string                               { return p.version }
-func (p *MockPlugin) Description() string                           { return p.description }
-func (p *MockPlugin) Init(config map[string]interface{}) error      { return p.initErr }
-func (p *MockPlugin) Hooks() []HookType                             { return p.hooks }
-func (p *MockPlugin) Execute(ctx context.Context, hook HookType, data *HookData) error { return p.executeErr }
-func (p *MockPlugin) Close() error                                  { return p.closeErr }
+func (p *MockPlugin) Name() string                             { return p.name }
+func (p *MockPlugin) Version() string                          { return p.version }
+func (p *MockPlugin) Description() string                      { return p.description }
+func (p *MockPlugin) Init(config map[string]interface{}) error { return p.initErr }
+func (p *MockPlugin) Hooks() []HookType                        { return p.hooks }
+func (p *MockPlugin) Execute(ctx context.Context, hook HookType, data *HookData) error {
+	return p.executeErr
+}
+func (p *MockPlugin) Close() error { return p.closeErr }
 
 func TestManager_Register(t *testing.T) {
 	manager := NewManager()

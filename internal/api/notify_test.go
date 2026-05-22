@@ -11,11 +11,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zcq/clouddrive-auto-save/internal/core/notify"
+	"github.com/zcq/clouddrive-auto-save/internal/db"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
-func setupNotifyRouter() *gin.Engine {
+func setupNotifyRouter(t *testing.T) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
+
+	testDB, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to connect database: %v", err)
+	}
+	err = testDB.AutoMigrate(&db.Setting{})
+	if err != nil {
+		t.Fatalf("failed to migrate database: %v", err)
+	}
+	db.DB = testDB
 
 	// 初始化通知管理器
 	manager := notify.NewManager()
@@ -31,7 +44,7 @@ func setupNotifyRouter() *gin.Engine {
 }
 
 func TestNotifyAPI_ListNotifiers(t *testing.T) {
-	router := setupNotifyRouter()
+	router := setupNotifyRouter(t)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/notify", nil)
@@ -46,7 +59,7 @@ func TestNotifyAPI_ListNotifiers(t *testing.T) {
 }
 
 func TestNotifyAPI_GetNotifier(t *testing.T) {
-	router := setupNotifyRouter()
+	router := setupNotifyRouter(t)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/notify/wechat", nil)
@@ -56,7 +69,7 @@ func TestNotifyAPI_GetNotifier(t *testing.T) {
 }
 
 func TestNotifyAPI_UpdateNotifier(t *testing.T) {
-	router := setupNotifyRouter()
+	router := setupNotifyRouter(t)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("PUT", "/api/notify/wechat", nil)
@@ -68,7 +81,7 @@ func TestNotifyAPI_UpdateNotifier(t *testing.T) {
 }
 
 func TestNotifyAPI_TestNotifier(t *testing.T) {
-	router := setupNotifyRouter()
+	router := setupNotifyRouter(t)
 
 	// 测试不存在的渠道应返回错误
 	w := httptest.NewRecorder()

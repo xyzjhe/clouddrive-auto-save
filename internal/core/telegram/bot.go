@@ -59,7 +59,13 @@ func (b *Bot) Stop() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
+	if !b.running {
+		return
+	}
 	b.running = false
+	if b.api != nil {
+		b.api.StopReceivingUpdates()
+	}
 	slog.Info("Telegram 机器人已停止")
 }
 
@@ -68,9 +74,25 @@ func (b *Bot) handleUpdates() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	updates := b.api.GetUpdatesChan(u)
+	// 检查 api 是否初始化
+	b.mu.RLock()
+	api := b.api
+	b.mu.RUnlock()
+	if api == nil {
+		return
+	}
+
+	updates := api.GetUpdatesChan(u)
 
 	for update := range updates {
+		// 检查运行状态，防止退出后继续处理
+		b.mu.RLock()
+		running := b.running
+		b.mu.RUnlock()
+		if !running {
+			break
+		}
+
 		if update.Message == nil {
 			continue
 		}
@@ -89,6 +111,9 @@ func (b *Bot) handleUpdates() {
 
 // isAllowed 检查用户是否被允许
 func (b *Bot) isAllowed(userID int64) bool {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
 	// 如果没有设置白名单，允许所有用户
 	if len(b.config.AllowedIDs) == 0 {
 		return true
@@ -105,38 +130,56 @@ func (b *Bot) isAllowed(userID int64) bool {
 
 // handleCommand 处理命令
 func (b *Bot) handleCommand(message *tgbotapi.Message) {
-	if b.handler == nil {
+	b.mu.RLock()
+	handler := b.handler
+	api := b.api
+	running := b.running
+	b.mu.RUnlock()
+
+	if handler == nil || api == nil || !running {
+		slog.Warn("机器人未完全初始化或已停止，忽略命令", "command", message.Command())
 		return
 	}
 
 	command := message.Command()
 	switch command {
 	case "start":
-		b.handler.HandleStart(message)
+		handler.HandleStart(message)
 	case "tasks":
-		b.handler.HandleTasks(message)
+		handler.HandleTasks(message)
 	case "run":
-		b.handler.HandleRun(message)
+		handler.HandleRun(message)
 	case "run_all":
-		b.handler.HandleRunAll(message)
+		handler.HandleRunAll(message)
 	case "status":
-		b.handler.HandleStatus(message)
+		handler.HandleStatus(message)
 	case "logs":
-		b.handler.HandleLogs(message)
+		handler.HandleLogs(message)
 	default:
 		msg := tgbotapi.NewMessage(message.Chat.ID, "未知命令")
-		b.api.Send(msg)
+		_, _ = api.Send(msg)
 	}
 }
 
 // SetHandler 设置命令处理器
 func (b *Bot) SetHandler(handler *Handler) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.handler = handler
 }
 
 // SendMessage 发送消息
 func (b *Bot) SendMessage(chatID int64, text string) error {
+	b.mu.RLock()
+	api := b.api
+	running := b.running
+	b.mu.RUnlock()
+
+	if api == nil || !running {
+		return fmt.Errorf("Telegram 机器人未运行")
+	}
+
 	msg := tgbotapi.NewMessage(chatID, text)
-	_, err := b.api.Send(msg)
+	_, err := api.Send(msg)
 	return err
 }

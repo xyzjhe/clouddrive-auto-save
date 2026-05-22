@@ -3,9 +3,13 @@ package notify
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync"
+
+	"github.com/zcq/clouddrive-auto-save/internal/db"
+	"gorm.io/gorm"
 )
 
 // Manager 通知管理器
@@ -21,6 +25,40 @@ func NewManager() *Manager {
 		notifiers: make(map[string]Notifier),
 		configs:   make(map[string]*NotifierConfig),
 	}
+}
+
+// Global 全局通知管理器
+var Global = NewManager()
+
+// InitGlobal 从数据库加载通知配置并初始化全局通知管理器
+func InitGlobal(dbInst *gorm.DB) error {
+	// 注册默认支持的渠道
+	Global.mu.Lock()
+	_, wechatExists := Global.notifiers["wechat"]
+	Global.mu.Unlock()
+	if !wechatExists {
+		_ = Global.Register(NewWeChatNotifier())
+		_ = Global.Register(NewTelegramNotifier())
+		_ = Global.Register(NewWxPusherNotifier())
+	}
+
+	configs := make(map[string]*NotifierConfig)
+	channels := []string{"wechat", "telegram", "wxpusher"}
+
+	for _, name := range channels {
+		var setting db.Setting
+		err := dbInst.Where("key = ?", "notify_config_"+name).First(&setting).Error
+		if err == nil {
+			var config NotifierConfig
+			if err := json.Unmarshal([]byte(setting.Value), &config); err == nil {
+				configs[name] = &config
+			} else {
+				slog.Error("反序列化通知配置失败", "name", name, "error", err)
+			}
+		}
+	}
+
+	return Global.Init(configs)
 }
 
 // Register 注册通知渠道
@@ -43,6 +81,9 @@ func (m *Manager) Init(configs map[string]*NotifierConfig) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// 清空历史 config，避免禁用某个渠道后还残留配置
+	m.configs = make(map[string]*NotifierConfig)
+
 	for name, config := range configs {
 		notifier, exists := m.notifiers[name]
 		if !exists {
@@ -51,7 +92,8 @@ func (m *Manager) Init(configs map[string]*NotifierConfig) error {
 		}
 
 		if err := notifier.Init(config.Config); err != nil {
-			return fmt.Errorf("初始化通知渠道 %s 失败: %w", name, err)
+			slog.Error("初始化通知渠道失败，跳过该渠道", "name", name, "error", err)
+			continue
 		}
 
 		m.configs[name] = config

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 // WxPusherNotifier WxPusher 通知渠道
@@ -19,7 +20,9 @@ type WxPusherNotifier struct {
 // NewWxPusherNotifier 创建 WxPusher 通知渠道
 func NewWxPusherNotifier() *WxPusherNotifier {
 	return &WxPusherNotifier{
-		client: &http.Client{},
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
 	}
 }
 

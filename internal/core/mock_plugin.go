@@ -9,14 +9,14 @@ import (
 
 // MockPlugin Mock 插件实现
 type MockPlugin struct {
-	name            string
-	version         string
-	description     string
-	hooks           []plugin.HookType
-	config          map[string]interface{}
-	initErr         error
-	executeErr      error
-	closeErr        error
+	name             string
+	version          string
+	description      string
+	hooks            []plugin.HookType
+	config           map[string]interface{}
+	initErr          error
+	executeErr       error
+	closeErr         error
 	taskBeforeCalled bool
 	taskAfterCalled  bool
 	runCalled        bool

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 // WeChatNotifier 企业微信通知渠道
@@ -18,7 +19,9 @@ type WeChatNotifier struct {
 // NewWeChatNotifier 创建企业微信通知渠道
 func NewWeChatNotifier() *WeChatNotifier {
 	return &WeChatNotifier{
-		client: &http.Client{},
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
 	}
 }
 

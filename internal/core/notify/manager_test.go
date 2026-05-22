@@ -29,9 +29,9 @@ func NewMockNotifier(name string, notifierType NotifierType) *MockNotifier {
 	}
 }
 
-func (n *MockNotifier) Name() string                               { return n.name }
-func (n *MockNotifier) Type() NotifierType                         { return n.notifierType }
-func (n *MockNotifier) Init(config map[string]interface{}) error   { return n.initErr }
+func (n *MockNotifier) Name() string                             { return n.name }
+func (n *MockNotifier) Type() NotifierType                       { return n.notifierType }
+func (n *MockNotifier) Init(config map[string]interface{}) error { return n.initErr }
 func (n *MockNotifier) Send(ctx context.Context, message *Message) error {
 	if n.sendErr != nil {
 		return n.sendErr

@@ -7,6 +7,7 @@ import (
 
 	"github.com/zcq/clouddrive-auto-save/internal/api"
 	"github.com/zcq/clouddrive-auto-save/internal/core"
+	"github.com/zcq/clouddrive-auto-save/internal/core/notify"
 	"github.com/zcq/clouddrive-auto-save/internal/core/plugin"
 	"github.com/zcq/clouddrive-auto-save/internal/core/scheduler"
 	"github.com/zcq/clouddrive-auto-save/internal/core/search"
@@ -112,6 +113,13 @@ func main() {
 		}
 	}
 	api.InitTelegramHandler(telegramBot)
+
+	// 4.5 初始化全局通知管理器
+	slog.Info("Initializing notify manager...")
+	if err := notify.InitGlobal(db.DB); err != nil {
+		slog.Error("Failed to initialize global notify manager", "error", err)
+	}
+	api.InitNotifyHandler(notify.Global)
 
 	// 5. 初始化搜索客户端
 	slog.Info("Initializing search client...")

@@ -133,11 +133,11 @@ func (m *Manager) ListPlugins() []PluginInfo {
 
 // PluginInfo 插件信息
 type PluginInfo struct {
-	Name        string    `json:"name"`
-	Version     string    `json:"version"`
-	Description string    `json:"description"`
+	Name        string     `json:"name"`
+	Version     string     `json:"version"`
+	Description string     `json:"description"`
 	Hooks       []HookType `json:"hooks"`
-	Enabled     bool      `json:"enabled"`
+	Enabled     bool       `json:"enabled"`
 }
 
 // Close 关闭所有插件

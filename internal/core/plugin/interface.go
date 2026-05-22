@@ -43,14 +43,14 @@ const (
 
 // HookData 钩子数据
 type HookData struct {
-	TaskID    uint
-	TaskName  string
-	Platform  string
-	ShareURL  string
-	SavePath  string
-	Files     []FileInfo
-	Error     error
-	Result    *TaskResult
+	TaskID   uint
+	TaskName string
+	Platform string
+	ShareURL string
+	SavePath string
+	Files    []FileInfo
+	Error    error
+	Result   *TaskResult
 }
 
 // FileInfo 文件信息

@@ -2,7 +2,7 @@
 package search
 
 import (
-	"fmt"
+	"log/slog"
 	"sync"
 )
 
@@ -28,6 +28,8 @@ func (c *Client) Search(query string, sources []string, page int) (*SearchResult
 	defer c.mu.RUnlock()
 
 	var allItems []SearchItem
+	var mu sync.Mutex
+	var wg sync.WaitGroup
 
 	for _, source := range c.sources {
 		// 如果指定了搜索源，只搜索指定的源
@@ -35,15 +37,24 @@ func (c *Client) Search(query string, sources []string, page int) (*SearchResult
 			continue
 		}
 
-		result, err := source.Search(query, page)
-		if err != nil {
-			// 记录错误，继续搜索其他源
-			fmt.Printf("搜索源 %s 失败: %v\n", source.Name(), err)
-			continue
-		}
+		wg.Add(1)
+		go func(src Source) {
+			defer wg.Done()
+			result, err := src.Search(query, page)
+			if err != nil {
+				slog.Error("搜索源失败", "name", src.Name(), "error", err)
+				return
+			}
 
-		allItems = append(allItems, result.Items...)
+			if result != nil && len(result.Items) > 0 {
+				mu.Lock()
+				allItems = append(allItems, result.Items...)
+				mu.Unlock()
+			}
+		}(source)
 	}
+
+	wg.Wait()
 
 	return &SearchResult{
 		Total: len(allItems),

@@ -6,7 +6,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
+	"time"
 )
 
 // TelegramNotifier Telegram 通知渠道
@@ -19,7 +21,9 @@ type TelegramNotifier struct {
 // NewTelegramNotifier 创建 Telegram 通知渠道
 func NewTelegramNotifier() *TelegramNotifier {
 	return &TelegramNotifier{
-		client: &http.Client{},
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
 	}
 }
 
@@ -53,13 +57,13 @@ func (n *TelegramNotifier) Init(config map[string]interface{}) error {
 // Send 发送通知
 func (n *TelegramNotifier) Send(ctx context.Context, message *Message) error {
 	// 构建消息内容
-	content := fmt.Sprintf("*%s*\n\n%s", message.Title, message.Content)
+	content := fmt.Sprintf("<b>%s</b>\n\n%s", html.EscapeString(message.Title), html.EscapeString(message.Content))
 
 	// 构建请求体
 	body := map[string]string{
 		"chat_id":    n.chatID,
 		"text":       content,
-		"parse_mode": "Markdown",
+		"parse_mode": "HTML",
 	}
 
 	jsonBody, err := json.Marshal(body)
