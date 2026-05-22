@@ -35,8 +35,11 @@ test.describe('仪表盘：任务交互测试', () => {
 
     // 验证重试按钮存在
     const retryBtn = page.getByRole('button', { name: '重试' });
-    if (await retryBtn.isVisible({ timeout: 10000 })) {
+    try {
+      await expect(retryBtn).toBeVisible({ timeout: 10000 });
       await retryBtn.click();
+    } catch {
+      // 重试按钮可能不存在（任务可能已成功），忽略
     }
   });
 
