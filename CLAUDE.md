@@ -41,10 +41,14 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - **调度器** (`internal/core/scheduler/`) — 封装 robfig/cron，支持秒级精度。"global" 模式共享一个 cron 触发所有全局任务；"custom" 模式为每个任务独立 cron。带有 `[Fatal]` 消息的任务会被自动跳过
 - **重命名器** (`internal/core/renamer/`) — 支持魔法变量 `{TASKNAME}`、`{OLDNAME}`、`{CHINESE}`、`{DATE}`、`{YEAR}`、`{EXT}`，正则捕获组 `${1}`，以及 Go `text/template` 表达式
 - **SSE/事件系统** (`internal/utils/`) — `Broadcaster` 发布/订阅系统，向所有 SSE 客户端广播实时日志和 `[EVENT:task_update|task_delete|stats_update]` 结构化 JSON 事件。`DashboardLogger` 双写 slog 输出到控制台 + SSE
+- **插件系统** (`internal/core/plugin/`) — 支持模块化扩展，插件有三个生命周期钩子：`task_before`、`task_after`、`run`
+- **Telegram 集成** (`internal/core/telegram/`) — 支持通过 Telegram 远程管理任务，包括命令处理和消息推送
+- **资源搜索** (`internal/core/search/`) — 集成 CloudSaver/PanSou 等资源搜索引擎，支持搜索后一键创建任务
+- **多渠道通知** (`internal/core/notify/`) — 统一的 NotifyManager 调度器，支持企业微信、Telegram、WxPusher、Bark 四种推送渠道
 
 ### 前端 (Vue 3 + Vite)
 
-4 个页面位于 `web/src/views/`：Dashboard（实时统计 + SSE 日志）、Accounts（139/Quark 账号管理）、Tasks（任务 CRUD + 预览 + 执行）、Settings（全局调度 + Bark 配置）
+8 个页面位于 `web/src/views/`：Dashboard（实时统计 + SSE 日志）、Accounts（139/Quark 账号管理）、Tasks（任务 CRUD + 预览 + 执行）、Settings（全局调度 + Bark 配置）、Plugins（插件管理）、Search（资源搜索）、Notify（通知配置）
 
 ### 构建标签分离
 
@@ -92,3 +96,7 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - 任务管理：增删改查 + 执行 + 全部执行 + 预览 + 解析分享 + 忽略
 - 仪表盘：统计信息 + SSE 日志流 + 历史日志 + 清空日志
 - 设置：调度配置 + 全局设置 + 测试 Bark
+- 插件管理：列表 + 详情 + 配置更新
+- Telegram 配置：获取配置 + 更新配置 + 测试连接
+- 资源搜索：搜索资源 + 搜索源列表
+- 通知配置：列表 + 详情 + 更新 + 测试
