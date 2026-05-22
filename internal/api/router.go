@@ -16,7 +16,6 @@ import (
 	"github.com/zcq/clouddrive-auto-save/internal/core"
 	_ "github.com/zcq/clouddrive-auto-save/internal/core/cloud139"
 	"github.com/zcq/clouddrive-auto-save/internal/core/notify"
-	"github.com/zcq/clouddrive-auto-save/internal/core/notify"
 	"github.com/zcq/clouddrive-auto-save/internal/core/openlist"
 	"github.com/zcq/clouddrive-auto-save/internal/core/plugin"
 	_ "github.com/zcq/clouddrive-auto-save/internal/core/quark"

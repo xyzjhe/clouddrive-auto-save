@@ -42,7 +42,7 @@ func (h *NotifyHandler) GetNotifier(c *gin.Context) {
 
 // UpdateNotifier 更新通知渠道配置
 func (h *NotifyHandler) UpdateNotifier(c *gin.Context) {
-	name := c.Param("name")
+	_ = c.Param("name")
 
 	var config notify.NotifierConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
