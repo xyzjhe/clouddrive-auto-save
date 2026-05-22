@@ -36,8 +36,8 @@ test.describe('任务管理：删除测试', () => {
     const taskRow = page.locator('tr').filter({ hasText: taskName });
     await expect(taskRow).toBeVisible({ timeout: 10000 });
 
-    // 使用 CSS 选择器找到删除按钮（danger 类型的按钮）
-    await taskRow.locator('.el-button--danger').click();
+    // 使用 getByRole 选择器找到删除按钮
+    await taskRow.getByRole('button', { name: '删除' }).click();
     const msgBox = page.locator('.el-message-box');
     await expect(msgBox).toBeVisible({ timeout: 5000 });
     await msgBox.locator('.el-button--primary').click();
@@ -80,8 +80,8 @@ test.describe('任务管理：删除测试', () => {
     const taskRow = page.locator('tr').filter({ hasText: taskName });
     await expect(taskRow).toBeVisible({ timeout: 10000 });
 
-    // 使用 CSS 选择器找到删除按钮（danger 类型的按钮）
-    await taskRow.locator('.el-button--danger').click();
+    // 使用 getByRole 选择器找到删除按钮
+    await taskRow.getByRole('button', { name: '删除' }).click();
     const msgBox = page.locator('.el-message-box');
     await expect(msgBox).toBeVisible({ timeout: 5000 });
     await msgBox.locator('.el-button:not(.el-button--primary)').click();
