@@ -16,6 +16,7 @@ import (
 	"github.com/zcq/clouddrive-auto-save/internal/core"
 	_ "github.com/zcq/clouddrive-auto-save/internal/core/cloud139"
 	"github.com/zcq/clouddrive-auto-save/internal/core/notify"
+	"github.com/zcq/clouddrive-auto-save/internal/core/notify"
 	"github.com/zcq/clouddrive-auto-save/internal/core/openlist"
 	"github.com/zcq/clouddrive-auto-save/internal/core/plugin"
 	_ "github.com/zcq/clouddrive-auto-save/internal/core/quark"
@@ -92,6 +93,12 @@ func InitRouter(wm *worker.Manager, version, commit, date string) *gin.Engine {
 		// 资源搜索
 		api.GET("/search", searchResources)
 		api.GET("/search/sources", listSearchSources)
+
+		// 通知配置
+		api.GET("/notify", listNotifiers)
+		api.GET("/notify/:name", getNotifier)
+		api.PUT("/notify/:name", updateNotifier)
+		api.POST("/notify/:name/test", testNotifier)
 	}
 
 	// 静态资源处理
@@ -821,4 +828,43 @@ func listSearchSources(c *gin.Context) {
 		return
 	}
 	searchHandler.ListSources(c)
+}
+
+// 通知处理函数
+var notifyHandler *NotifyHandler
+
+func InitNotifyHandler(manager *notify.Manager) {
+	notifyHandler = NewNotifyHandler(manager)
+}
+
+func listNotifiers(c *gin.Context) {
+	if notifyHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "通知服务未初始化"})
+		return
+	}
+	notifyHandler.ListNotifiers(c)
+}
+
+func getNotifier(c *gin.Context) {
+	if notifyHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "通知服务未初始化"})
+		return
+	}
+	notifyHandler.GetNotifier(c)
+}
+
+func updateNotifier(c *gin.Context) {
+	if notifyHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "通知服务未初始化"})
+		return
+	}
+	notifyHandler.UpdateNotifier(c)
+}
+
+func testNotifier(c *gin.Context) {
+	if notifyHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "通知服务未初始化"})
+		return
+	}
+	notifyHandler.TestNotifier(c)
 }
