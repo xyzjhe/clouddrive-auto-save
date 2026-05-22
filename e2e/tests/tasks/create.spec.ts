@@ -69,11 +69,11 @@ test.describe('任务管理：创建功能测试', () => {
 
     // 点击下拉选择框并等待选项出现
     await page.locator('.el-dialog .el-select').first().click();
-    await page.waitForTimeout(500); // 等待下拉动画完成
+    await page.waitForTimeout(1000); // 等待下拉动画完成
 
-    // 使用 CSS 选择器找到选项
-    const option = page.locator('.el-select-dropdown__item:has-text("E2E夸克用户")').first();
-    await expect(option).toBeVisible({ timeout: 5000 });
+    // 使用 getByRole 选择器找到选项
+    const option = page.getByRole('option', { name: 'E2E夸克用户' }).first();
+    await expect(option).toBeVisible({ timeout: 10000 });
     await option.click();
 
     await page.getByLabel('任务名称').fill(taskName);
