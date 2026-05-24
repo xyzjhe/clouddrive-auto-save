@@ -167,6 +167,7 @@ func (m *Manager) execute(job Job) {
 	var savedFileNames []string
 	var skipCount int
 	var regexSkipCount int
+	renameMap := make(map[string]string) // 记录 原始文件名 -> 计算后新文件名 的对应关系
 
 	var compiledReg *regexp.Regexp
 	if task.Pattern != "" {
@@ -186,10 +187,11 @@ func (m *Manager) execute(job Job) {
 		newName := f.Name
 		if task.Replacement != "" {
 			resName, err := processor.Process(renamer.RenameOptions{
-				TaskName:    task.Name,
-				FileName:    f.Name,
-				Pattern:     task.Pattern,
-				Replacement: task.Replacement,
+				TaskName:        task.Name,
+				FileName:        f.Name,
+				Pattern:         task.Pattern,
+				Replacement:     task.Replacement,
+				CompiledPattern: compiledReg, // 复用外部已编译的正则，减少 CPU 开销
 			})
 			if err == nil {
 				newName = resName
@@ -204,6 +206,9 @@ func (m *Manager) execute(job Job) {
 
 		filteredIDs = append(filteredIDs, f.ID)
 		savedFileNames = append(savedFileNames, newName)
+		if newName != f.Name {
+			renameMap[f.Name] = newName
+		}
 	}
 
 	if len(filteredIDs) == 0 {
@@ -223,22 +228,26 @@ func (m *Manager) execute(job Job) {
 		return
 	}
 
-	// 5. 检查是否需要重命名 (如果有规则)
-	if task.Pattern != "" && task.Replacement != "" {
+	// 5. 检查是否需要重命名 (如果有规则且有需要重命名的文件)
+	if len(renameMap) > 0 {
 		m.updateProgress(task, 85, "Renaming", "转存成功，正在执行重命名...")
 		// 再次列出文件，找到刚才存入的文件进行重命名
 		newFiles, _ := driver.ListFiles(m.ctx, targetID)
-		processor := renamer.NewProcessor()
 		for _, tf := range newFiles {
-			newName, err := processor.Process(renamer.RenameOptions{
-				TaskName:    task.Name,
-				FileName:    tf.Name,
-				Pattern:     task.Pattern,
-				Replacement: task.Replacement,
-			})
-			if err == nil && newName != tf.Name {
-				slog.Info("正在执行重命名", "task_id", task.ID, "old_name", tf.Name, "new_name", newName)
-				_ = driver.RenameFile(m.ctx, tf.ID, newName)
+			// 如果当前文件名在待命名的映射表中，直接执行重命名
+			if expectedNewName, ok := renameMap[tf.Name]; ok {
+				if expectedNewName != tf.Name {
+					slog.Info("正在执行重命名", "task_id", task.ID, "old_name", tf.Name, "new_name", expectedNewName)
+					err = driver.RenameFile(m.ctx, tf.ID, expectedNewName)
+					if err == nil {
+						// 成功后将其从待命名 map 中移出
+						delete(renameMap, tf.Name)
+					}
+				}
+			}
+			// 早期退出：待命名列表已清空，说明本次转存的新文件已全部重命名完毕，立刻中止无谓的遍历
+			if len(renameMap) == 0 {
+				break
 			}
 		}
 	}

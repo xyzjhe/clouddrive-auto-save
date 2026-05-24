@@ -77,9 +77,19 @@ var DB *gorm.DB
 
 func InitDB(path string) error {
 	var err error
-	DB, err = gorm.Open(sqlite.Open(path), &gorm.Config{})
+	DB, err = gorm.Open(sqlite.Open(path), &gorm.Config{
+		SkipDefaultTransaction: true,
+	})
 	if err != nil {
 		return err
+	}
+
+	// 调优 SQLite 底层连接属性，启用 WAL 模式以获得更好的并发读写性能
+	sqlDB, err := DB.DB()
+	if err == nil {
+		sqlDB.Exec("PRAGMA journal_mode=WAL;")
+		sqlDB.Exec("PRAGMA synchronous=NORMAL;")
+		sqlDB.Exec("PRAGMA busy_timeout=5000;")
 	}
 
 	// 自动迁移模型
