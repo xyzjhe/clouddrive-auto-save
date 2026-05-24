@@ -7,9 +7,10 @@ const router = createRouter({
     {
       path: '/',
       component: MainLayout,
+      redirect: '/dashboard',
       children: [
         {
-          path: '',
+          path: 'dashboard',
           name: 'dashboard',
           component: () => import('../views/Dashboard.vue')
         },
@@ -46,6 +47,13 @@ const router = createRouter({
       ]
     }
   ]
+})
+
+// 捕获懒加载组件（chunk）加载失败的情况，自动刷新页面以获取最新的构建资源
+router.onError((error, to) => {
+  if (error.message.includes('Failed to fetch dynamically imported module') || error.message.includes('broken build')) {
+    window.location.replace(to.fullPath)
+  }
 })
 
 export default router
