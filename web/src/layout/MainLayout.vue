@@ -91,7 +91,7 @@
       <!-- 内容区 -->
       <el-main class="main-content">
         <router-view v-slot="{ Component }">
-          <transition name="fade-transform" mode="out-in">
+          <transition name="fade-page" mode="out-in">
             <component :is="Component" />
           </transition>
         </router-view>
@@ -346,19 +346,14 @@ html.dark .theme-toggle:hover {
   background: rgba(99, 102, 241, 0.1) !important;
 }
 
-.fade-transform-enter-active,
-.fade-transform-leave-active {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+.fade-page-enter-active,
+.fade-page-leave-active {
+  transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.fade-transform-enter-from {
+.fade-page-enter-from,
+.fade-page-leave-to {
   opacity: 0;
-  transform: translateX(-12px);
-}
-
-.fade-transform-leave-to {
-  opacity: 0;
-  transform: translateX(12px);
 }
 
 .slide-enter-active,

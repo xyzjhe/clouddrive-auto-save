@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as echarts from 'echarts'
 
 const props = defineProps({
@@ -76,11 +76,21 @@ watch(() => props.data, () => {
   }
 }, { deep: true })
 
+const handleResize = () => {
+  chart?.resize()
+}
+
 onMounted(() => {
   initChart()
-  window.addEventListener('resize', () => {
-    chart?.resize()
-  })
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  if (chart) {
+    chart.dispose()
+    chart = null
+  }
 })
 </script>
 
