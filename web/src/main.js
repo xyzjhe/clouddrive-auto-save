@@ -15,8 +15,8 @@ app.use(ElementPlus)
 
 app.mount('#app')
 
-// 注册 Service Worker
-if ('serviceWorker' in navigator) {
+// 仅在生产环境下注册 Service Worker，避免开发阶段的模块请求被缓存干扰
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {

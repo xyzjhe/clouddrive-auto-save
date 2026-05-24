@@ -32,8 +32,19 @@ self.addEventListener('activate', (event) => {
 
 // 请求事件 - 网络优先策略
 self.addEventListener('fetch', (event) => {
+  // 仅拦截和缓存 GET 请求，避免非 GET 请求（如 POST、PUT、DELETE）写入缓存引发 TypeError
+  if (event.request.method !== 'GET') {
+    return
+  }
+
+  // 仅处理 http 和 https 协议，过滤 chrome-extension 和 websocket
+  const url = new URL(event.request.url)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return
+  }
+
   // 跳过 API 请求
-  if (event.request.url.includes('/api/')) {
+  if (url.pathname.includes('/api/')) {
     return
   }
 
