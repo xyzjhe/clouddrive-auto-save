@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Search as SearchIcon, Link as LinkIcon, Coins as CoinsIcon, Clock as ClockIcon, FileText as FileTextIcon } from 'lucide-vue-next'
 
 const query = ref('')
 const selectedSources = ref([])
@@ -66,7 +67,7 @@ const handleCreateTask = (item) => {
       >
         <template #append>
           <el-button @click="handleSearch">
-            <el-icon><Search /></el-icon>
+            <el-icon><SearchIcon /></el-icon>
             搜索
           </el-button>
         </template>
@@ -107,19 +108,19 @@ const handleCreateTask = (item) => {
 
         <div class="result-meta">
           <span class="meta-item">
-            <el-icon><Connection /></el-icon>
+            <el-icon><LinkIcon /></el-icon>
             {{ item.source }}
           </span>
           <span class="meta-item">
-            <el-icon><Coin /></el-icon>
+            <el-icon><CoinsIcon /></el-icon>
             {{ item.platform }}
           </span>
           <span class="meta-item">
-            <el-icon><Timer /></el-icon>
+            <el-icon><ClockIcon /></el-icon>
             {{ item.updated_at }}
           </span>
           <span v-if="item.size" class="meta-item">
-            <el-icon><Document /></el-icon>
+            <el-icon><FileTextIcon /></el-icon>
             {{ item.size }}
           </span>
         </div>
