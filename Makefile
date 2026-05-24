@@ -147,7 +147,19 @@ e2e-setup:
 ## e2e-test: 编译并运行端到端测试 (自动处理后台服务起停)
 e2e-test: build
 	@echo "=> Running E2E tests..."
-	@# 检查 8080 端口是否被占用，如果占用则尝试清理（可选）
+	@echo "=> Checking if port 8080 is occupied..."
+	@PORT_PID=$$(lsof -t -i:8080 2>/dev/null || true); \
+	if [ -n "$$PORT_PID" ]; then \
+		echo "=> Port 8080 is occupied by PID $$PORT_PID. Cleaning up..."; \
+		kill $$PORT_PID || true; \
+		sleep 1; \
+		PORT_PID=$$(lsof -t -i:8080 2>/dev/null || true); \
+		if [ -n "$$PORT_PID" ]; then \
+			echo "=> Port 8080 still occupied. Force cleaning up..."; \
+			kill -9 $$PORT_PID || true; \
+			sleep 1; \
+		fi; \
+	fi
 	@E2E_TEST_MODE=true ./bin/ucas > e2e_server.log 2>&1 & \
 	PID=$$!; \
 	echo "=> Backend started with PID: $$PID"; \
