@@ -5,7 +5,9 @@ test.describe('仪表盘：日志管理测试', () => {
     const taskName = `E2E_日志_${Date.now()}`;
     await page.goto('/tasks');
     await page.getByRole('button', { name: '创建任务' }).last().click();
-    await page.locator('.el-select').first().click();
+    const drawer = page.locator('.el-drawer');
+    await expect(drawer).toBeVisible({ timeout: 5000 });
+    await page.locator('.el-drawer .el-select').first().click();
     await page.getByRole('option', { name: 'E2E移动云盘用户' }).first().click();
     await page.getByLabel('任务名称').fill(taskName);
     await page.getByLabel('分享链接').fill('https://yun.139.com/w/#/share/link/mock_success');
@@ -18,7 +20,7 @@ test.describe('仪表盘：日志管理测试', () => {
     await expect(taskRow.locator('.el-tag').filter({ hasText: 'SUCCESS' })).toBeVisible({ timeout: 60000 });
 
     await page.goto('/');
-    await expect(page.getByText('实时日志流')).toBeVisible();
+    await expect(page.getByText('TERMINAL LOG')).toBeVisible();
 
     const logArea = page.locator('.log-terminal, .log-content, pre').first();
     await expect(logArea).toBeVisible();
@@ -27,11 +29,10 @@ test.describe('仪表盘：日志管理测试', () => {
   test('清空日志', async ({ page }) => {
     await page.goto('/');
 
-    const clearBtn = page.getByRole('button', { name: '清空日志' });
+    const clearBtn = page.getByRole('button', { name: '清理结束任务' });
     if (await clearBtn.isVisible()) {
       await clearBtn.click();
-      await page.getByRole('button', { name: '确定' }).click();
-      await expect(page.getByText(/已清空|清空成功/)).toBeVisible({ timeout: 5000 });
+      await expect(page.getByText('日志与已完成任务已清空')).toBeVisible({ timeout: 5000 });
     }
   });
 });

@@ -9,10 +9,10 @@ test.describe('任务管理：批量运行测试', () => {
 
     // 创建 1 个任务（减少超时风险）
     await page.locator('.header-actions button:has-text("创建任务")').click();
-    const dialog = page.locator('.el-dialog');
-    await expect(dialog).toBeVisible({ timeout: 5000 });
+    const drawer = page.locator('.el-drawer');
+    await expect(drawer).toBeVisible({ timeout: 5000 });
 
-    await page.locator('.el-dialog .el-select').first().click();
+    await page.locator('.el-drawer .el-select').first().click();
     await page.waitForTimeout(500);
     await page.getByRole('option', { name: 'E2E移动云盘用户' }).first().click();
 

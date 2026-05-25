@@ -14,9 +14,9 @@ test.describe('布局：侧边栏导航测试', () => {
     await page.locator('.nav-item').filter({ hasText: '系统设置' }).click();
     await expect(page).toHaveURL(/\/settings/);
 
-    // 点击仪表盘概览
-    await page.locator('.nav-item').filter({ hasText: '仪表盘' }).click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    // 点击控制台
+    await page.locator('.nav-item').filter({ hasText: '控制台' }).click();
+    await expect(page).toHaveURL(/\/console/);
   });
 
   test('面包屑显示当前页面路径', async ({ page }) => {

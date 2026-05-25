@@ -14,14 +14,14 @@ test.describe('任务管理：删除测试', () => {
     await expect(createBtn).toBeVisible({ timeout: 20000 });
     await createBtn.click();
 
-    // 等待对话框打开
-    const dialog = page.locator('.el-dialog');
-    await expect(dialog).toBeVisible({ timeout: 5000 });
+    // 等待抽屉打开
+    const drawer = page.locator('.el-drawer');
+    await expect(drawer).toBeVisible({ timeout: 5000 });
 
     await expect(page.getByLabel('任务名称')).toBeVisible({ timeout: 5000 });
 
     // 点击下拉选择框并等待选项出现
-    await page.locator('.el-dialog .el-select').first().click();
+    await page.locator('.el-drawer .el-select').first().click();
     await page.waitForTimeout(1000); // 等待下拉动画完成
 
     // 使用 getByRole 选择器找到选项
@@ -58,14 +58,14 @@ test.describe('任务管理：删除测试', () => {
     await expect(createBtn).toBeVisible({ timeout: 20000 });
     await createBtn.click();
 
-    // 等待对话框打开
-    const dialog = page.locator('.el-dialog');
-    await expect(dialog).toBeVisible({ timeout: 5000 });
+    // 等待抽屉打开
+    const drawer = page.locator('.el-drawer');
+    await expect(drawer).toBeVisible({ timeout: 5000 });
 
     await expect(page.getByLabel('任务名称')).toBeVisible({ timeout: 5000 });
 
     // 点击下拉选择框并等待选项出现
-    await page.locator('.el-dialog .el-select').first().click();
+    await page.locator('.el-drawer .el-select').first().click();
     await page.waitForTimeout(1000); // 等待下拉动画完成
 
     // 使用 getByRole 选择器找到选项

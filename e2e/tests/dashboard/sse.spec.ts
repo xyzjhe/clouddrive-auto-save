@@ -5,7 +5,9 @@ test.describe('仪表盘：SSE 实时更新测试', () => {
     const taskName = `E2E_SSE_${Date.now()}`;
     await page.goto('/tasks');
     await page.getByRole('button', { name: '创建任务' }).last().click();
-    await page.locator('.el-select').first().click();
+    const drawer = page.locator('.el-drawer');
+    await expect(drawer).toBeVisible({ timeout: 5000 });
+    await page.locator('.el-drawer .el-select').first().click();
     await page.getByRole('option', { name: 'E2E移动云盘用户' }).first().click();
     await page.getByLabel('任务名称').fill(taskName);
     await page.getByLabel('分享链接').fill('https://yun.139.com/w/#/share/link/mock_success');

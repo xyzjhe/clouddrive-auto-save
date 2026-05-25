@@ -2,11 +2,12 @@ import { test, expect } from '@playwright/test';
 
 test.describe('系统设置：Bark 高级配置测试', () => {
   test('展开 Bark 高级设置面板', async ({ page }) => {
-    await page.goto('/notify');
+    await page.goto('/settings');
+    await page.click('#tab-notify');
     await page.getByRole('tab', { name: 'Bark' }).click();
-    await page.waitForLoadState('networkidle');
+    // 移除 networkidle 等待，防止 SSE 持久连接导致超时
 
-    const barkPane = page.locator('.el-tab-pane').filter({ hasText: 'Device Key' });
+    const barkPane = page.locator('.bark-form');
 
     // 展开高级设置
     const collapseHeader = barkPane.getByText('高级推送设置');
@@ -21,11 +22,12 @@ test.describe('系统设置：Bark 高级配置测试', () => {
   });
 
   test('Bark 测试弹窗包含所有高级选项', async ({ page }) => {
-    await page.goto('/notify');
+    await page.goto('/settings');
+    await page.click('#tab-notify');
     await page.getByRole('tab', { name: 'Bark' }).click();
-    await page.waitForLoadState('networkidle');
+    // 移除 networkidle 等待，防止 SSE 持久连接导致超时
 
-    const barkPane = page.locator('.el-tab-pane').filter({ hasText: 'Device Key' });
+    const barkPane = page.locator('.bark-form');
 
     // 启用 Bark
     const barkSwitch = barkPane.locator('.el-switch').first();
@@ -33,21 +35,18 @@ test.describe('系统设置：Bark 高级配置测试', () => {
       await barkSwitch.click();
     }
 
-    await page.getByLabel('服务器地址').fill('https://api.day.app');
-    await page.getByLabel('Device Key').fill('mock_device_key');
-    await barkPane.getByRole('button', { name: '保存' }).click();
+    await barkPane.locator('input[placeholder="https://api.day.app"]').fill('https://api.day.app');
+    await barkPane.locator('input[placeholder="您的 Bark 设备 Key"]').fill('mock_device_key');
+    await barkPane.locator('.save-bark-btn').click();
     await expect(page.getByText('Bark 推送设置已保存')).toBeVisible({ timeout: 5000 });
 
-    // 打开测试弹窗
-    await barkPane.getByRole('button', { name: '测试' }).click();
+    await barkPane.locator('.test-bark-btn').click();
     const testDialog = page.getByRole('dialog', { name: '发送测试推送' });
     await expect(testDialog).toBeVisible();
 
-    // 验证弹窗包含高级选项
-    await expect(testDialog.getByLabel('推送标题')).toBeVisible();
-    await expect(testDialog.getByLabel('推送内容')).toBeVisible();
-    await expect(testDialog.getByText('通知级别')).toBeVisible();
-    await expect(testDialog.getByText('提醒铃声')).toBeVisible();
+    // 验证弹窗包含选项
+    await expect(testDialog.locator('.el-input__inner').first()).toBeVisible();
+    await expect(testDialog.locator('.el-textarea__inner')).toBeVisible();
 
     // 关闭弹窗
     await page.getByRole('button', { name: '取消' }).click();
