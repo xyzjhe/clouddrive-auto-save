@@ -19,10 +19,10 @@ export const navigationConfig: NavGroup[] = [
     icon: '📊',
     items: [
       {
-        name: '仪表盘',
-        path: '/dashboard',
+        name: '控制台',
+        path: '/console',
         icon: 'LayoutDashboard',
-        description: '实时统计和任务监控'
+        description: '系统状态与实时转存监控'
       }
     ]
   },
@@ -49,16 +49,10 @@ export const navigationConfig: NavGroup[] = [
     icon: '🛠️',
     items: [
       {
-        name: '资源搜索',
+        name: '资源发现',
         path: '/search',
         icon: 'Search',
-        description: '搜索云盘资源'
-      },
-      {
-        name: '插件管理',
-        path: '/plugins',
-        icon: 'Puzzle',
-        description: '管理系统插件'
+        description: '搜索并发现云盘资源'
       }
     ]
   },
@@ -70,13 +64,7 @@ export const navigationConfig: NavGroup[] = [
         name: '系统设置',
         path: '/settings',
         icon: 'Settings',
-        description: '全局配置'
-      },
-      {
-        name: '消息推送',
-        path: '/notify',
-        icon: 'Bell',
-        description: '通知渠道配置'
+        description: '全局参数、推送与插件管理'
       }
     ]
   }

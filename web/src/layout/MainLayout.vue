@@ -159,15 +159,14 @@ const navigateTo = (path) => {
 const activeMenu = computed(() => route.path)
 const currentPageTitle = computed(() => {
   const titles = {
-    '/': '仪表盘',
+    '/': '控制台',
+    '/console': '控制台',
     '/accounts': '账号管理',
     '/tasks': '任务管理',
     '/settings': '系统设置',
-    '/search': '资源搜索',
-    '/plugins': '插件管理',
-    '/notify': '消息推送'
+    '/search': '资源发现'
   }
-  return titles[route.path] || '概览'
+  return titles[route.path] || '控制台'
 })
 </script>
 

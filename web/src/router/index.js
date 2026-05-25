@@ -7,42 +7,32 @@ const router = createRouter({
     {
       path: '/',
       component: MainLayout,
-      redirect: '/dashboard',
+      redirect: '/console',
       children: [
         {
-          path: 'dashboard',
-          name: 'dashboard',
+          path: 'console',
+          name: 'Console',
           component: () => import('../views/Dashboard.vue')
         },
         {
           path: 'accounts',
-          name: 'accounts',
+          name: 'Accounts',
           component: () => import('../views/Accounts.vue')
         },
         {
           path: 'tasks',
-          name: 'tasks',
+          name: 'Tasks',
           component: () => import('../views/Tasks.vue')
         },
         {
           path: 'settings',
-          name: 'settings',
+          name: 'Settings',
           component: () => import('../views/Settings.vue')
         },
         {
-          path: 'plugins',
-          name: 'plugins',
-          component: () => import('../views/Plugins.vue')
-        },
-        {
           path: 'search',
-          name: 'search',
+          name: 'Search',
           component: () => import('../views/Search.vue')
-        },
-        {
-          path: 'notify',
-          name: 'notify',
-          component: () => import('../views/Notify.vue')
         }
       ]
     }
