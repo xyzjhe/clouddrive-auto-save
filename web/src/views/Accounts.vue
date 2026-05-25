@@ -112,23 +112,37 @@
               </div>
 
               <div class="card-content">
-                <div v-if="row.capacity_total > 0" class="capacity-section">
-                  <div class="capacity-header">
-                    <span>{{ formatBytes(row.capacity_used) }} / {{ formatBytes(row.capacity_total) }}</span>
-                    <span v-if="row.capacity_total >= row.capacity_used" class="remaining">
-                      剩 {{ formatBytes(row.capacity_total - row.capacity_used) }}
-                    </span>
-                    <span v-else class="remaining is-over">
-                      已超额 {{ formatBytes(row.capacity_used - row.capacity_total) }}
-                    </span>
-                  </div>
+                <div v-if="row.capacity_total > 0" class="capacity-circle-wrapper">
                   <el-progress 
+                    type="circle"
                     :percentage="Math.min(100, calcPercentage(row.capacity_used, row.capacity_total))" 
-                    :show-text="false"
                     :stroke-width="8"
+                    :width="90"
                     :status="getCapacityStatus(row.capacity_used, row.capacity_total)"
-                    class="gradient-progress"
-                  />
+                    class="capacity-progress-circle"
+                  >
+                    <template #default="{ percentage }">
+                      <span class="circle-percentage">{{ percentage }}%</span>
+                      <span class="circle-label">已用</span>
+                    </template>
+                  </el-progress>
+                  <div class="capacity-detail">
+                    <div class="cap-item">
+                      <div class="label">已使用</div>
+                      <div class="value">{{ formatBytes(row.capacity_used) }}</div>
+                    </div>
+                    <div class="cap-item">
+                      <div class="label">总空间</div>
+                      <div class="value">{{ formatBytes(row.capacity_total) }}</div>
+                    </div>
+                    <div class="cap-item">
+                      <div class="label" v-if="row.capacity_total >= row.capacity_used">剩余空间</div>
+                      <div class="label" v-else>已超额</div>
+                      <div class="value" :class="{ 'is-over': row.capacity_used > row.capacity_total }">
+                        {{ row.capacity_total >= row.capacity_used ? formatBytes(row.capacity_total - row.capacity_used) : formatBytes(row.capacity_used - row.capacity_total) }}
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div v-else class="empty-capacity">
                   <el-icon><Info /></el-icon> 未同步容量信息
@@ -400,10 +414,12 @@ onMounted(() => {
 .account-card {
   border-radius: 16px;
   margin-bottom: 20px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid var(--neutral-200);
+  background: var(--surface-bg) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color) !important;
   position: relative;
   overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .account-card::after {
@@ -413,15 +429,15 @@ onMounted(() => {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--brand-500), var(--color-info));
+  background: linear-gradient(90deg, var(--neon-teal), var(--neon-blue));
   opacity: 0;
   transition: opacity 0.3s;
 }
 
 .account-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-xl);
-  border-color: var(--brand-200);
+  transform: translateY(-5px) scale(1.02);
+  border-color: rgba(0, 242, 254, 0.35) !important;
+  box-shadow: 0 8px 30px rgba(0, 242, 254, 0.15), var(--neon-glow-teal) !important;
 }
 
 .account-card:hover::after {
@@ -449,7 +465,7 @@ onMounted(() => {
 .account-info .nickname {
   font-weight: 700;
   font-size: 16px;
-  color: var(--neutral-800);
+  color: var(--text-primary);
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -458,25 +474,65 @@ onMounted(() => {
 
 .account-info .platform-tag {
   font-size: 12px;
-  color: var(--neutral-400);
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
-.capacity-section {
-  margin-bottom: 20px;
-}
-
-.capacity-section .capacity-header {
+.capacity-circle-wrapper {
   display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  margin-bottom: 8px;
-  color: var(--neutral-500);
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 10px 0;
 }
 
-.capacity-section .remaining {
-  color: var(--color-success);
+.capacity-progress-circle {
+  flex-shrink: 0;
+}
+
+:deep(.el-progress-circle__track) {
+  stroke: rgba(255, 255, 255, 0.05) !important;
+}
+
+.circle-percentage {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.circle-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.capacity-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cap-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.cap-item .label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.cap-item .value {
+  font-size: 13px;
   font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.cap-item .value.is-over {
+  color: #ef4444;
 }
 
 .empty-capacity {

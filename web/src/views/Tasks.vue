@@ -130,9 +130,18 @@
       </el-empty>
     </div>
 
-    <!-- 创建/编辑任务对话框 -->
-    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑任务' : '创建新任务'" width="600px">
+    <!-- 创建/编辑任务抽屉 -->
+    <el-drawer v-model="dialogVisible" :title="form.id ? '编辑任务' : '创建新任务'" direction="rtl" size="600px" destroy-on-close>
       <el-form :model="form" label-position="top" ref="formRef">
+        <el-form-item label="智能粘贴解析" v-if="!form.id">
+          <el-input
+            v-model="smartInput"
+            type="textarea"
+            :rows="3"
+            placeholder="请在此粘贴包含分享链接和提取码的文字，系统将自动尝试解析并填充下方表单"
+            @input="handleSmartInput"
+          />
+        </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="任务名称" required>
@@ -308,10 +317,12 @@
       </el-form>
       
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="submitForm">确认并保存</el-button>
+        <div style="flex: auto">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="submitting" @click="submitForm">确认并保存</el-button>
+        </div>
       </template>
-    </el-dialog>
+    </el-drawer>
 
     <!-- 目录选择独立弹窗 -->
     <el-dialog 
@@ -525,6 +536,35 @@ const runningAll = ref(false)
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const viewMode = ref(localStorage.getItem('taskViewMode') || 'table')
+
+const smartInput = ref('')
+
+const handleSmartInput = (val) => {
+  if (!val) return
+  
+  // 1. 提取链接
+  const urlMatch = val.match(/https?:\/\/[a-zA-Z0-9.\-_/]+/)
+  if (urlMatch) {
+    form.value.share_url = urlMatch[0]
+    handleUrlChange()
+  }
+
+  // 2. 提取密码/提取码
+  let remainText = val
+  if (urlMatch) {
+    remainText = val.replace(urlMatch[0], '')
+  }
+  
+  const pwdKeywordMatch = remainText.match(/(?:提取码|提取|密码|pw|码|pwd)[:：\s]*([a-zA-Z0-9]+)/i)
+  if (pwdKeywordMatch) {
+    form.value.extract_code = pwdKeywordMatch[1]
+  } else {
+    const purePwdMatch = remainText.match(/\b([a-zA-Z0-9]{4})\b/)
+    if (purePwdMatch) {
+      form.value.extract_code = purePwdMatch[1]
+    }
+  }
+}
 
 const toggleViewMode = (mode) => {
   viewMode.value = mode
@@ -1112,6 +1152,7 @@ const confirmFolderSelection = () => {
 }
 
 const openAddDialog = () => {
+  smartInput.value = ''
   form.value = {
     id: null,
     name: '',
@@ -1135,6 +1176,7 @@ const openAddDialog = () => {
 }
 
 const handleEdit = async (row) => {
+  smartInput.value = ''
   shareFiles.value = []
   
   form.value = {

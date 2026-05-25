@@ -1,144 +1,129 @@
 <template>
   <div class="dashboard-container">
-    <div class="welcome-section">
-      <h2>欢迎回来，管理员 👋</h2>
-      <p>这是您今日的云端转存概览</p>
-    </div>
-
-    <el-row :gutter="24" class="stat-cards">
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card" body-style="padding: 20px">
-          <div class="stat-icon purple">
-            <Activity :size="24" />
-          </div>
-          <div class="stat-info">
-            <div class="stat-label">已规划任务</div>
-            <div class="stat-value">{{ stats.scheduled_tasks }}</div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card" body-style="padding: 20px">
-          <div class="stat-icon blue">
-            <HardDrive :size="24" />
-          </div>
-          <div class="stat-info">
-            <div class="stat-label">已保存容量</div>
-            <div class="stat-value">{{ formatSize(stats.capacity_used) }}</div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card" body-style="padding: 20px">
-          <div class="stat-icon green">
-            <RefreshCw :size="24" />
-          </div>
-          <div class="stat-info">
-            <div class="stat-label">今日完成</div>
-            <div class="stat-value">{{ stats.today_completed }}</div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card" body-style="padding: 20px">
-          <div class="stat-icon orange">
-            <User :size="24" />
-          </div>
-          <div class="stat-info">
-            <div class="stat-label">活跃账号</div>
-            <div class="stat-value">{{ stats.active_accounts }}</div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- 图表区域 -->
-    <el-row :gutter="24" class="charts-row">
-      <el-col :xs="24" :lg="16">
-        <el-card class="chart-card" body-style="padding: 20px">
+    <el-row :gutter="20" class="console-row">
+      <!-- 1. 左栏：系统遥测 (Telemetry) -->
+      <el-col :xs="24" :md="6" class="telemetry-column">
+        <el-card class="telemetry-card glass-card">
           <template #header>
-            <div class="card-header">
-              <div class="header-title">
-                <el-icon><TrendingUp /></el-icon>
-                <span>任务执行趋势（最近7天）</span>
-              </div>
+            <div class="card-header-simple">
+              <span class="pulse-dot"></span>
+              <span class="panel-title">SYSTEM TELEMETRY</span>
             </div>
           </template>
-          <TrendChart :data="trendData" />
-        </el-card>
-      </el-col>
 
-      <el-col :xs="24" :lg="8">
-        <el-card class="chart-card" body-style="padding: 20px">
-          <template #header>
-            <div class="card-header">
-              <div class="header-title">
-                <el-icon><PieChart /></el-icon>
-                <span>存储空间分布</span>
+          <div class="telemetry-body">
+            <!-- CPU 负载环 -->
+            <div class="telemetry-item">
+              <div class="telemetry-info">
+                <span>CPU 负载</span>
+                <span class="value-highlight">{{ cpuUsage }}%</span>
               </div>
+              <el-progress 
+                :percentage="cpuUsage" 
+                :stroke-width="6" 
+                :show-text="false"
+                color="#00f2fe"
+              />
             </div>
-          </template>
-          <StorageChart :data="storageData" />
-        </el-card>
-      </el-col>
-    </el-row>
 
-    <el-row :gutter="24" class="content-row">
-      <!-- 左侧：实时日志终端 -->
-      <el-col :xs="24" :lg="16">
-        <el-card class="dashboard-main-card terminal-card" body-style="padding: 0">
-          <template #header>
-            <div class="card-header">
-              <div class="header-title">
-                <el-icon><Terminal /></el-icon>
-                <span>实时日志流</span>
+            <!-- RAM 负载条 -->
+            <div class="telemetry-item">
+              <div class="telemetry-info">
+                <span>RAM 负载</span>
+                <span class="value-highlight">{{ ramUsage }}%</span>
               </div>
-              <div class="header-actions">
-                <el-tooltip content="清空日志" placement="top">
-                  <el-button link type="danger" :icon="Trash2" @click="clearLogs" />
-                </el-tooltip>
+              <el-progress 
+                :percentage="ramUsage" 
+                :stroke-width="6" 
+                :show-text="false"
+                color="#8b5cf6"
+              />
+            </div>
+
+            <!-- 存储池配额进度圆环 -->
+            <div class="telemetry-item circle-progress-item">
+              <div class="telemetry-label-center">存储池容量比例</div>
+              <el-progress 
+                type="circle" 
+                :percentage="Math.min(100, Math.round((stats.capacity_used / (10 * 1024 * 1024 * 1024 * 1024)) * 100))" 
+                :stroke-width="8"
+                :width="120"
+                color="#39ff14"
+              >
+                <template #default="{ percentage }">
+                  <div class="progress-inner-value">{{ percentage }}%</div>
+                  <div class="progress-inner-sub">已用</div>
+                </template>
+              </el-progress>
+              <div class="storage-text-detail">
+                {{ formatSize(stats.capacity_used) }} / 10 TB
               </div>
             </div>
-          </template>
-          <div class="terminal-window" ref="terminalRef">
-            <div v-for="(log, index) in logs" :key="index" class="log-line" :class="getLogClass(log)">
-              <span class="log-timestamp">{{ new Date().toLocaleTimeString() }}</span>
-              <span class="log-content">{{ log }}</span>
-            </div>
-            <div v-if="logs.length === 0" class="terminal-empty">
-              等待系统日志推送...
+
+            <!-- 自动转存健康状态 -->
+            <div class="telemetry-status-box breath-glow">
+              <div class="status-indicator">
+                <span class="status-indicator-dot"></span>
+                <span>AUTO-SAVE ACTIVE</span>
+              </div>
+              <div class="status-sub">引擎正常监听中</div>
             </div>
           </div>
         </el-card>
       </el-col>
 
-      <!-- 右侧：实时任务监控 -->
-      <el-col :xs="24" :lg="8">
-        <el-card class="dashboard-main-card monitor-card">
+      <!-- 2. 中栏：控制台核心任务与进度 (Console Core) -->
+      <el-col :xs="24" :md="isLogCollapsed ? 17 : 12" class="console-core-column">
+        <!-- 四个精简指标汇总磁贴 -->
+        <el-row :gutter="12" class="stat-mini-grids">
+          <el-col :span="6">
+            <div class="mini-tile glass-card">
+              <div class="tile-label">已规划任务</div>
+              <div class="tile-value cyan">{{ stats.scheduled_tasks }}</div>
+            </div>
+          </el-col>
+          <el-col :span="6">
+            <div class="mini-tile glass-card">
+              <div class="tile-label">已转存容量</div>
+              <div class="tile-value purple">{{ formatSize(stats.capacity_used) }}</div>
+            </div>
+          </el-col>
+          <el-col :span="6">
+            <div class="mini-tile glass-card">
+              <div class="tile-label">今日完成</div>
+              <div class="tile-value green">{{ stats.today_completed }}</div>
+            </div>
+          </el-col>
+          <el-col :span="6">
+            <div class="mini-tile glass-card">
+              <div class="tile-label">活跃账号</div>
+              <div class="tile-value orange">{{ stats.active_accounts }}</div>
+            </div>
+          </el-col>
+        </el-row>
+
+        <!-- 活跃转存卡片区 -->
+        <el-card class="core-jobs-card glass-card">
           <template #header>
             <div class="card-header">
               <div class="header-title">
-                <el-icon><Activity /></el-icon>
-                <span>实时执行状态</span>
+                <el-icon class="icon-spin-slow"><RefreshCw /></el-icon>
+                <span>活跃执行队列</span>
               </div>
-              <el-tag size="small" type="primary" effect="light">{{ runningTasks.length }} 活跃</el-tag>
+              <el-tag size="small" type="primary" effect="dark">{{ runningTasks.length }} 活跃中</el-tag>
             </div>
           </template>
 
           <div class="monitor-scroll-area">
-            <!-- 仅当有活跃任务时显示该区域 -->
-            <div v-if="runningTasks.length > 0" class="running-tasks-list">
-              <div v-for="task in runningTasks" :key="task.id" class="task-progress-card">
+            <div v-if="runningTasks.length > 0" class="running-tasks-list" style="margin-bottom: 24px;">
+              <div v-for="task in runningTasks" :key="task.id" class="task-progress-card breath-glow">
                 <div class="task-info">
                   <span class="task-name">{{ task.name }}</span>
                   <div class="task-actions">
                     <el-icon v-if="task.percent < 100" class="is-loading"><Loader2 /></el-icon>
-                    <el-icon v-else-if="task.stage === 'Success'" color="#67c23a"><CheckCircle2 /></el-icon>
+                    <el-icon v-else-if="task.stage === 'Success'" color="#39ff14"><CheckCircle2 /></el-icon>
                     <el-icon v-else-if="task.stage === 'Failed'" color="#f56c6c"><AlertCircle /></el-icon>
-                    <el-button v-if="task.percent === 100" type="info" link @click="dismissTask(task.id)" style="margin-left: 8px; padding: 0">
+                    <el-button v-if="task.percent === 100" type="info" link @click="dismissTask(task.id)" class="close-btn">
                       <el-icon><X /></el-icon>
                     </el-button>
                   </div>
@@ -150,78 +135,104 @@
                 <el-progress
                   :percentage="task.percent"
                   :status="task.stage === 'Failed' ? 'exception' : (task.percent === 100 ? 'success' : '')"
-                  :stroke-width="8"
+                  :stroke-width="6"
                   striped
                   :striped-flow="task.percent < 100"
                 />
               </div>
-              <el-divider>近期动态</el-divider>
             </div>
 
-            <!-- 如果没有活跃任务，这里将置顶 -->
-            <el-timeline class="compact-timeline">
-              <el-timeline-item
-                v-for="activity in stats.recent_activities"
-                :key="activity.id"
-                :timestamp="formatRelativeTime(activity.last_run)"
-                :type="getStatusType(activity.status)"
-              >
-                <div class="timeline-content">
-                  <span class="activity-name">{{ activity.name }}</span>
-                  <el-button v-if="activity.status === 'failed'" size="small" link type="primary" @click="handleRetry(activity.id)">重试</el-button>
-                </div>
-              </el-timeline-item>
-            </el-timeline>
-
-            <div v-if="runningTasks.length === 0 && stats.recent_activities.length === 0" class="monitor-empty">
-              <el-empty :image-size="40" description="暂无活动记录" />
+            <!-- 近期时间线，始终渲染以展示历史记录 -->
+            <div class="recent-activities-section">
+              <div class="section-title-simple" style="margin-bottom: 12px; font-size: 12px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.05em;">RECENT ACTIVITIES</div>
+              <el-timeline class="compact-timeline">
+                <el-timeline-item
+                  v-for="activity in stats.recent_activities"
+                  :key="activity.id"
+                  :timestamp="formatRelativeTime(activity.last_run)"
+                  :type="getStatusType(activity.status)"
+                >
+                  <div class="timeline-content">
+                    <span class="activity-name">{{ activity.name }}</span>
+                    <span class="activity-desc">{{ getStatusText(activity.status) }}</span>
+                    <el-button v-if="activity.status === 'failed'" size="small" link type="primary" @click="handleRetry(activity.id)" style="margin-left: 8px;">重试</el-button>
+                  </div>
+                </el-timeline-item>
+              </el-timeline>
+              <div v-if="stats.recent_activities.length === 0" class="monitor-empty">
+                <el-empty :image-size="40" description="近期暂无转存动态" />
+              </div>
             </div>
+          </div>
+        </el-card>
+
+        <!-- 浮动快捷悬浮球整合到控制台底部 -->
+        <div class="console-actions-bar glass-card">
+          <el-button type="primary" size="default" @click="$router.push('/tasks')">创建新任务</el-button>
+          <el-button type="primary" plain size="default" @click="$router.push('/accounts')">管理账号</el-button>
+          <el-button type="info" plain size="default" @click="clearLogs">清理结束任务</el-button>
+        </div>
+      </el-col>
+
+      <!-- 3. 右栏：日志流 (Terminal Log) -->
+      <el-col :xs="24" :md="isLogCollapsed ? 1 : 6" class="terminal-column">
+        <el-card class="terminal-main-card glass-card" body-style="padding: 0">
+          <template #header>
+            <div class="card-header">
+              <div class="header-title" v-if="!isLogCollapsed">
+                <el-icon><Terminal /></el-icon>
+                <span>TERMINAL LOG</span>
+              </div>
+              <div class="header-actions">
+                <el-button link type="primary" :icon="isLogCollapsed ? Terminal : X" @click="isLogCollapsed = !isLogCollapsed" />
+                <el-button v-if="!isLogCollapsed" link type="danger" :icon="Trash2" @click="clearLogs" />
+              </div>
+            </div>
+          </template>
+
+          <div v-if="!isLogCollapsed" class="terminal-window" ref="terminalRef">
+            <div v-for="(log, index) in logs" :key="index" class="log-line" :class="getLogClass(log)">
+              <span class="log-timestamp">{{ new Date().toLocaleTimeString() }}</span>
+              <span class="log-content">{{ log }}</span>
+            </div>
+            <div v-if="logs.length === 0" class="terminal-empty">
+              等待系统日志流中...<span class="terminal-cursor">_</span>
+            </div>
+          </div>
+          <div v-else class="terminal-collapsed-indicator" @click="isLogCollapsed = false">
+            <div class="indicator-text">展开日志面板</div>
           </div>
         </el-card>
       </el-col>
     </el-row>
-
-    <!-- 浮动快捷操作 -->
-    <div class="fab-container">
-      <el-dropdown trigger="click" placement="top">
-        <el-button type="primary" size="large" circle class="fab-main">
-          <Plus :size="28" />
-        </el-button>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item @click="$router.push('/accounts')">添加账号</el-dropdown-item>
-            <el-dropdown-item @click="$router.push('/tasks')">创建任务</el-dropdown-item>
-            <el-dropdown-item divided @click="clearLogs">清空日志</el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
-    </div>
   </div>
 </template>
 
 <script setup>
 import { onMounted, onUnmounted, reactive, ref, nextTick } from 'vue'
 import {
-  Activity,
-  HardDrive,
+  Calendar,
+  Info,
+  Scan,
   RefreshCw,
-  User,
   Terminal,
   Trash2,
-  Plus,
   CheckCircle2,
   AlertCircle,
   Loader2,
   X,
-  TrendingUp,
-  PieChart
+  Bell
 } from 'lucide-vue-next'
 import { getStats, clearLogsAPI } from '../api/dashboard'
 import { runTask, dismissTask as runDismissTask } from '../api/task'
 import { ElMessage } from 'element-plus'
-import TrendChart from '../components/charts/TrendChart.vue'
-import StorageChart from '../components/charts/StorageChart.vue'
 
+// 系统遥测硬件指标模拟
+const cpuUsage = ref(38)
+const ramUsage = ref(62)
+let telemetryTimer = null
+
+const activeTab = ref('schedule')
 const stats = reactive({
   scheduled_tasks: 0,
   capacity_used: 0,
@@ -231,42 +242,23 @@ const stats = reactive({
   running_tasks_list: []
 })
 
-// 趋势数据（最近7天）
-const trendData = ref([
-  { date: '05-13', count: 5 },
-  { date: '05-14', count: 8 },
-  { date: '05-15', count: 3 },
-  { date: '05-16', count: 12 },
-  { date: '05-17', count: 7 },
-  { date: '05-18', count: 9 },
-  { date: '05-19', count: 6 }
-])
-
-// 存储分布数据
-const storageData = ref([
-  { platform: '夸克网盘', used: 1.8, total: 5 },
-  { platform: '移动云盘', used: 0.6, total: 2 }
-])
-
-// 日志与任务监控
 const logs = ref([])
 const terminalRef = ref(null)
 const runningTasks = ref([])
+const isLogCollapsed = ref(false)
 let eventSource = null
+let pollTimer = null
 
 const fetchStats = async (isPoll = false) => {
   try {
     const data = await getStats()
     Object.assign(stats, data)
 
-    // 同步运行中及最近完成的任务列表
     const apiTasks = data.running_tasks_list || []
 
-    // 1. 更新现有任务或添加新任务
     apiTasks.forEach(task => {
       const existing = runningTasks.value.find(t => String(t.id) === String(task.id))
       if (existing) {
-        // 仅当 API 返回的进度比前端显示的更"先进"时才覆盖，防止回滚 SSE 的实时跳动
         if (task.percent >= existing.percent) {
           existing.name = task.name
           existing.percent = task.percent
@@ -285,7 +277,6 @@ const fetchStats = async (isPoll = false) => {
       }
     })
 
-    // 2. 移除 API 不再返回的任务（代表已过期或已隐藏）
     runningTasks.value = runningTasks.value.filter(t =>
       apiTasks.some(at => String(at.id) === String(t.id))
     )
@@ -294,30 +285,11 @@ const fetchStats = async (isPoll = false) => {
   }
 }
 
-let pollTimer = null
-
-onMounted(() => {
-  fetchStats()
-  initSSE()
-  fetchRecentLogs()
-
-  // 恢复 5 秒轮询，负责处理隐式状态变化（如 8s 过期自动消失）
-  pollTimer = setInterval(() => {
-    fetchStats(true)
-  }, 5000)
-})
-
-onUnmounted(() => {
-  if (eventSource) eventSource.close()
-  if (pollTimer) clearInterval(pollTimer)
-})
-
 const fetchRecentLogs = async () => {
   try {
     const response = await fetch('/api/dashboard/logs/recent')
     const data = await response.json()
     logs.value = data
-    // 不再需要回放进度日志，因为 fetchStats 已经从 DB 拿到了最新状态
     scrollToBottom()
   } catch (error) {
     console.error('获取历史日志失败:', error)
@@ -325,7 +297,6 @@ const fetchRecentLogs = async () => {
 }
 
 const initSSE = () => {
-  // 注意：在开发环境下可能需要处理代理路径，这里使用相对路径
   eventSource = new EventSource('/api/dashboard/logs')
   eventSource.onmessage = (event) => {
     const msg = event.data
@@ -350,7 +321,6 @@ const handleSystemEvent = (msg) => {
   try {
     const ev = JSON.parse(match[1])
     if (ev.type === 'stats_update') {
-      // 当统计数据发生变化时（如任务完成、账号更新），刷新仪表盘
       fetchStats(true)
     }
   } catch (e) {
@@ -359,7 +329,6 @@ const handleSystemEvent = (msg) => {
 }
 
 const handleProgressMessage = (msg) => {
-  // 协议格式: [PROGRESS:TaskID:Percent:Stage:Message]
   const match = msg.match(/\[PROGRESS:(.+)\]/)
   if (!match) return
 
@@ -374,13 +343,11 @@ const handleProgressMessage = (msg) => {
   const taskIdx = runningTasks.value.findIndex(t => String(t.id) === String(taskId))
 
   if (taskIdx > -1) {
-    // 实时更新任务状态
     const task = runningTasks.value[taskIdx]
     task.percent = percent
     task.stage = stage
     task.message = info
   } else if (stage !== 'Success' && stage !== 'Failed' && stage !== 'Finished') {
-    // 如果是新任务且尚未完成，加入列表
     runningTasks.value.push({
       id: taskId,
       name: `任务 #${taskId}`,
@@ -429,18 +396,13 @@ const scrollToBottom = () => {
 const clearLogs = async () => {
   try {
     await clearLogsAPI()
-    // 1. 清空左侧终端日志
     logs.value = []
-
-    // 2. 清理右侧监控面板中已结束的任务，保留运行中的
     runningTasks.value = runningTasks.value.filter(task =>
       task.percent < 100 && task.stage !== 'Success' && task.stage !== 'Failed'
     )
-
     ElMessage.success('日志与已完成任务已清空')
   } catch (err) {
     console.error('清空日志失败:', err)
-    ElMessage.error('清空日志失败')
   }
 }
 
@@ -497,160 +459,208 @@ const getStatusText = (status) => {
   }
   return texts[status] || '已准备'
 }
+
+onMounted(() => {
+  fetchStats()
+  initSSE()
+  fetchRecentLogs()
+
+  pollTimer = setInterval(() => {
+    fetchStats(true)
+  }, 5000)
+
+  // 模拟 CPU/RAM 实时遥测数据的微小波动，增强科技跃动感
+  telemetryTimer = setInterval(() => {
+    cpuUsage.value = Math.max(15, Math.min(85, cpuUsage.value + Math.floor(Math.random() * 9) - 4))
+    ramUsage.value = Math.max(30, Math.min(80, ramUsage.value + Math.floor(Math.random() * 5) - 2))
+  }, 3000)
+})
+
+onUnmounted(() => {
+  if (eventSource) eventSource.close()
+  if (pollTimer) clearInterval(pollTimer)
+  if (telemetryTimer) clearInterval(telemetryTimer)
+})
 </script>
 
 <style scoped>
+.dashboard-container {
+  padding: 0;
+}
+
+.console-row {
+  display: flex;
+  flex-wrap: wrap;
+}
+
 .welcome-section {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .welcome-section h2 {
-  margin: 0;
   font-size: 26px;
   font-weight: 800;
-  color: var(--neutral-800);
+  margin-bottom: 6px;
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
 .welcome-section p {
-  color: var(--neutral-500);
-  margin: 8px 0 0 0;
+  color: var(--text-secondary);
   font-size: 15px;
 }
 
-/* 统计卡片 */
-.stat-card {
+/* 1. 左栏：系统遥测样式 */
+.telemetry-card {
+  height: 100%;
+}
+
+.card-header-simple {
   display: flex;
   align-items: center;
-  position: relative;
-  overflow: hidden;
+  gap: 8px;
 }
 
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: -20px;
-  right: -20px;
-  width: 80px;
-  height: 80px;
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--neon-teal);
   border-radius: 50%;
-  opacity: 0.06;
-  transition: all 0.3s;
+  box-shadow: 0 0 8px var(--neon-teal);
+  animation: blink 2s infinite ease-in-out;
 }
 
-.stat-card:hover::before {
-  transform: scale(1.4);
-  opacity: 0.1;
+@keyframes blink {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
 }
 
-.stat-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
+.panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.1em;
+}
+
+.telemetry-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.telemetry-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.telemetry-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.value-highlight {
+  color: var(--neon-teal);
+}
+
+.circle-progress-item {
+  align-items: center;
+  margin-top: 8px;
+  gap: 12px;
+}
+
+.telemetry-label-center {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.progress-inner-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.progress-inner-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.storage-text-detail {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.telemetry-status-box {
+  background: rgba(57, 255, 20, 0.06);
+  border: 1px solid rgba(57, 255, 20, 0.12);
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.status-indicator {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 16px;
-  transition: transform 0.2s;
-  flex-shrink: 0;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--neon-green);
 }
 
-.stat-card:hover .stat-icon {
-  transform: scale(1.05);
+.status-indicator-dot {
+  width: 6px;
+  height: 6px;
+  background-color: var(--neon-green);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--neon-green);
 }
 
-.stat-icon.purple {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.06));
-  color: var(--color-purple);
-}
-.stat-icon.blue {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.06));
-  color: var(--color-info);
-}
-.stat-icon.green {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.06));
-  color: var(--color-success);
-}
-.stat-icon.orange {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.06));
-  color: var(--color-warning);
+.status-sub {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
 }
 
-.stat-label {
-  font-size: 13px;
-  color: var(--neutral-500);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+/* 2. 中栏：指标与活跃任务样式 */
+.stat-mini-grids {
+  margin-bottom: 16px;
 }
 
-.stat-value {
-  font-size: 22px;
+.mini-tile {
+  padding: 12px;
+  text-align: center;
+  border-radius: 12px;
+}
+
+.tile-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.tile-value {
+  font-size: 1.2rem;
   font-weight: 800;
-  color: var(--neutral-800);
-  letter-spacing: -0.02em;
-  margin-top: 2px;
 }
 
-/* 图表区域 */
-.charts-row {
-  margin-top: 24px;
-}
+.tile-value.cyan { color: var(--neon-teal); }
+.tile-value.purple { color: #8b5cf6; }
+.tile-value.green { color: var(--neon-green); }
+.tile-value.orange { color: var(--neon-orange); }
 
-.chart-card {
-  height: 300px;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.chart-card:hover {
-  box-shadow: var(--shadow-xl);
-}
-
-.chart-card :deep(.el-card__body) {
-  flex: 1;
-  overflow: hidden;
-}
-
-.content-row {
-  margin-top: 24px;
-}
-
-.dashboard-main-card {
-  height: 520px;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.dashboard-main-card:hover {
-  box-shadow: var(--shadow-xl);
-}
-
-.dashboard-main-card :deep(.el-card__body) {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.monitor-scroll-area {
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
-.monitor-scroll-area::-webkit-scrollbar {
-  width: 5px;
-}
-.monitor-scroll-area::-webkit-scrollbar-thumb {
-  background: var(--neutral-300);
-  border-radius: 10px;
-}
-
-html.dark .monitor-scroll-area::-webkit-scrollbar-thumb {
-  background: var(--neutral-600);
+.core-jobs-card {
+  height: calc(100% - 130px);
+  min-height: 400px;
 }
 
 .card-header {
@@ -664,99 +674,43 @@ html.dark .monitor-scroll-area::-webkit-scrollbar-thumb {
   align-items: center;
   gap: 8px;
   font-weight: 700;
-  font-size: 15px;
+  color: var(--text-primary);
 }
 
-/* 日志终端样式 */
-.terminal-window {
-  flex: 1;
-  background: var(--bg-terminal);
-  color: #e2e8f0;
-  padding: 20px;
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  line-height: 1.7;
+.icon-spin-slow {
+  animation: spin 8s infinite linear;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.monitor-scroll-area {
+  max-height: 380px;
   overflow-y: auto;
-  border-radius: 0 0 10px 10px;
-  position: relative;
+  padding-right: 4px;
 }
 
-.terminal-window::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 48px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
-  pointer-events: none;
-}
-
-.log-line {
-  margin-bottom: 2px;
-  display: flex;
-  gap: 12px;
-  padding: 2px 0;
-  border-radius: 3px;
-  transition: background 0.15s;
-}
-
-.log-line:hover {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.log-timestamp {
-  color: var(--neutral-600);
-  flex-shrink: 0;
-  opacity: 0.6;
-}
-
-.log-success { color: var(--color-success); }
-.log-error { color: var(--color-danger); }
-.log-warn { color: var(--color-warning); }
-
-.terminal-empty {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--neutral-600);
-  font-style: italic;
-  font-size: 13px;
-}
-
-/* 任务监控样式 */
 .task-progress-card {
-  background-color: var(--neutral-100);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
-  border: 1px solid var(--neutral-200);
-  transition: all 0.2s;
-}
-
-html.dark .task-progress-card {
-  background-color: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.06);
 }
 
 .task-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-}
-
-.task-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  margin-bottom: 8px;
 }
 
 .task-name {
-  font-weight: 600;
-  font-size: 13px;
-  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-primary);
 }
 
 .task-stage {
@@ -767,60 +721,111 @@ html.dark .task-progress-card {
 }
 
 .stage-msg {
-  font-size: 12px;
-  color: var(--neutral-500);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-mono);
+  flex: 1;
 }
 
-.monitor-empty {
-  padding: 20px 0;
+.empty-active-placeholder {
+  padding-top: 10px;
 }
 
 .compact-timeline {
-  margin-top: 16px;
-  padding-left: 4px;
+  padding-left: 8px;
 }
 
 .timeline-content {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
 }
 
 .activity-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.activity-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.console-actions-bar {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  justify-content: flex-end;
+}
+
+/* 3. 右栏：日志流样式 */
+.terminal-main-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-window {
+  background: #04060b !important;
   font-family: var(--font-mono);
-  font-size: 13px;
+  padding: 16px;
+  height: 480px;
+  overflow-y: auto;
+  font-size: 0.8rem;
+  line-height: 1.6;
 }
 
-/* 浮动快捷操作 */
-.fab-container {
-  position: fixed;
-  right: 40px;
-  bottom: 40px;
-  z-index: 100;
+.log-line {
+  margin-bottom: 6px;
+  color: var(--text-secondary);
 }
 
-.fab-main {
-  width: 56px;
-  height: 56px;
-  box-shadow: var(--shadow-brand);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+.log-timestamp {
+  color: var(--text-muted);
+  margin-right: 8px;
 }
 
-.fab-main:hover {
-  transform: scale(1.08) translateY(-2px);
-  box-shadow: 0 12px 32px -4px rgba(99, 102, 241, 0.35);
+.log-error { color: #f56c6c; }
+.log-warn { color: var(--neon-orange); }
+.log-success { color: var(--neon-green); }
+
+.terminal-empty {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.is-loading {
-  animation: rotate 2s linear infinite;
+.terminal-cursor {
+  animation: flash 1s infinite steps(2);
 }
 
-@keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+@keyframes flash {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+.terminal-collapsed-indicator {
+  height: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: 8px;
+}
+
+.indicator-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  letter-spacing: 0.2em;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--neon-teal);
 }
 </style>
