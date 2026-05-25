@@ -48,7 +48,7 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 
 ### 前端 (Vue 3 + Vite)
 
-8 个页面位于 `web/src/views/`：Dashboard（实时统计 + SSE 日志）、Accounts（139/Quark 账号管理）、Tasks（任务 CRUD + 预览 + 执行）、Settings（全局调度 + Bark 配置）、Plugins（插件管理）、Search（资源搜索）、Notify（通知配置）
+5 个页面位于 `web/src/views/`：Dashboard（左右三栏极客面板 + SSE 实时日志）、Accounts（139/Quark 卡片网格账号管理与空间进度环）、Tasks（抽屉式 CRUD 任务管理 + 智能提取解析）、Settings（Tab 式集中管理：系统调度、四通道推送及扩展插件）、Search（云盘资源搜索引擎对接与跨页面联动创建）
 
 ### 构建标签分离
 
@@ -67,6 +67,7 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - Element Plus `ElMessageBox.confirm` 的按钮不在 `dialog` role 内，需用 `.el-message-box` CSS 选择器定位容器，再用 `.el-button--primary` 定位确认按钮
 - Element Plus `el-switch` 不是 checkbox/radio，不能用 `isChecked()`，需用 `evaluate(el => el.classList.contains('is-checked'))` 判断状态
 - Element Plus `el-radio` 的 input 被 label span 遮挡，点击时用 `getByText('标签文字')` 而非 `getByRole('radio')`
+- 嵌套 el-tabs 定位冲突防范：多层嵌套的选项卡面板 DOM 结构中，极易因为外层或隐藏面板中存在同名元素（如多个 `el-switch` 或 “保存” 按钮）引发 Playwright 模糊定位到不可见元素导致超时挂起。必须在前端为各自的表单和关键按钮分配专属 Class（如 `.bark-form`, `.save-bark-btn`），并在 E2E 中改用精准的类定位选择器
 
 ### 前端注意事项
 

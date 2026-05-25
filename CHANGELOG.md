@@ -2,10 +2,20 @@
 
 ## [Unreleased]
 
+### 🎨 界面优化与重构 (UI/UX Refactoring)
+
+- **科技暗黑毛玻璃风格升级**：全局部署了 Glassmorphism 样式和霓虹微光设计语言，对 Element Plus 全局组件进行了发光微光样式重塑。
+- **控制台 (Dashboard) 重构**：改为左右分栏的极客主控面板，整合了实时活跃队列与历史时间线，保证了实时刷新下历史重试操作能被正常触发。
+- **任务管理 (Tasks) 交互优化**：将原本繁重的全屏创建/编辑 Dialog 重构为右侧滑入的 `<el-drawer>` 抽屉表单；实装了基于正则的智能粘贴解析器，支持从复合文案中一键提取网盘分享链接和提取码。
+- **账号管理 (Accounts) 空间可视化**：改版为精美的卡片网格布局，并将原本的数据表格容量展现形式升级为直观的可视化 `el-progress type="circle"` 圆环空间配额图。
+- **页面路由精简**：废弃了独立的通知和插件配置页面，导航栏精简为五大核心模块，并将调度配置、推送通道和扩展插件集中整合至新的 Tab 式 [Settings.vue](file:///home/zcq/Github/clouddrive-auto-save/web/src/views/Settings.vue) 页面中。
+
 ### 🛡️ 稳定性 (Stability)
 
-- **E2E 测试大幅增强**：新增 26 个测试（48 → 74），覆盖仪表盘 FAB 导航、账号编辑、OpenList 配置、Bark 高级设置、侧边栏导航、暗色模式、提取码、表单验证等场景。
+- **E2E 精准定位器重构**：修复了在嵌套 `el-tabs` 复杂 DOM 树下由于重名“保存/测试”按钮以及同级 `el-switch` 导致的定位歧义超时问题。为各通道表单添加了专属 class（如 `.bark-form`, `.wechat-form` 等）并优化了 Playwright 选择器，使 74 个 E2E 集成测试用例 100% 顺利通过。
+- **E2E 测试大幅增强**：先前新增了 26 个测试（48 → 74），覆盖仪表盘 FAB 导航、账号编辑、OpenList 配置、Bark 高级设置、侧边栏导航、暗色模式、提取码、表单验证等场景。
 - **修复 Dashboard 测试 flaky**：Dashboard 的 SSE 长连接会接收真实后端事件触发 `fetchStats()` 与 `page.route` mock 竞态，通过同时 mock SSE 端点 (`/api/dashboard/logs`) 阻断干扰。
+
 
 ## [1.3.0] - 2026-05-18
 

@@ -14,7 +14,7 @@
 
 * **⚡ 高性能引擎**：基于 Go Goroutine 实现的并发 Worker 池，支持多任务同时转存。
 * **🛠️ 跨平台兼容**：采用 **CGO-free** 的纯 Go SQLite 驱动，支持 Windows/Linux/macOS 零依赖部署。支持通过 GitHub Releases 下载预编译好的二进制程序。
-* **🎨 现代化 UI**：采用 Vue 3 + Element Plus 构建的响应式后台，支持暗黑模式与等宽日志视图。
+* **🎨 现代化 UI**：采用 Vue 3 + Element Plus 构建的科技暗黑毛玻璃（Glassmorphism）与霓虹发光质感后台，具有高度沉浸式的三栏仪表盘、折叠式实时日志以及圆形空间配额环。
 * **📊 实时指挥中心**：集成实时数据仪表盘，通过 **Server-Sent Events (SSE)** 实现任务状态与日志的实时同步，并支持任务执行耗时统计。
 * **🤖 智能整理与去重**：
   * **正则重命名**：支持强大的正则匹配与替换（含 `{TASKNAME}`, `{DATE}` 等魔法变量）。
