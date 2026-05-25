@@ -183,3 +183,17 @@ func (b *Bot) SendMessage(chatID int64, text string) error {
 	_, err := api.Send(msg)
 	return err
 }
+
+// UpdateConfig 更新配置
+func (b *Bot) UpdateConfig(cfg *Config) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.config = cfg
+}
+
+// GetConfig 获取当前配置
+func (b *Bot) GetConfig() *Config {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.config
+}

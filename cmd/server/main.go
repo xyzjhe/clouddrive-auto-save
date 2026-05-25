@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log/slog"
 	"os"
 	"strings"
@@ -105,8 +106,15 @@ func main() {
 	// 4. 初始化 Telegram 机器人
 	slog.Info("Initializing Telegram bot...")
 	telegramConfig := telegram.DefaultConfig()
-	// TODO: 从数据库加载 Telegram 配置
+	var tgSetting db.Setting
+	if err := db.DB.Where("key = ?", "telegram_config").First(&tgSetting).Error; err == nil {
+		if err := json.Unmarshal([]byte(tgSetting.Value), telegramConfig); err != nil {
+			slog.Error("反序列化 Telegram 配置失败", "error", err)
+		}
+	}
 	telegramBot := telegram.NewBot(telegramConfig)
+	telegramHandler := telegram.NewHandler(telegramBot, db.DB, wm)
+	telegramBot.SetHandler(telegramHandler)
 	if telegramConfig.Enabled {
 		if err := telegramBot.Start(); err != nil {
 			slog.Error("启动 Telegram 机器人失败", "error", err)
