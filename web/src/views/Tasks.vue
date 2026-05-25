@@ -510,12 +510,14 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { Plus, Play, Edit, Trash2, RefreshCw, Folder, File, Info, Cloud, ExternalLink, AlertTriangle, Clock, FolderOpen, List, LayoutGrid } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTasks, createTask, updateTask, deleteTask, runTask, runAllTasks, previewTask, parseShareLink, getScheduleSettings } from '../api/task'
 import { getAccounts, getFolders, createFolder } from '../api/account'
 import TaskCard from '../components/cards/TaskCard.vue'
 
+const route = useRoute()
 const taskList = ref([])
 const accounts = ref([])
 const loading = ref(false)
@@ -1304,10 +1306,25 @@ const initSSE = () => {
   }
 }
 
-onMounted(() => {
-  fetchList()
+onMounted(async () => {
+  await fetchList()
   fetchGlobalSettings()
   initSSE()
+
+  if (route.query.share_url) {
+    openAddDialog()
+    form.value.share_url = route.query.share_url
+    if (route.query.title) {
+      form.value.name = `转存-${route.query.title}`
+    }
+    if (route.query.platform) {
+      const match = accounts.value.find(a => a.platform === route.query.platform)
+      if (match) {
+        form.value.account_id = match.id
+        handleAccountChange()
+      }
+    }
+  }
 })
 
 onUnmounted(() => {

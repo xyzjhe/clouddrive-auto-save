@@ -1,8 +1,10 @@
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search as SearchIcon, Link as LinkIcon, Coins as CoinsIcon, Clock as ClockIcon, FileText as FileTextIcon } from 'lucide-vue-next'
 
+const router = useRouter()
 const query = ref('')
 const selectedSources = ref([])
 const sources = ref(['CloudSaver', 'PanSou'])
@@ -44,8 +46,14 @@ const handleSearch = async () => {
 }
 
 const handleCreateTask = (item) => {
-  // TODO: 跳转到创建任务页面，预填信息
-  ElMessage.info('功能开发中')
+  router.push({
+    name: 'Tasks',
+    query: {
+      share_url: item.url,
+      title: item.title,
+      platform: item.platform
+    }
+  })
 }
 </script>
 

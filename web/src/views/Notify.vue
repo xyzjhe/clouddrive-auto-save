@@ -10,25 +10,31 @@ const activeTab = ref('wechat')
 // 配置表单
 const wechatConfig = ref({
   enabled: false,
-  webhook_url: '',
   notify_on_success: true,
-  notify_on_failure: true
+  notify_on_failure: true,
+  config: {
+    webhook_url: ''
+  }
 })
 
 const telegramConfig = ref({
   enabled: false,
-  bot_token: '',
-  chat_id: '',
   notify_on_success: true,
-  notify_on_failure: true
+  notify_on_failure: true,
+  config: {
+    bot_token: '',
+    chat_id: ''
+  }
 })
 
 const wxpusherConfig = ref({
   enabled: false,
-  app_token: '',
-  uid: '',
   notify_on_success: true,
-  notify_on_failure: true
+  notify_on_failure: true,
+  config: {
+    app_token: '',
+    uid: ''
+  }
 })
 
 // Bark 配置状态
@@ -202,9 +208,37 @@ const handleTestBark = async () => {
   }
 }
 
+const fetchNotifierConfig = async (type) => {
+  try {
+    const response = await fetch(`/api/notify/${type}`)
+    const data = await response.json()
+    if (data.code === 0 && data.data) {
+      const config = data.data
+      const targetConfig = {
+        enabled: config.enabled || false,
+        notify_on_success: config.notify_on_success !== false,
+        notify_on_failure: config.notify_on_failure !== false,
+        config: config.config || {}
+      }
+      if (type === 'wechat') {
+        wechatConfig.value = targetConfig
+      } else if (type === 'telegram') {
+        telegramConfig.value = targetConfig
+      } else if (type === 'wxpusher') {
+        wxpusherConfig.value = targetConfig
+      }
+    }
+  } catch (error) {
+    console.error(`加载 ${type} 配置失败:`, error)
+  }
+}
+
 onMounted(() => {
   fetchNotifiers()
   fetchBarkSettings()
+  fetchNotifierConfig('wechat')
+  fetchNotifierConfig('telegram')
+  fetchNotifierConfig('wxpusher')
 })
 </script>
 
@@ -227,7 +261,7 @@ onMounted(() => {
 
           <el-form-item label="Webhook URL">
             <el-input
-              v-model="wechatConfig.webhook_url"
+              v-model="wechatConfig.config.webhook_url"
               placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..."
             />
           </el-form-item>
@@ -261,14 +295,14 @@ onMounted(() => {
 
           <el-form-item label="Bot Token">
             <el-input
-              v-model="telegramConfig.bot_token"
+              v-model="telegramConfig.config.bot_token"
               placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
             />
           </el-form-item>
 
           <el-form-item label="Chat ID">
             <el-input
-              v-model="telegramConfig.chat_id"
+              v-model="telegramConfig.config.chat_id"
               placeholder="123456789"
             />
           </el-form-item>
@@ -302,14 +336,14 @@ onMounted(() => {
 
           <el-form-item label="App Token">
             <el-input
-              v-model="wxpusherConfig.app_token"
+              v-model="wxpusherConfig.config.app_token"
               placeholder="AT_xxx"
             />
           </el-form-item>
 
           <el-form-item label="UID">
             <el-input
-              v-model="wxpusherConfig.uid"
+              v-model="wxpusherConfig.config.uid"
               placeholder="UID_xxx"
             />
           </el-form-item>
