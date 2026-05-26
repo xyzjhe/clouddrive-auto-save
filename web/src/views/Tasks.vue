@@ -83,21 +83,32 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
-            <el-button-group>
-              <el-button 
-                link 
-                type="success" 
-                :icon="Play" 
-                :disabled="row.status === 'running' || !!(row.message && row.message.includes('[Fatal]'))" 
+            <div class="action-buttons">
+              <button
+                class="btn-icon btn-icon--success"
+                title="运行"
+                :disabled="row.status === 'running' || !!(row.message && row.message.includes('[Fatal]'))"
                 @click="handleRun(row)"
               >
-                运行
-              </el-button>
-              <el-button link type="primary" :icon="Edit" @click="handleEdit(row)">编辑</el-button>
-              <el-button link type="danger" :icon="Trash2" @click="handleDelete(row)">删除</el-button>
-            </el-button-group>
+                <Play :size="14" />
+              </button>
+              <button
+                class="btn-icon btn-icon--primary"
+                title="编辑"
+                @click="handleEdit(row)"
+              >
+                <Edit :size="14" />
+              </button>
+              <button
+                class="btn-icon btn-icon--danger"
+                title="删除"
+                @click="handleDelete(row)"
+              >
+                <Trash2 :size="14" />
+              </button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
