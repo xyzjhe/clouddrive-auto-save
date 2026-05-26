@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { Play, Edit, Trash2 } from 'lucide-vue-next'
 
 const props = defineProps({
   task: {
@@ -68,24 +69,33 @@ const scheduleText = computed(() => {
     </div>
 
     <div class="card-actions">
-      <el-button
-        size="small"
-        type="primary"
-        :disabled="task.status === 'running'"
-        @click="emit('run', task.id)"
-      >
-        执行
-      </el-button>
-      <el-button size="small" @click="emit('edit', task.id)">
-        编辑
-      </el-button>
-      <el-button
-        size="small"
-        type="danger"
-        @click="emit('delete', task.id)"
-      >
-        删除
-      </el-button>
+      <div class="action-buttons">
+        <button
+          class="btn-icon btn-icon--success"
+          title="执行"
+          aria-label="执行"
+          :disabled="task.status === 'running'"
+          @click="emit('run', task.id)"
+        >
+          <Play :size="14" />
+        </button>
+        <button
+          class="btn-icon btn-icon--primary"
+          title="编辑"
+          aria-label="编辑"
+          @click="emit('edit', task.id)"
+        >
+          <Edit :size="14" />
+        </button>
+        <button
+          class="btn-icon btn-icon--danger"
+          title="删除"
+          aria-label="删除"
+          @click="emit('delete', task.id)"
+        >
+          <Trash2 :size="14" />
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -154,10 +164,11 @@ const scheduleText = computed(() => {
 
 .card-actions {
   display: flex;
-  gap: 0.5rem;
+  justify-content: flex-end;
 }
 
-.card-actions .el-button {
-  flex: 1;
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
 }
 </style>
