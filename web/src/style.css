@@ -212,7 +212,12 @@ body {
 }
 
 .btn-icon:disabled:hover {
-  box-shadow: inherit;
+  box-shadow: none;
+}
+
+.btn-icon:focus-visible {
+  outline: 2px solid var(--neon-blue);
+  outline-offset: 2px;
 }
 
 .el-dialog, .el-drawer {
