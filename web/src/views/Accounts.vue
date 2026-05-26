@@ -77,11 +77,32 @@
         </el-table-column>
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button-group>
-              <el-button link type="primary" :icon="RefreshCcw" @click="handleCheck(row)">校验</el-button>
-              <el-button link type="primary" :icon="Edit" @click="handleEdit(row)">编辑</el-button>
-              <el-button link type="danger" :icon="Trash2" @click="handleDelete(row)">删除</el-button>
-            </el-button-group>
+            <div class="action-buttons">
+              <button
+                class="btn-icon btn-icon--primary"
+                title="校验"
+                aria-label="校验"
+                @click="handleCheck(row)"
+              >
+                <RefreshCcw :size="14" />
+              </button>
+              <button
+                class="btn-icon btn-icon--primary"
+                title="编辑"
+                aria-label="编辑"
+                @click="handleEdit(row)"
+              >
+                <Edit :size="14" />
+              </button>
+              <button
+                class="btn-icon btn-icon--danger"
+                title="删除"
+                aria-label="删除"
+                @click="handleDelete(row)"
+              >
+                <Trash2 :size="14" />
+              </button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
