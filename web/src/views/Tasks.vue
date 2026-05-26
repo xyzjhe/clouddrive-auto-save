@@ -89,6 +89,7 @@
               <button
                 class="btn-icon btn-icon--success"
                 title="运行"
+                aria-label="运行"
                 :disabled="row.status === 'running' || !!(row.message && row.message.includes('[Fatal]'))"
                 @click="handleRun(row)"
               >
@@ -97,6 +98,7 @@
               <button
                 class="btn-icon btn-icon--primary"
                 title="编辑"
+                aria-label="编辑"
                 @click="handleEdit(row)"
               >
                 <Edit :size="14" />
@@ -104,6 +106,7 @@
               <button
                 class="btn-icon btn-icon--danger"
                 title="删除"
+                aria-label="删除"
                 @click="handleDelete(row)"
               >
                 <Trash2 :size="14" />
