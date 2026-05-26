@@ -1,9 +1,13 @@
 package db
 
 import (
+	"log"
+	"os"
+	"time"
+
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
-	"time"
+	"gorm.io/gorm/logger"
 )
 
 // Account 代表云盘账号 (139 或 Quark)
@@ -77,8 +81,21 @@ var DB *gorm.DB
 
 func InitDB(path string) error {
 	var err error
+
+	// 配置自定义 GORM Logger，忽略 ErrRecordNotFound 错误，避免配置项不存在时产生红色日志干扰
+	newLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
+		logger.Config{
+			SlowThreshold:             200 * time.Millisecond, // 慢 SQL 阈值
+			LogLevel:                  logger.Warn,            // 日志级别
+			IgnoreRecordNotFoundError: true,                   // 忽略 ErrRecordNotFound 错误
+			Colorful:                  true,                   // 彩色打印
+		},
+	)
+
 	DB, err = gorm.Open(sqlite.Open(path), &gorm.Config{
 		SkipDefaultTransaction: true,
+		Logger:                 newLogger,
 	})
 	if err != nil {
 		return err

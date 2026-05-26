@@ -122,6 +122,11 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+
+// 首次打开无配置时默认采用明亮模式
+if (!localStorage.getItem('vueuse-color-scheme')) {
+  localStorage.setItem('vueuse-color-scheme', 'light')
+}
 const isDark = useDark()
 const toggleDark = useToggle(isDark)
 
