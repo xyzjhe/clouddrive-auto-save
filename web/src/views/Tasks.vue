@@ -22,7 +22,7 @@
           @confirm="handleRunAll"
         >
           <template #reference>
-            <el-button :icon="Play" :loading="runningAll">全部运行</el-button>
+            <el-button type="primary" plain :icon="Play" :loading="runningAll">全部运行</el-button>
           </template>
         </el-popconfirm>
         <el-button type="primary" :icon="Plus" @click="openAddDialog">创建任务</el-button>
