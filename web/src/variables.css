@@ -1,21 +1,89 @@
 :root {
-  /* Cyber-Dark 核心基础色系 */
+  /* ==========================================
+   * 明亮模式 (Light Mode) 变量
+   * ========================================== */
+  --body-bg: radial-gradient(circle at 50% 50%, #f6f8fc 0%, #e2e8f0 100%);
+  --base-bg: #f8fafc;
+  --surface-bg: rgba(255, 255, 255, 0.7);
+  --border-color: rgba(15, 23, 42, 0.08);
+  --border-glow: rgba(14, 165, 233, 0.12);
+  
+  /* 品牌与霓虹设计色 (浅色背景无障碍高对比度) */
+  --neon-teal: #0ea5e9;
+  --neon-green: #10b981;
+  --neon-orange: #ea580c;
+  --neon-blue: #2563eb;
+  --neon-purple: #7c3aed;
+  
+  --brand-50: rgba(14, 165, 233, 0.08);
+  --brand-200: #bae6fd;
+  --brand-400: #38bdf8;
+  --brand-500: #0ea5e9;
+  --brand-600: #0284c7;
+  
+  /* 语义文本色 */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  
+  /* 平台对应色 */
+  --color-139: #ea580c;
+  --color-quark: #10b981;
+  
+  /* 阴影与微光 */
+  --neon-glow-teal: 0 0 16px rgba(14, 165, 233, 0.2);
+  --neon-glow-green: 0 0 16px rgba(16, 185, 129, 0.2);
+  --soft-shadow: 0 8px 32px 0 rgba(148, 163, 184, 0.15);
+  
+  /* 导航及基础组件自适应底色 */
+  --bg-sidebar: #ffffff;
+  --bg-navbar: rgba(255, 255, 255, 0.8);
+  --bg-content: #ffffff;
+  --dialog-bg: rgba(255, 255, 255, 0.95);
+  --input-bg: rgba(15, 23, 42, 0.02);
+  --scrollbar-track-bg: #e2e8f0;
+  --primary-btn-text: #ffffff;
+  --hover-bg: rgba(15, 23, 42, 0.04);
+  --tag-info-bg: rgba(15, 23, 42, 0.05);
+  --switch-bg: rgba(15, 23, 42, 0.08);
+
+  /* 基础灰色色阶 */
+  --neutral-100: #f1f5f9;
+  --neutral-200: #e2e8f0;
+  --neutral-300: #cbd5e1;
+  --neutral-400: #94a3b8;
+  --neutral-500: #64748b;
+  --neutral-600: #475569;
+  --neutral-700: #334155;
+
+  /* 字体族 */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+}
+
+html.dark {
+  /* ==========================================
+   * 暗黑模式 (Dark Mode) 变量
+   * ========================================== */
+  --body-bg: radial-gradient(circle at 50% 50%, #0c0f1d 0%, #04060c 100%);
   --base-bg: #05070f;
   --surface-bg: rgba(13, 17, 34, 0.75);
-  --border-glow: rgba(0, 242, 254, 0.12);
   --border-color: rgba(255, 255, 255, 0.08);
-
-  /* 科技霓虹发光色 */
+  --border-glow: rgba(0, 242, 254, 0.12);
+  
+  /* 品牌与霓虹设计色 (暗色背景发光质感) */
   --neon-teal: #00f2fe;
   --neon-green: #39ff14;
   --neon-orange: #ff7b00;
   --neon-blue: #3b82f6;
   --neon-purple: #8b5cf6;
-
-  /* 功能色 */
+  
+  --brand-50: rgba(0, 242, 254, 0.08);
+  --brand-200: rgba(0, 242, 254, 0.25);
+  --brand-400: #00f2fe;
   --brand-500: #00f2fe;
   --brand-600: #3b82f6;
-
+  
   /* 语义文本色 */
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
@@ -24,13 +92,30 @@
   /* 平台对应色 */
   --color-139: #ff7b00;
   --color-quark: #39ff14;
-
-  /* 字体族 */
-  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-
-  /* 霓虹阴影与模糊 */
+  
+  /* 阴影与微光 */
   --neon-glow-teal: 0 0 16px rgba(0, 242, 254, 0.2);
   --neon-glow-green: 0 0 16px rgba(57, 255, 20, 0.2);
   --soft-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+  
+  /* 导航及基础组件自适应底色 */
+  --bg-sidebar: rgba(9, 13, 26, 0.95);
+  --bg-navbar: rgba(5, 7, 15, 0.8);
+  --bg-content: rgba(13, 17, 34, 0.75);
+  --dialog-bg: rgba(9, 13, 26, 0.95);
+  --input-bg: rgba(255, 255, 255, 0.03);
+  --scrollbar-track-bg: #04060c;
+  --primary-btn-text: #05070f;
+  --hover-bg: rgba(255, 255, 255, 0.05);
+  --tag-info-bg: rgba(255, 255, 255, 0.06);
+  --switch-bg: rgba(255, 255, 255, 0.08);
+
+  /* 基础灰色色阶 */
+  --neutral-100: rgba(255, 255, 255, 0.04);
+  --neutral-200: rgba(255, 255, 255, 0.08);
+  --neutral-300: #cbd5e1;
+  --neutral-400: #94a3b8;
+  --neutral-500: #94a3b8;
+  --neutral-600: #cbd5e1;
+  --neutral-700: #e2e8f0;
 }

@@ -177,15 +177,11 @@ const currentPageTitle = computed(() => {
 
 .sidebar {
   background: var(--bg-sidebar);
-  border-right: 1px solid var(--neutral-200);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   position: relative;
   z-index: 20;
-}
-
-html.dark .sidebar {
-  border-right: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .logo {
@@ -229,10 +225,6 @@ html.dark .sidebar {
   background: var(--neutral-100);
 }
 
-html.dark .nav-group-header:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-
 .nav-group-icon {
   margin-right: 0.5rem;
   font-size: 1rem;
@@ -274,20 +266,10 @@ html.dark .nav-group-header:hover {
   color: var(--neutral-700);
 }
 
-html.dark .nav-item:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--neutral-300);
-}
-
 .nav-item.active {
   background: var(--brand-50);
   color: var(--brand-600);
   font-weight: 600;
-}
-
-html.dark .nav-item.active {
-  background: rgba(99, 102, 241, 0.1);
-  color: var(--brand-400);
 }
 
 .nav-item-icon {
@@ -302,16 +284,12 @@ html.dark .nav-item.active {
 .navbar {
   background: var(--bg-navbar);
   backdrop-filter: blur(16px) saturate(1.2);
-  border-bottom: 1px solid var(--neutral-200);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 28px;
   z-index: 10;
-}
-
-html.dark .navbar {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .header-right {
@@ -321,28 +299,17 @@ html.dark .navbar {
 }
 
 .theme-toggle {
-  border: 1px solid var(--neutral-200) !important;
-  background: var(--bg-content) !important;
-  color: var(--neutral-600) !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--input-bg) !important;
+  color: var(--text-secondary) !important;
   transition: all 0.2s;
 }
 
 .theme-toggle:hover {
-  border-color: var(--brand-200) !important;
-  color: var(--brand-600) !important;
-  background: var(--brand-50) !important;
-}
-
-html.dark .theme-toggle {
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  background: rgba(255, 255, 255, 0.04) !important;
-  color: var(--neutral-400) !important;
-}
-
-html.dark .theme-toggle:hover {
-  border-color: var(--brand-400) !important;
-  color: var(--brand-400) !important;
-  background: rgba(99, 102, 241, 0.1) !important;
+  border-color: var(--neon-teal) !important;
+  color: var(--neon-teal) !important;
+  background: var(--hover-bg) !important;
+  box-shadow: var(--neon-glow-teal) !important;
 }
 
 .fade-page-enter-active,
