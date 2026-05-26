@@ -78,24 +78,141 @@ body {
   background: var(--neon-teal);
 }
 
-/* Element Plus 覆盖 */
+/* ==========================================
+ * 按钮设计系统 - 现代极简 + 微妙科技感
+ * ========================================== */
+
+/* 基础按钮覆盖 */
 .el-button {
-  border-radius: 8px !important;
-  font-weight: 500;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: var(--btn-radius) !important;
+  font-weight: var(--btn-font-weight) !important;
+  transition: var(--btn-transition) !important;
 }
 
+/* 主要按钮 */
 .el-button--primary {
-  background: linear-gradient(135deg, var(--neon-teal) 0%, var(--neon-blue) 100%) !important;
+  background: var(--btn-primary-bg) !important;
+  color: var(--btn-primary-text) !important;
   border: none !important;
-  color: var(--primary-btn-text) !important;
-  font-weight: 600 !important;
-  box-shadow: 0 0 12px rgba(0, 242, 254, 0.2) !important;
+  box-shadow: var(--btn-primary-shadow) !important;
 }
 
 .el-button--primary:hover {
-  box-shadow: 0 0 20px rgba(0, 242, 254, 0.4) !important;
+  box-shadow: var(--btn-primary-hover-shadow) !important;
   transform: translateY(-1px);
+}
+
+.el-button--primary:active {
+  transform: translateY(0);
+  box-shadow: var(--btn-primary-shadow) !important;
+}
+
+/* 次要按钮（plain 模式） */
+.el-button--primary.is-plain {
+  background: var(--btn-secondary-bg) !important;
+  color: var(--btn-secondary-text) !important;
+  border: 1px solid var(--btn-secondary-border) !important;
+  box-shadow: var(--btn-secondary-shadow) !important;
+}
+
+.el-button--primary.is-plain:hover {
+  border-color: var(--btn-primary-bg) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 信息按钮（幽灵风格） */
+.el-button--info.is-plain {
+  background: var(--btn-ghost-bg) !important;
+  color: var(--btn-ghost-text) !important;
+  border: 1px solid var(--btn-ghost-border) !important;
+}
+
+.el-button--info.is-plain:hover {
+  border-color: var(--btn-primary-bg) !important;
+  color: var(--btn-primary-bg) !important;
+}
+
+/* 成功按钮 */
+.el-button--success.is-plain {
+  color: var(--btn-success) !important;
+  border-color: var(--btn-success) !important;
+}
+
+/* 危险按钮 */
+.el-button--danger.is-plain {
+  color: var(--btn-danger) !important;
+  border-color: var(--btn-danger) !important;
+}
+
+/* 链接按钮样式优化 */
+.el-button.is-link {
+  padding: 4px 8px !important;
+  height: auto !important;
+}
+
+.el-button.is-link:hover {
+  opacity: 0.8;
+}
+
+/* 自定义图标按钮 */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-icon {
+  width: var(--btn-icon-size);
+  height: var(--btn-icon-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--btn-icon-radius);
+  cursor: pointer;
+  transition: var(--btn-transition);
+  border: none;
+  font-size: 14px;
+  padding: 0;
+}
+
+.btn-icon--success {
+  color: var(--btn-success);
+  background: var(--btn-success-bg);
+  box-shadow: var(--btn-success-shadow);
+}
+
+.btn-icon--success:hover {
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+.btn-icon--primary {
+  color: var(--neon-blue);
+  background: rgba(59, 130, 246, 0.1);
+  box-shadow: 0 1px 2px rgba(59, 130, 246, 0.2);
+}
+
+.btn-icon--primary:hover {
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.btn-icon--danger {
+  color: var(--btn-danger);
+  background: var(--btn-danger-bg);
+  box-shadow: var(--btn-danger-shadow);
+}
+
+.btn-icon--danger:hover {
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+.btn-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-icon:disabled:hover {
+  box-shadow: inherit;
 }
 
 .el-dialog, .el-drawer {
