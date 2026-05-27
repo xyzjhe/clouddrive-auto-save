@@ -37,7 +37,7 @@
                 class="nav-group-arrow"
                 :class="{ collapsed: collapsedGroups[group.name] }"
               >
-                <ArrowDown />
+                <ChevronRight />
               </el-icon>
             </div>
 
@@ -117,7 +117,7 @@ import {
   Bell,
   Moon,
   Sun,
-  ArrowDown
+  ChevronRight
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -224,6 +224,7 @@ const currentPageTitle = computed(() => {
   cursor: pointer;
   border-radius: 6px;
   transition: background-color 0.2s;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .nav-group-header:hover {
@@ -246,10 +247,11 @@ const currentPageTitle = computed(() => {
 
 .nav-group-arrow {
   transition: transform 0.3s;
+  transform: rotate(90deg);
 }
 
 .nav-group-arrow.collapsed {
-  transform: rotate(-90deg);
+  transform: rotate(0deg);
 }
 
 .nav-items {

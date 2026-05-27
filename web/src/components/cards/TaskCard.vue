@@ -14,7 +14,7 @@ const emit = defineEmits(['run', 'edit', 'delete'])
 const statusConfig = {
   'pending': { label: '等待中', color: '#909399' },
   'running': { label: '运行中', color: '#409eff' },
-  'completed': { label: '已完成', color: '#67c23a' },
+  'success': { label: '已完成', color: '#67c23a' },
   'failed': { label: '失败', color: '#f56c6c' },
   'fatal': { label: 'Fatal', color: '#f56c6c' }
 }
@@ -24,8 +24,8 @@ const currentStatus = computed(() => {
 })
 
 const scheduleText = computed(() => {
-  if (props.task.scheduleMode === 'global') return '跟随全局'
-  if (props.task.scheduleMode === 'custom') return props.task.cron
+  if (props.task.schedule_mode === 'global') return '跟随全局'
+  if (props.task.schedule_mode === 'custom') return props.task.cron
   return '手动执行'
 })
 </script>
@@ -46,11 +46,11 @@ const scheduleText = computed(() => {
     <div class="card-info">
       <div class="info-item">
         <span class="info-label">平台</span>
-        <span class="info-value">{{ task.accountName }}</span>
+        <span class="info-value">{{ task.account?.nickname || task.account?.platform || '-' }}</span>
       </div>
       <div class="info-item">
         <span class="info-label">保存路径</span>
-        <span class="info-value">{{ task.savePath }}</span>
+        <span class="info-value">{{ task.save_path }}</span>
       </div>
       <div class="info-item">
         <span class="info-label">调度</span>
@@ -60,12 +60,12 @@ const scheduleText = computed(() => {
 
     <div v-if="task.status === 'running'" class="progress-section">
       <el-progress
-        :percentage="task.progress || 0"
+        :percentage="task.percent || 0"
         :stroke-width="8"
         striped
         striped-flow
       />
-      <div class="progress-text">{{ task.progressMessage }}</div>
+      <div class="progress-text">{{ task.message }}</div>
     </div>
 
     <div class="card-actions">

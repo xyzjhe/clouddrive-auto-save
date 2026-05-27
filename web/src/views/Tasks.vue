@@ -29,8 +29,19 @@
       </div>
     </div>
 
+    <div class="task-filter-bar">
+      <el-radio-group v-model="statusFilter" size="default">
+        <el-radio-button label="all">全部</el-radio-button>
+        <el-radio-button label="pending">等待中</el-radio-button>
+        <el-radio-button label="running">运行中</el-radio-button>
+        <el-radio-button label="success">成功</el-radio-button>
+        <el-radio-button label="failed">失败</el-radio-button>
+      </el-radio-group>
+      <el-input v-model="searchQuery" placeholder="搜索任务名称..." clearable style="width: 200px" :prefix-icon="Search" />
+    </div>
+
     <el-card v-if="viewMode === 'table'" class="table-card">
-      <el-table v-if="taskList.length > 0 || loading" :data="taskList" v-loading="loading" style="width: 100%">
+      <el-table v-if="filteredTaskList.length > 0 || loading" :data="filteredTaskList" v-loading="loading" style="width: 100%">
         <el-table-column label="任务名称" min-width="180">
           <template #default="{ row }">
             <div class="task-name-cell">
@@ -69,6 +80,9 @@
             <div class="status-wrapper">
               <el-tooltip v-if="row.message && row.message.includes('[Fatal]')" :content="row.message" placement="top" effect="dark">
                 <el-tag type="danger" style="cursor:help"><div class="status-inner"><el-icon><AlertTriangle /></el-icon>LINK ERROR</div></el-tag>
+              </el-tooltip>
+              <el-tooltip v-else-if="row.retry_count > 0 && row.status === 'pending'" :content="`重试 ${row.retry_count}/${row.max_retries} 次`" placement="top" effect="dark">
+                <el-tag type="warning"><div class="status-inner"><el-icon class="icon-spin"><RefreshCw /></el-icon>RETRY {{ row.retry_count }}/{{ row.max_retries }}</div></el-tag>
               </el-tooltip>
               <el-tag v-else :type="getStatusType(row.status)">
                 <div class="status-inner"><el-icon v-if="row.status === 'running'" class="icon-spin"><RefreshCw /></el-icon>{{ row.status.toUpperCase() }}</div>
@@ -122,16 +136,11 @@
 
     <!-- 卡片视图 -->
     <div v-else-if="viewMode === 'card'" class="card-view-container" v-loading="loading">
-      <template v-if="taskList.length > 0 || loading">
+      <template v-if="filteredTaskList.length > 0 || loading">
         <el-row :gutter="20">
-          <el-col v-for="row in taskList" :key="row.id" :xs="24" :sm="12" :md="8" :lg="6">
+          <el-col v-for="row in filteredTaskList" :key="row.id" :xs="24" :sm="12" :md="8" :lg="6">
             <TaskCard
-              :task="{
-                ...row,
-                accountName: row.account ? row.account.nickname : '未知账号',
-                progress: row.percent || 0,
-                progressMessage: row.message || ''
-              }"
+              :task="row"
               @run="handleRun"
               @edit="handleEdit"
               @delete="handleDelete"
@@ -321,6 +330,20 @@
           <el-col :span="12">
             <el-form-item label="替换规则 (Replacement)">
               <el-input v-model="form.replacement" placeholder="支持 {TASKNAME}, {YEAR} 等变量" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="最大重试次数">
+              <el-input-number v-model="form.max_retries" :min="0" :max="10" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="忽略后缀去重">
+              <el-switch v-model="form.ignore_extension" active-text="开启" inactive-text="关闭" />
+              <div class="form-tip">开启后 01.mp4 和 01.mkv 视为同一文件</div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -536,7 +559,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Plus, Play, Edit, Trash2, RefreshCw, Folder, File, Info, Cloud, ExternalLink, AlertTriangle, Clock, FolderOpen, List, LayoutGrid } from 'lucide-vue-next'
+import { Plus, Play, Edit, Trash2, RefreshCw, Folder, File, Info, Cloud, ExternalLink, AlertTriangle, Clock, FolderOpen, List, LayoutGrid, Search } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTasks, createTask, updateTask, deleteTask, runTask, runAllTasks, previewTask, parseShareLink, getScheduleSettings } from '../api/task'
 import { getAccounts, getFolders, createFolder } from '../api/account'
@@ -550,6 +573,8 @@ const runningAll = ref(false)
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const viewMode = ref(localStorage.getItem('taskViewMode') || 'table')
+const statusFilter = ref('all')
+const searchQuery = ref('')
 
 const smartInput = ref('')
 
@@ -597,15 +622,6 @@ const fetchGlobalSettings = async () => {
     globalSchedule.value = data
   } catch (err) {
     console.error('获取全局设置失败:', err)
-  }
-}
-
-const saveGlobalSettings = async () => {
-  try {
-    await updateScheduleSettings(globalSchedule.value)
-    ElMessage.success('全局调度设置已更新')
-  } catch (err) {
-    console.error('更新全局设置失败:', err)
   }
 }
 
@@ -720,6 +736,18 @@ const selectedAccountPlatform = computed(() => {
     return account.platform === '139' ? '移动云盘' : 'Quark'
   }
   return ''
+})
+
+const filteredTaskList = computed(() => {
+  let list = taskList.value
+  if (statusFilter.value !== 'all') {
+    list = list.filter(t => t.status === statusFilter.value)
+  }
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.trim().toLowerCase()
+    list = list.filter(t => t.name.toLowerCase().includes(q))
+  }
+  return list
 })
 
 const form = ref({
@@ -1180,7 +1208,9 @@ const openAddDialog = () => {
     start_file_name: '',
     share_parent_id: '',
     cron: '',
-    schedule_mode: 'global'
+    schedule_mode: 'global',
+    max_retries: 3,
+    ignore_extension: false
   }
   shareFiles.value = []
   selectedStartFileName.value = ''
@@ -1381,11 +1411,41 @@ onMounted(async () => {
       }
     }
   }
+
+  // 全局快捷键
+  document.addEventListener('keydown', handleKeydown)
+  window.addEventListener('beforeunload', handleBeforeUnload)
 })
 
 onUnmounted(() => {
   if (eventSource) eventSource.close()
+  document.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
+
+const handleKeydown = (e) => {
+  // Ctrl+S: 保存任务（弹窗打开时）
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault()
+    if (dialogVisible.value) {
+      submitForm()
+    }
+  }
+  // Ctrl+R: 运行所有任务
+  if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+    e.preventDefault()
+    if (!dialogVisible.value) {
+      handleRunAll()
+    }
+  }
+}
+
+const handleBeforeUnload = (e) => {
+  if (dialogVisible.value) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
 </script>
 
 <style scoped>
@@ -1393,7 +1453,20 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+}
+
+.task-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
 }
 
 .header-actions {
