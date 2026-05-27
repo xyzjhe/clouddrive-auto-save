@@ -34,7 +34,14 @@ func (s *MockSource) Search(query string, page int) (*SearchResult, error) {
 }
 
 func TestClient_Search(t *testing.T) {
-	client := NewClient()
+	config := &SearchConfig{
+		CloudSaver: CloudSaverConfig{
+			Server:   "https://api.cloudsaver.com",
+			Username: "admin",
+			Password: "pass",
+		},
+	}
+	client := NewClient(config)
 
 	// 测试搜索
 	result, err := client.Search("test", []string{}, 1)
@@ -43,7 +50,14 @@ func TestClient_Search(t *testing.T) {
 }
 
 func TestClient_Search_WithSources(t *testing.T) {
-	client := NewClient()
+	config := &SearchConfig{
+		CloudSaver: CloudSaverConfig{
+			Server:   "https://api.cloudsaver.com",
+			Username: "admin",
+			Password: "pass",
+		},
+	}
+	client := NewClient(config)
 
 	// 测试指定搜索源
 	result, err := client.Search("test", []string{"CloudSaver"}, 1)
@@ -52,11 +66,17 @@ func TestClient_Search_WithSources(t *testing.T) {
 }
 
 func TestClient_ListSources(t *testing.T) {
-	client := NewClient()
+	config := &SearchConfig{
+		CloudSaver: CloudSaverConfig{
+			Server:   "https://api.cloudsaver.com",
+			Username: "admin",
+			Password: "pass",
+		},
+	}
+	client := NewClient(config)
 
 	// 测试列出搜索源
 	sources := client.ListSources()
-	assert.Len(t, sources, 2)
+	assert.Len(t, sources, 1)
 	assert.Contains(t, sources, "CloudSaver")
-	assert.Contains(t, sources, "PanSou")
 }

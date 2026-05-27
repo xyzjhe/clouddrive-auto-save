@@ -131,7 +131,12 @@ func main() {
 
 	// 5. 初始化搜索客户端
 	slog.Info("Initializing search client...")
-	searchClient := search.NewClient()
+	searchConfig, err := search.LoadConfig(db.DB)
+	if err != nil {
+		slog.Warn("加载搜索配置失败，使用空配置", "error", err)
+		searchConfig = &search.SearchConfig{}
+	}
+	searchClient := search.NewClient(searchConfig)
 	api.InitSearchHandler(searchClient)
 
 	// 6. 启动 API 服务

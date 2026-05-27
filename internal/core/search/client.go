@@ -13,13 +13,21 @@ type Client struct {
 }
 
 // NewClient 创建搜索客户端
-func NewClient() *Client {
-	return &Client{
-		sources: []Source{
-			NewCloudSaverSource("https://api.cloudsaver.com"),
-			NewPanSouSource("https://api.pansou.com"),
-		},
+func NewClient(config *SearchConfig) *Client {
+	var sources []Source
+
+	if config.CloudSaver.Server != "" {
+		sources = append(sources, NewCloudSaverSource(
+			config.CloudSaver.Server,
+			config.CloudSaver.Username,
+			config.CloudSaver.Password,
+			config.CloudSaver.Token,
+		))
 	}
+
+	// TODO: Task 4 实现 PanSou 源后启用
+
+	return &Client{sources: sources}
 }
 
 // Search 搜索资源
