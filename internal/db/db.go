@@ -55,6 +55,10 @@ type Task struct {
 	StartFileName string     `gorm:"size:255" json:"start_file_name"`               // 起始文件名称 (用于前端快速回显)
 	ShareParentID string     `gorm:"size:255" json:"share_parent_id"`               // 139 分享链接的目录 ID (可选)
 	LastRun       time.Time  `json:"last_run"`
+	RetryCount    int        `gorm:"default:0" json:"retry_count"`  // 当前重试次数
+	MaxRetries    int        `gorm:"default:3" json:"max_retries"` // 最大重试次数
+	RunDays       string     `gorm:"size:50" json:"run_days"`       // 运行星期，JSON 数组如 [1,2,3,4,5]，空表示每天
+	IgnoreExtension bool     `gorm:"default:false" json:"ignore_extension"` // 忽略后缀去重：01.mp4 和 01.mkv 视为同一文件
 
 	NextRun time.Time `json:"next_run"`
 	Status  string    `gorm:"size:20;default:'pending'" json:"status"` // pending, running, success, failed

@@ -27,6 +27,45 @@ var magicRegexps = map[string]*regexp.Regexp{
 
 var nonDigitRegexp = regexp.MustCompile(`\D`)
 
+// PredefinedPattern 预定义魔法匹配规则
+type PredefinedPattern struct {
+	Pattern     string // 正则表达式
+	Replacement string // 替换模板
+	Description string // 说明
+}
+
+// PredefinedPatterns 预定义的命名规则集合
+var PredefinedPatterns = map[string]PredefinedPattern{
+	"$TV": {
+		Pattern:     `(?i).*?([Ss]\d{1,2})?(?:[第EePpXx\.\-\_\( ]{1,2}|^)(\d{1,3})(?!\d).*?\.(mp4|mkv)`,
+		Replacement: `$1E$2.$3`,
+		Description: "剧集标准化命名 (S01E01.mp4)",
+	},
+	"$BLACK_WORD": {
+		Pattern:     `^(?!.*纯享)(?!.*加更)(?!.*超前企划)(?!.*训练室)(?!.*蒸蒸日上).*$`,
+		Replacement: `$0`,
+		Description: "黑名单过滤 (排除纯享/加更/超前企划等)",
+	},
+	"$SHOW_MAGIC": {
+		Pattern:     `^(?!.*纯享)(?!.*加更)(?!.*抢先)(?!.*预告).*?第\d+期.*`,
+		Replacement: `{TASKNAME}.{SXX}E{II}.第{E}期{PART}.{EXT}`,
+		Description: "综艺命名 (第X期格式)",
+	},
+	"$TV_MAGIC": {
+		Pattern:     `.*\.(mp4|mkv|mov|m4v|avi|mpeg|ts)$`,
+		Replacement: `{TASKNAME}.{SXX}E{E}.{EXT}`,
+		Description: "通用视频命名 (剧集格式)",
+	},
+}
+
+// GetPredefinedPattern 获取预定义匹配规则，如果不是预定义名称则返回 nil
+func GetPredefinedPattern(name string) *PredefinedPattern {
+	if p, ok := PredefinedPatterns[name]; ok {
+		return &p
+	}
+	return nil
+}
+
 // RenameOptions 重命名选项
 type RenameOptions struct {
 	TaskName        string

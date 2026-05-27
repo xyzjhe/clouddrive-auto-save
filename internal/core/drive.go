@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/zcq/clouddrive-auto-save/internal/db"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -62,6 +63,21 @@ func RegisterDriver(platform string, factory DriveFactory) {
 func GetDriver(account *db.Account) CloudDrive {
 	if factory, ok := drivers[account.Platform]; ok {
 		return factory(account)
+	}
+	return nil
+}
+
+// GetDriverByURL 根据分享链接 URL 判断平台并返回驱动实例
+func GetDriverByURL(url string) CloudDrive {
+	if strings.Contains(url, "pan.quark.cn") {
+		if factory, ok := drivers["quark"]; ok {
+			return factory(&db.Account{Platform: "quark"})
+		}
+	}
+	if strings.Contains(url, "cloud.139.com") || strings.Contains(url, "yun.139.com") {
+		if factory, ok := drivers["139"]; ok {
+			return factory(&db.Account{Platform: "139"})
+		}
 	}
 	return nil
 }

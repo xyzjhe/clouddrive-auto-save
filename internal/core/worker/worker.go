@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"regexp"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -98,6 +99,19 @@ func (m *Manager) updateProgress(task *db.Task, percent int, stage, message stri
 	utils.BroadcastTaskUpdate(task)
 }
 
+// getExtension 获取文件扩展名（包含点号）
+func getExtension(name string) string {
+	for i := len(name) - 1; i >= 0; i-- {
+		if name[i] == '.' {
+			return name[i:]
+		}
+		if name[i] == '/' || name[i] == '\\' {
+			break
+		}
+	}
+	return ""
+}
+
 func (m *Manager) execute(job Job) {
 	task := job.Task
 	startTime := time.Now()
@@ -158,7 +172,13 @@ func (m *Manager) execute(job Job) {
 
 	existingNames := make(map[string]bool)
 	for _, f := range existingFiles {
-		existingNames[f.Name] = true
+		if task.IgnoreExtension {
+			// 忽略后缀模式：去掉扩展名后存储
+			name := strings.TrimSuffix(f.Name, getExtension(f.Name))
+			existingNames[name] = true
+		} else {
+			existingNames[f.Name] = true
+		}
 	}
 
 	// 4. 计算预览名并应用过滤（正则匹配 + 智能去重）
@@ -169,9 +189,22 @@ func (m *Manager) execute(job Job) {
 	var regexSkipCount int
 	renameMap := make(map[string]string) // 记录 原始文件名 -> 计算后新文件名 的对应关系
 
+	// 解析预定义魔法匹配规则
+	pattern := task.Pattern
+	replacement := task.Replacement
+	if strings.HasPrefix(pattern, "$") {
+		if predefined := renamer.GetPredefinedPattern(pattern); predefined != nil {
+			pattern = predefined.Pattern
+			if replacement == "" {
+				replacement = predefined.Replacement
+			}
+			slog.Info("使用预定义匹配规则", "name", task.Pattern, "pattern", pattern)
+		}
+	}
+
 	var compiledReg *regexp.Regexp
-	if task.Pattern != "" {
-		compiledReg, _ = regexp.Compile(task.Pattern)
+	if pattern != "" {
+		compiledReg, _ = regexp.Compile(pattern)
 	}
 
 	for _, f := range files {
@@ -185,12 +218,12 @@ func (m *Manager) execute(job Job) {
 
 		// b. 计算预期的新名字
 		newName := f.Name
-		if task.Replacement != "" {
+		if replacement != "" {
 			resName, err := processor.Process(renamer.RenameOptions{
 				TaskName:        task.Name,
 				FileName:        f.Name,
-				Pattern:         task.Pattern,
-				Replacement:     task.Replacement,
+				Pattern:         pattern,
+				Replacement:     replacement,
 				CompiledPattern: compiledReg, // 复用外部已编译的正则，减少 CPU 开销
 			})
 			if err == nil {
@@ -199,7 +232,11 @@ func (m *Manager) execute(job Job) {
 		}
 
 		// c. 智能去重：拿新名比对
-		if existingNames[newName] {
+		dedupName := newName
+		if task.IgnoreExtension {
+			dedupName = strings.TrimSuffix(newName, getExtension(newName))
+		}
+		if existingNames[dedupName] {
 			skipCount++
 			continue
 		}
@@ -255,26 +292,80 @@ func (m *Manager) execute(job Job) {
 	m.finishTask(job, "success", fmt.Sprintf("转存成功 (新增 %d 个文件, 跳过 %d 个同名文件)", len(filteredIDs), skipCount), savedFileNames, startTime)
 }
 
+// isFatalError 判断是否为致命错误（不应重试）
+func isFatalError(message string) bool {
+	fatalPatterns := []string{
+		"链接失效", "链接过期", "提取码错误", "提取码无效",
+		"分享已删除", "分享已过期", "不存在", "权限不足",
+		"cookie", "Cookie", "token", "Token",
+	}
+	for _, p := range fatalPatterns {
+		if strings.Contains(message, p) {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *Manager) finishTask(job Job, status, message string, files []string, startTime time.Time) {
 	task := job.Task
-	task.Status = status
-	task.Message = message
 	task.LastRun = time.Now()
 	task.Percent = 100
+	duration := time.Since(startTime)
+
+	// 重试逻辑：失败且非致命错误时，尝试重试
+	if status == "failed" && !isFatalError(message) {
+		maxRetries := task.MaxRetries
+		if maxRetries == 0 {
+			maxRetries = 3 // 默认最大重试 3 次
+		}
+		if task.RetryCount < maxRetries {
+			task.RetryCount++
+			// 指数退避：30s, 60s, 120s, 240s, ... 最大 3600s
+			delay := 30 * (1 << (task.RetryCount - 1))
+			if delay > 3600 {
+				delay = 3600
+			}
+			m.db.Model(task).Updates(map[string]interface{}{
+				"status":      "pending",
+				"message":     fmt.Sprintf("[重试 %d/%d] %s", task.RetryCount, maxRetries, message),
+				"last_run":    task.LastRun,
+				"retry_count": task.RetryCount,
+				"percent":     0,
+				"stage":       "Retry",
+			})
+			slog.Warn("任务将自动重试", "id", task.ID, "retry", task.RetryCount, "max", maxRetries, "delay_s", delay)
+			slog.Info(fmt.Sprintf("[PROGRESS:%d:0:Retry:将在 %ds 后重试 (%d/%d)]", task.ID, delay, task.RetryCount, maxRetries))
+			utils.BroadcastTaskUpdate(task)
+			utils.BroadcastStatsUpdate()
+
+			// 延迟后重新入队
+			go func() {
+				time.Sleep(time.Duration(delay) * time.Second)
+				m.Submit(Job{Task: task, BatchID: job.BatchID})
+			}()
+			return
+		}
+		// 重试次数用尽，标记为致命错误
+		message = fmt.Sprintf("[Fatal] 重试 %d 次后仍然失败: %s", maxRetries, message)
+	}
+
+	task.Status = status
+	task.Message = message
 	if status == "success" {
 		task.Stage = "Success"
+		task.RetryCount = 0 // 成功后重置重试计数
 	} else {
 		task.Stage = "Failed"
 	}
 
-	duration := time.Since(startTime)
-
 	m.db.Model(task).Updates(map[string]interface{}{
-		"status":   status,
-		"message":  message,
-		"last_run": task.LastRun,
-		"percent":  task.Percent,
-		"stage":    task.Stage,
+		"status":      status,
+		"message":     message,
+		"last_run":    task.LastRun,
+		"percent":     task.Percent,
+		"stage":       task.Stage,
+		"retry_count": task.RetryCount,
 	})
 	slog.Info("任务完成", "id", task.ID, "status", status, "duration", duration)
 	slog.Info(fmt.Sprintf("[PROGRESS:%d:100:%s:%s]", task.ID, task.Stage, message))
