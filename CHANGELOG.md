@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### ✨ 核心特性 (Features)
+
+- **CloudSaver & PanSou 搜索集成**：
+  - **CloudSaver 搜索源**：实现 JWT Token 认证机制，支持自动登录续期，搜索结果自动清洗（提取夸克链接、解析标题描述、时间格式化）。
+  - **PanSou 搜索源**：实现免认证搜索，支持按网盘类型过滤和结果合并去重，`note` 字段自动解析为标题和描述。
+  - **搜索配置管理**：新增 `/api/search/config` API（GET/PUT），支持从 Setting 表加载/保存搜索源配置，运行时热更新。
+  - **统一搜索客户端**：重构 `Client` 支持配置化源创建、结果去重（按 shareurl）和排序（按时间降序）。
+  - **前端适配**：Search.vue 新增标签和频道显示，Settings.vue 新增搜索源配置 Tab。
+  - **API 文档**：新增 `docs/cloudsaver_api.md` 和 `docs/pansou_api.md`，详细记录两个搜索源的接口规范和调用流程。
+
 ### 🎨 界面优化与重构 (UI/UX Refactoring)
 
 - **科技暗黑毛玻璃风格升级**：全局部署了 Glassmorphism 样式和霓虹微光设计语言，对 Element Plus 全局组件进行了发光微光样式重塑。

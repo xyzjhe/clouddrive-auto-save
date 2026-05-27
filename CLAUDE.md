@@ -99,5 +99,5 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - 设置：调度配置 + 全局设置 + 测试 Bark
 - 插件管理：列表 + 详情 + 配置更新
 - Telegram 配置：获取配置 + 更新配置 + 测试连接
-- 资源搜索：搜索资源 + 搜索源列表
+- 资源搜索：搜索资源 + 搜索源列表 + 搜索配置（GET/PUT /api/search/config）
 - 通知配置：列表 + 详情 + 更新 + 测试

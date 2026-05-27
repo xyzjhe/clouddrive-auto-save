@@ -137,6 +137,8 @@ services:
 * [API 接口文档](docs/api/README.md)
 * [移动云盘 (139) API 手册](docs/cloud139_apis.md)
 * [夸克网盘 (Quark) API 手册](docs/quark_apis.md)
+* [CloudSaver 搜索源 API](docs/cloudsaver_api.md)
+* [PanSou 搜索源 API](docs/pansou_api.md)
 * [数据库设计](docs/api/database.md)
 * [平台扩展指南](docs/platform-extension-guide.md)
 
