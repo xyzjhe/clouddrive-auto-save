@@ -27,45 +27,30 @@ func (h *TelegramHandler) GetConfig(c *gin.Context) {
 	var setting db.Setting
 	err := db.DB.Where("key = ?", "telegram_config").First(&setting).Error
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code": 0,
-			"data": telegram.DefaultConfig(),
-		})
+		c.PureJSON(http.StatusOK, telegram.DefaultConfig())
 		return
 	}
 
 	var config telegram.Config
 	if err := json.Unmarshal([]byte(setting.Value), &config); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "反序列化配置失败: " + err.Error(),
-		})
+		c.PureJSON(http.StatusInternalServerError, gin.H{"error": "反序列化配置失败: " + err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": config,
-	})
+	c.PureJSON(http.StatusOK, config)
 }
 
 // UpdateConfig 更新 Telegram 配置
 func (h *TelegramHandler) UpdateConfig(c *gin.Context) {
 	var config telegram.Config
 	if err := c.ShouldBindJSON(&config); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的配置格式",
-		})
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": "无效的配置格式"})
 		return
 	}
 
 	val, err := json.Marshal(config)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "序列化配置失败",
-		})
+		c.PureJSON(http.StatusInternalServerError, gin.H{"error": "序列化配置失败"})
 		return
 	}
 
@@ -75,10 +60,7 @@ func (h *TelegramHandler) UpdateConfig(c *gin.Context) {
 	}
 
 	if err := db.DB.Save(&setting).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "保存配置失败: " + err.Error(),
-		})
+		c.PureJSON(http.StatusInternalServerError, gin.H{"error": "保存配置失败: " + err.Error()})
 		return
 	}
 
@@ -93,46 +75,28 @@ func (h *TelegramHandler) UpdateConfig(c *gin.Context) {
 		}()
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "配置已更新",
-	})
+	c.PureJSON(http.StatusOK, gin.H{"message": "配置已更新"})
 }
 
 // TestConnection 测试连接
 func (h *TelegramHandler) TestConnection(c *gin.Context) {
 	var config telegram.Config
 	if err := c.ShouldBindJSON(&config); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的配置格式",
-		})
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": "无效的配置格式"})
 		return
 	}
 
 	if config.BotToken == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "Bot Token 不能为空",
-		})
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": "Bot Token 不能为空"})
 		return
 	}
 
 	// 向 Telegram API 发送请求来测试连通性和 Token 的有效性
 	api, err := tgbotapi.NewBotAPI(config.BotToken)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "连接失败: " + err.Error(),
-		})
+		c.PureJSON(http.StatusInternalServerError, gin.H{"error": "连接失败: " + err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"username": api.Self.UserName,
-		},
-		"message": "连接成功",
-	})
+	c.PureJSON(http.StatusOK, gin.H{"username": api.Self.UserName, "message": "连接成功"})
 }

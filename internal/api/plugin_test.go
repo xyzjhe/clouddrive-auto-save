@@ -38,10 +38,10 @@ func TestPluginAPI_ListPlugins(t *testing.T) {
 
 	assert.Equal(t, 200, w.Code)
 
-	var response map[string]interface{}
+	// 响应为扁平数组格式
+	var response []interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	assert.Equal(t, float64(0), response["code"])
 }
 
 func TestPluginAPI_GetPlugin(t *testing.T) {

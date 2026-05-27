@@ -21,10 +21,7 @@ func NewPluginHandler(manager *plugin.Manager) *PluginHandler {
 // ListPlugins 列出所有插件
 func (h *PluginHandler) ListPlugins(c *gin.Context) {
 	plugins := h.manager.ListPlugins()
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": plugins,
-	})
+	c.PureJSON(http.StatusOK, plugins)
 }
 
 // GetPlugin 获取插件详情
@@ -33,21 +30,15 @@ func (h *PluginHandler) GetPlugin(c *gin.Context) {
 
 	plugin, exists := h.manager.GetPlugin(name)
 	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{
-			"code":    404,
-			"message": "插件不存在",
-		})
+		c.PureJSON(http.StatusNotFound, gin.H{"error": "插件不存在"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"name":        plugin.Name(),
-			"version":     plugin.Version(),
-			"description": plugin.Description(),
-			"hooks":       plugin.Hooks(),
-		},
+	c.PureJSON(http.StatusOK, gin.H{
+		"name":        plugin.Name(),
+		"version":     plugin.Version(),
+		"description": plugin.Description(),
+		"hooks":       plugin.Hooks(),
 	})
 }
 
@@ -57,16 +48,10 @@ func (h *PluginHandler) UpdatePluginConfig(c *gin.Context) {
 
 	var config map[string]interface{}
 	if err := c.ShouldBindJSON(&config); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的配置格式",
-		})
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": "无效的配置格式"})
 		return
 	}
 
 	// TODO: 实现配置更新逻辑
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "配置已更新",
-	})
+	c.PureJSON(http.StatusOK, gin.H{"message": "配置已更新"})
 }

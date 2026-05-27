@@ -19,6 +19,7 @@ import (
 	"github.com/zcq/clouddrive-auto-save/internal/core/openlist"
 	"github.com/zcq/clouddrive-auto-save/internal/core/plugin"
 	_ "github.com/zcq/clouddrive-auto-save/internal/core/quark"
+	"github.com/zcq/clouddrive-auto-save/internal/core/renamer"
 	"github.com/zcq/clouddrive-auto-save/internal/core/scheduler"
 	"github.com/zcq/clouddrive-auto-save/internal/core/search"
 	"github.com/zcq/clouddrive-auto-save/internal/core/telegram"
@@ -47,6 +48,7 @@ func InitRouter(wm *worker.Manager, version, commit, date string) *gin.Engine {
 	api := r.Group("/api")
 	{
 		api.GET("/version", getVersion)
+		api.GET("/magic_patterns", listMagicPatterns)
 
 		api.GET("/accounts", listAccounts)
 		api.POST("/accounts", createAccount)
@@ -94,6 +96,7 @@ func InitRouter(wm *worker.Manager, version, commit, date string) *gin.Engine {
 		api.GET("/search/sources", listSearchSources)
 		api.GET("/search/config", getSearchConfig)
 		api.PUT("/search/config", updateSearchConfig)
+		api.GET("/search/validate", validateSearchLink)
 
 		// 通知配置
 		api.GET("/notify", listNotifiers)
@@ -212,10 +215,35 @@ func checkAccount(c *gin.Context) {
 	c.PureJSON(http.StatusOK, account)
 }
 
+// accountDTO 账号安全返回对象（排除 Cookie 和 AuthToken）
+type accountDTO struct {
+	ID            uint      `json:"id"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	Platform      string    `json:"platform"`
+	Nickname      string    `json:"nickname"`
+	AccountName   string    `json:"account_name"`
+	Status        int       `json:"status"`
+	CapacityUsed  int64     `json:"capacity_used"`
+	CapacityTotal int64     `json:"capacity_total"`
+	VipName       string    `json:"vip_name"`
+	LastCheck     time.Time `json:"last_check"`
+}
+
 func listAccounts(c *gin.Context) {
 	var accounts []db.Account
 	db.DB.Find(&accounts)
-	c.PureJSON(http.StatusOK, accounts)
+
+	dtos := make([]accountDTO, len(accounts))
+	for i, a := range accounts {
+		dtos[i] = accountDTO{
+			ID: a.ID, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
+			Platform: a.Platform, Nickname: a.Nickname, AccountName: a.AccountName,
+			Status: a.Status, CapacityUsed: a.CapacityUsed, CapacityTotal: a.CapacityTotal,
+			VipName: a.VipName, LastCheck: a.LastCheck,
+		}
+	}
+	c.PureJSON(http.StatusOK, dtos)
 }
 
 func createAccount(c *gin.Context) {
@@ -398,7 +426,11 @@ func deleteTask(c *gin.Context) {
 	id := c.Param("id")
 	slog.Info("删除任务", "task_id", id)
 
-	idNum, _ := strconv.Atoi(id)
+	idNum, err := strconv.Atoi(id)
+	if err != nil {
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": "无效的任务 ID"})
+		return
+	}
 	scheduler.Global.RemoveTask(uint(idNum))
 
 	db.DB.Delete(&db.Task{}, id)
@@ -412,7 +444,11 @@ func deleteTask(c *gin.Context) {
 
 func runTask(c *gin.Context) {
 	idStr := c.Param("id")
-	id, _ := strconv.Atoi(idStr)
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": "无效的任务 ID"})
+		return
+	}
 	slog.Info("请求运行任务", "task_id", id)
 
 	var task db.Task
@@ -625,13 +661,30 @@ func updateScheduleSettings(c *gin.Context) {
 	c.PureJSON(http.StatusOK, gin.H{"message": "settings updated"})
 }
 
+// sensitiveKeyPatterns 需要脱敏的配置 key 关键字
+var sensitiveKeyPatterns = []string{"token", "key", "password", "secret", "cookie"}
+
+func isSensitiveKey(k string) bool {
+	lower := strings.ToLower(k)
+	for _, p := range sensitiveKeyPatterns {
+		if strings.Contains(lower, p) {
+			return true
+		}
+	}
+	return false
+}
+
 func getGlobalSettings(c *gin.Context) {
 	var settings []db.Setting
 	db.DB.Find(&settings)
 
 	res := make(map[string]string)
 	for _, s := range settings {
-		res[s.Key] = s.Value
+		if isSensitiveKey(s.Key) && s.Value != "" {
+			res[s.Key] = "***"
+		} else {
+			res[s.Key] = s.Value
+		}
 	}
 	c.PureJSON(http.StatusOK, res)
 }
@@ -726,6 +779,10 @@ func getVersion(c *gin.Context) {
 		"commit":  appCommit,
 		"date":    appDate,
 	})
+}
+
+func listMagicPatterns(c *gin.Context) {
+	c.PureJSON(http.StatusOK, renamer.PredefinedPatterns)
 }
 
 func triggerOpenListScan(c *gin.Context) {
@@ -845,6 +902,14 @@ func updateSearchConfig(c *gin.Context) {
 		return
 	}
 	searchHandler.UpdateConfig(c)
+}
+
+func validateSearchLink(c *gin.Context) {
+	if searchHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "搜索服务未初始化"})
+		return
+	}
+	searchHandler.ValidateLink(c)
 }
 
 // 通知处理函数
