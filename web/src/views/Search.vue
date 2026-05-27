@@ -2,7 +2,8 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Search as SearchIcon, Link as LinkIcon, Coins as CoinsIcon, Clock as ClockIcon, FileText as FileTextIcon } from 'lucide-vue-next'
+import { Search as SearchIcon, Link as LinkIcon, Clock as ClockIcon, FileText as FileTextIcon } from 'lucide-vue-next'
+import { searchResources } from '../api/search'
 
 const router = useRouter()
 const query = ref('')
@@ -20,18 +21,14 @@ const handleSearch = async () => {
 
   loading.value = true
   try {
-    const params = new URLSearchParams({
+    const params = {
       q: query.value,
       page: page.value.toString()
-    })
-
-    selectedSources.value.forEach(source => {
-      params.append('source', source)
-    })
-
-    const response = await fetch(`/api/search?${params}`)
-    const data = await response.json()
-
+    }
+    if (selectedSources.value.length > 0) {
+      params.source = selectedSources.value
+    }
+    const data = await searchResources(params)
     if (data.code === 0) {
       results.value = data.data.items || []
     } else {
@@ -39,7 +36,6 @@ const handleSearch = async () => {
     }
   } catch (error) {
     console.error('搜索失败:', error)
-    ElMessage.error('搜索失败')
   } finally {
     loading.value = false
   }
@@ -119,9 +115,9 @@ const handleCreateTask = (item) => {
             <el-icon><LinkIcon /></el-icon>
             {{ item.source }}
           </span>
-          <span class="meta-item">
-            <el-icon><CoinsIcon /></el-icon>
-            {{ item.platform }}
+          <span v-if="item.channel" class="meta-item">
+            <el-icon><FileTextIcon /></el-icon>
+            {{ item.channel }}
           </span>
           <span class="meta-item">
             <el-icon><ClockIcon /></el-icon>
@@ -131,6 +127,18 @@ const handleCreateTask = (item) => {
             <el-icon><FileTextIcon /></el-icon>
             {{ item.size }}
           </span>
+        </div>
+
+        <div v-if="item.tags && item.tags.length > 0" class="result-tags">
+          <el-tag
+            v-for="tag in item.tags"
+            :key="tag"
+            size="small"
+            type="info"
+            class="tag-item"
+          >
+            {{ tag }}
+          </el-tag>
         </div>
 
         <div v-if="item.summary" class="result-summary">
@@ -217,6 +225,17 @@ const handleCreateTask = (item) => {
   gap: 0.25rem;
   font-size: 0.85rem;
   color: var(--text-secondary);
+}
+
+.result-tags {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.tag-item {
+  margin: 0;
 }
 
 .result-summary {
