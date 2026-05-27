@@ -342,6 +342,69 @@
           </div>
         </div>
       </el-tab-pane>
+
+      <!-- Tab: 搜索源配置 -->
+      <el-tab-pane name="search">
+        <template #label>
+          <div class="tab-label-inner">
+            <el-icon><Search /></el-icon>
+            <span>搜索源</span>
+          </div>
+        </template>
+
+        <el-row :gutter="24">
+          <el-col :xs="24" :lg="12">
+            <el-card class="inner-settings-card">
+              <template #header>
+                <div class="card-header">
+                  <div class="header-title">
+                    <span>CloudSaver 配置</span>
+                  </div>
+                </div>
+              </template>
+              <el-form label-position="top">
+                <el-form-item label="服务地址">
+                  <el-input v-model="searchConfig.cloudsaver.server" placeholder="http://localhost:8080" />
+                </el-form-item>
+                <el-form-item label="用户名">
+                  <el-input v-model="searchConfig.cloudsaver.username" placeholder="用户名" />
+                </el-form-item>
+                <el-form-item label="密码">
+                  <el-input v-model="searchConfig.cloudsaver.password" type="password" show-password placeholder="密码" />
+                </el-form-item>
+                <el-form-item label="Token 状态">
+                  <el-tag :type="searchConfig.cloudsaver.token ? 'success' : 'info'">
+                    {{ searchConfig.cloudsaver.token ? '已获取' : '未获取' }}
+                  </el-tag>
+                </el-form-item>
+              </el-form>
+            </el-card>
+          </el-col>
+
+          <el-col :xs="24" :lg="12">
+            <el-card class="inner-settings-card">
+              <template #header>
+                <div class="card-header">
+                  <div class="header-title">
+                    <span>PanSou 配置</span>
+                  </div>
+                </div>
+              </template>
+              <el-form label-position="top">
+                <el-form-item label="服务地址">
+                  <el-input v-model="searchConfig.pansou.server" placeholder="https://so.252035.xyz" />
+                </el-form-item>
+              </el-form>
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <div style="text-align: right; margin-top: 16px;">
+          <el-button type="primary" @click="saveSearchConfig" :loading="searchConfigSaving">
+            保存配置
+          </el-button>
+        </div>
+      </el-tab-pane>
     </el-tabs>
 
     <!-- Bark 测试对话框 -->
@@ -366,12 +429,18 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { Calendar, Info, Scan, Bell, Puzzle, Plus } from 'lucide-vue-next'
+import { Calendar, Info, Scan, Bell, Puzzle, Plus, Search } from 'lucide-vue-next'
 import { getGlobalSettings, updateGlobalSettings, triggerOpenListScan, testBark } from '../api/task'
+import { getSearchConfig, updateSearchConfig } from '../api/search'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const activeTab = ref('schedule')
 const pageLoading = ref(true)
+const searchConfig = ref({
+  cloudsaver: { server: '', username: '', password: '', token: '' },
+  pansou: { server: '' }
+})
+const searchConfigSaving = ref(false)
 
 // ==================== 1. 任务调度与扫描 ====================
 const settings = ref({
@@ -712,6 +781,30 @@ const handleInstallPlugin = () => {
   ElMessage.info('本地插件上传/安装功能开发中')
 }
 
+// ==================== 4. 搜索源配置 ====================
+const loadSearchConfig = async () => {
+  try {
+    const data = await getSearchConfig()
+    if (data.code === 0 && data.data) {
+      searchConfig.value = data.data
+    }
+  } catch (e) {
+    console.error('加载搜索配置失败:', e)
+  }
+}
+
+const saveSearchConfig = async () => {
+  searchConfigSaving.value = true
+  try {
+    await updateSearchConfig(searchConfig.value)
+    ElMessage.success('搜索配置已保存')
+  } catch (e) {
+    console.error('保存搜索配置失败:', e)
+  } finally {
+    searchConfigSaving.value = false
+  }
+}
+
 // ==================== 初始化挂载 ====================
 onMounted(async () => {
   pageLoading.value = true
@@ -721,7 +814,8 @@ onMounted(async () => {
     fetchNotifierConfig('wechat'),
     fetchNotifierConfig('telegram'),
     fetchNotifierConfig('wxpusher'),
-    fetchPlugins()
+    fetchPlugins(),
+    loadSearchConfig()
   ])
   pageLoading.value = false
 })
