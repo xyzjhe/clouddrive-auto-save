@@ -136,7 +136,7 @@ func main() {
 		slog.Warn("加载搜索配置失败，使用空配置", "error", err)
 		searchConfig = &search.SearchConfig{}
 	}
-	searchClient := search.NewClient(searchConfig)
+	searchClient := search.NewClient(searchConfig, db.DB)
 	api.InitSearchHandler(searchClient)
 
 	// 6. 启动 API 服务
