@@ -432,6 +432,7 @@ import { ref, onMounted, watch } from 'vue'
 import { Calendar, Info, Scan, Bell, Puzzle, Plus, Search } from 'lucide-vue-next'
 import { getGlobalSettings, updateGlobalSettings, triggerOpenListScan, testBark } from '../api/task'
 import { getSearchConfig, updateSearchConfig } from '../api/search'
+import request from '../api/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const activeTab = ref('schedule')
@@ -654,23 +655,19 @@ const fetchBarkSettings = async () => {
 
 const fetchNotifierConfig = async (type) => {
   try {
-    const response = await fetch(`/api/notify/${type}`)
-    const data = await response.json()
-    if (data.code === 0 && data.data) {
-      const config = data.data
-      const targetConfig = {
-        enabled: config.enabled || false,
-        notify_on_success: config.notify_on_success !== false,
-        notify_on_failure: config.notify_on_failure !== false,
-        config: config.config || {}
-      }
-      if (type === 'wechat') {
-        wechatConfig.value = targetConfig
-      } else if (type === 'telegram') {
-        telegramConfig.value = targetConfig
-      } else if (type === 'wxpusher') {
-        wxpusherConfig.value = targetConfig
-      }
+    const config = await request({ url: `/notify/${type}`, method: 'get' })
+    const targetConfig = {
+      enabled: config.enabled || false,
+      notify_on_success: config.notify_on_success !== false,
+      notify_on_failure: config.notify_on_failure !== false,
+      config: config.config || {}
+    }
+    if (type === 'wechat') {
+      wechatConfig.value = targetConfig
+    } else if (type === 'telegram') {
+      telegramConfig.value = targetConfig
+    } else if (type === 'wxpusher') {
+      wxpusherConfig.value = targetConfig
     }
   } catch (error) {
     console.error(`加载 ${type} 配置失败:`, error)
@@ -697,14 +694,8 @@ const handleSaveNotify = async (type) => {
   else if (type === 'wxpusher') config = wxpusherConfig.value
 
   try {
-    const response = await fetch(`/api/notify/${type}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config)
-    })
-    const data = await response.json()
-    if (data.code === 0) ElMessage.success(`${type} 配置已保存`)
-    else ElMessage.error(data.message || '保存失败')
+    await request({ url: `/notify/${type}`, method: 'put', data: config })
+    ElMessage.success(`${type} 配置已保存`)
   } catch (error) {
     ElMessage.error('保存失败')
   }
@@ -725,10 +716,8 @@ const handleTestNotify = async (type) => {
   }
 
   try {
-    const response = await fetch(`/api/notify/${type}/test`, { method: 'POST' })
-    const data = await response.json()
-    if (data.code === 0) ElMessage.success('测试消息已发送，请检查接收设备')
-    else ElMessage.error(data.message || '测试失败')
+    await request({ url: `/notify/${type}/test`, method: 'post' })
+    ElMessage.success('测试消息已发送，请检查接收设备')
   } catch {
     ElMessage.error('测试发送失败')
   }
@@ -758,9 +747,8 @@ const pluginsLoading = ref(false)
 const fetchPlugins = async () => {
   pluginsLoading.value = true
   try {
-    const response = await fetch('/api/plugins')
-    const data = await response.json()
-    plugins.value = data.data || []
+    const data = await request({ url: '/plugins', method: 'get' })
+    plugins.value = data || []
   } catch (error) {
     console.error('获取插件列表失败:', error)
   } finally {
@@ -785,8 +773,8 @@ const handleInstallPlugin = () => {
 const loadSearchConfig = async () => {
   try {
     const data = await getSearchConfig()
-    if (data.code === 0 && data.data) {
-      searchConfig.value = data.data
+    if (data) {
+      searchConfig.value = data
     }
   } catch (e) {
     console.error('加载搜索配置失败:', e)

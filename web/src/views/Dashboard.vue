@@ -16,11 +16,11 @@
             <div class="telemetry-item">
               <div class="telemetry-info">
                 <span>CPU 负载</span>
-                <span class="value-highlight">{{ cpuUsage }}%</span>
+                <span class="value-highlight">{{ cpuUsage > 0 ? cpuUsage + '%' : '--' }}</span>
               </div>
-              <el-progress 
-                :percentage="cpuUsage" 
-                :stroke-width="6" 
+              <el-progress
+                :percentage="cpuUsage"
+                :stroke-width="6"
                 :show-text="false"
                 color="#00f2fe"
               />
@@ -30,11 +30,11 @@
             <div class="telemetry-item">
               <div class="telemetry-info">
                 <span>RAM 负载</span>
-                <span class="value-highlight">{{ ramUsage }}%</span>
+                <span class="value-highlight">{{ ramUsage > 0 ? ramUsage + '%' : '--' }}</span>
               </div>
-              <el-progress 
-                :percentage="ramUsage" 
-                :stroke-width="6" 
+              <el-progress
+                :percentage="ramUsage"
+                :stroke-width="6"
                 :show-text="false"
                 color="#8b5cf6"
               />
@@ -227,10 +227,9 @@ import { getStats, clearLogsAPI } from '../api/dashboard'
 import { runTask, dismissTask as runDismissTask } from '../api/task'
 import { ElMessage } from 'element-plus'
 
-// 系统遥测硬件指标模拟
-const cpuUsage = ref(38)
-const ramUsage = ref(62)
-let telemetryTimer = null
+// 系统遥测（暂无后端支持，显示 --）
+const cpuUsage = ref(0)
+const ramUsage = ref(0)
 
 const activeTab = ref('schedule')
 const stats = reactive({
@@ -469,17 +468,11 @@ onMounted(() => {
     fetchStats(true)
   }, 5000)
 
-  // 模拟 CPU/RAM 实时遥测数据的微小波动，增强科技跃动感
-  telemetryTimer = setInterval(() => {
-    cpuUsage.value = Math.max(15, Math.min(85, cpuUsage.value + Math.floor(Math.random() * 9) - 4))
-    ramUsage.value = Math.max(30, Math.min(80, ramUsage.value + Math.floor(Math.random() * 5) - 2))
-  }, 3000)
 })
 
 onUnmounted(() => {
   if (eventSource) eventSource.close()
   if (pollTimer) clearInterval(pollTimer)
-  if (telemetryTimer) clearInterval(telemetryTimer)
 })
 </script>
 

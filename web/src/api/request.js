@@ -27,7 +27,7 @@ service.interceptors.response.use(
     if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
       msg = '请求超时，请稍后重试'
     } else {
-      msg = error.response?.data?.error || error.message || '请求失败'
+      msg = error.response?.data?.error || error.response?.data?.message || error.message || '请求失败'
     }
     ElMessage({
       message: msg,

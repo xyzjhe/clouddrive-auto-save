@@ -29,11 +29,7 @@ const handleSearch = async () => {
       params.source = selectedSources.value
     }
     const data = await searchResources(params)
-    if (data.code === 0) {
-      results.value = data.data.items || []
-    } else {
-      ElMessage.error(data.message || '搜索失败')
-    }
+    results.value = data.items || []
   } catch (error) {
     console.error('搜索失败:', error)
   } finally {
