@@ -4,6 +4,18 @@
 
 ### ✨ 核心特性 (Features)
 
+- **任务重试机制**：失败任务自动分类（致命/可恢复），可恢复错误按指数退避重试（30s→60s→120s→...→最大 3600s），支持配置最大重试次数和忽略后缀去重。
+- **凭证安全**：`GET /api/accounts` 返回 DTO（排除 Cookie/AuthToken），`GET /api/settings/global` 对含 token/key/password 的配置值脱敏为 `***`。
+
+### 🔧 重构 (Refactoring)
+
+- **API 响应格式统一**：全部端点统一为扁平格式（直接返回业务数据），消除了信封格式 `{code, data}` 与扁平格式共存的不一致问题。Settings.vue 中 4 处绕过 request.js 的 raw fetch 调用改为统一使用 axios 实例。
+- **预定义魔法匹配**：新增 `$TV`、`$BLACK_WORD`、`$SHOW_MAGIC`、`$TV_MAGIC` 四种预定义正则规则，任务中直接用 `$名称` 引用。
+- **链接验证 API**：新增 `GET /api/search/validate` 端点，自动识别夸克/移动云盘平台并验证分享链接有效性。
+- **运行星期配置**：任务新增 `run_days` 字段，支持按星期过滤运行日（1=周一, 7=周日），比手写 Cron 更直观。
+- **忽略后缀去重**：任务新增 `ignore_extension` 开关，01.mp4 和 01.mkv 视为同一文件避免重复转存。
+- **Tasks 页面状态筛选**：新增全部/等待中/运行中/成功/失败筛选 Tab + 搜索框。
+- **全局快捷键**：Ctrl+S 保存任务、Ctrl+R 运行所有任务、未保存修改关闭拦截。
 - **CloudSaver & PanSou 搜索集成**：
   - **CloudSaver 搜索源**：实现 JWT Token 认证机制，支持自动登录续期，搜索结果自动清洗（提取夸克链接、解析标题描述、时间格式化）。
   - **PanSou 搜索源**：实现免认证搜索，支持按网盘类型过滤和结果合并去重，`note` 字段自动解析为标题和描述。

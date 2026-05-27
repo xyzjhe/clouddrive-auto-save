@@ -159,6 +159,67 @@ GET /api/search?q=黑镜&source=cloudsaver&source=pansou&page=1
 | `tags` | array | 标签（仅 CloudSaver） |
 | `channel` | string | 来源频道 |
 
+### 5. 验证链接有效性
+
+**GET** `/api/search/validate`
+
+验证分享链接是否有效（自动识别夸克/移动云盘平台）。
+
+**查询参数:**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `url` | string | 是 | 分享链接 URL |
+
+**成功响应:**
+```json
+{
+  "code": 0,
+  "data": {
+    "valid": true,
+    "message": "链接有效"
+  }
+}
+```
+
+**失效链接响应:**
+```json
+{
+  "code": 0,
+  "data": {
+    "valid": false,
+    "message": "链接已过期"
+  }
+}
+```
+
+## 预定义魔法匹配规则
+
+**GET** `/api/magic_patterns`
+
+获取所有预定义的正则匹配规则，任务中可直接用 `$名称` 引用。
+
+**成功响应:**
+```json
+{
+  "code": 0,
+  "data": {
+    "$TV": {
+      "pattern": "(?i).*?([Ss]\\d{1,2})?...",
+      "replacement": "$1E$2.$3",
+      "description": "剧集标准化命名 (S01E01.mp4)"
+    },
+    "$BLACK_WORD": {
+      "pattern": "^(?!.*纯享)(?!.*加更)...",
+      "replacement": "$0",
+      "description": "黑名单过滤"
+    },
+    "$SHOW_MAGIC": { "..." },
+    "$TV_MAGIC": { "..." }
+  }
+}
+```
+
 ## 错误码
 
 | 错误码 | 说明 |

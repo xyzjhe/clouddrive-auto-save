@@ -16,7 +16,7 @@
 4. [系统设置 (Settings)](./settings.md) - 全局调度规则、通知推送与 OpenList 扫描配置。
 5. [插件管理 (Plugins)](./plugins.md) - 插件列表、详情、配置更新。
 6. [Telegram 配置 (Telegram)](./telegram.md) - Telegram 机器人配置与测试。
-7. [资源搜索 (Search)](./search.md) - 资源搜索与搜索源列表。
+7. [资源搜索 (Search)](./search.md) - 资源搜索、搜索源列表、链接验证、预定义魔法匹配规则。
 8. [通知配置 (Notify)](./notify.md) - 多渠道通知配置与测试。
 9. [数据库设计 (Database Schema)](./database.md) - 核心数据表结构与字段说明。
 10. [Bark 消息推送 (Bark API)](../bark_api.md) - 外部通知推送接口与参数说明。

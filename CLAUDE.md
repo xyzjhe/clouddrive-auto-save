@@ -81,12 +81,13 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - **提交规范**：严格遵循 Angular Conventional Commits — `feat(scope): ...`、`fix(scope): ...`、`docs(scope): ...`，重点阐述 "原因 (Why)" 和 "改动 (What)"
 - **纯 Go 架构**：使用 `glebarez/sqlite`（无 CGO 依赖）以确保跨平台交叉编译，无需 C 编译器
 - **错误处理**：不可吞噬错误。严重异常使用 `[Fatal]` 级别日志，通过 SSE 同步至前端 UI 展示
+- **API 响应格式**：统一使用扁平格式 — 成功直接返回业务数据（`c.PureJSON(200, data)`），错误返回 `gin.H{"error": "..."}`。禁止使用信封格式 `{code, data}`。前端统一通过 `request.js`（axios）调用，禁止绕过用 raw `fetch()`
 - **环境变量**：`LOG_LEVEL`（DEBUG/INFO/WARN/ERROR）、`DB_PATH`（默认 `data.db`）、`LISTEN_ADDR`（默认 `0.0.0.0:8080`）
 
 ## 数据库模型 (`internal/db/db.go`)
 
 - **Account**：平台 (139/quark)、昵称、凭证、状态、容量
-- **Task**：关联账号、分享链接、提取码、保存路径、正则表达式、Cron、状态/进度
+- **Task**：关联账号、分享链接、提取码、保存路径、正则表达式、Cron、状态/进度、重试计数、运行星期、忽略后缀去重
 - **CommonFolder**：每个账号的收藏文件夹路径
 - **Setting**：全局配置的键值存储（调度、Bark 通知）
 
@@ -99,5 +100,6 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - 设置：调度配置 + 全局设置 + 测试 Bark
 - 插件管理：列表 + 详情 + 配置更新
 - Telegram 配置：获取配置 + 更新配置 + 测试连接
-- 资源搜索：搜索资源 + 搜索源列表 + 搜索配置（GET/PUT /api/search/config）
+- 资源搜索：搜索资源 + 搜索源列表 + 搜索配置（GET/PUT /api/search/config）+ 链接验证
+- 魔法匹配：预定义正则规则列表（GET /api/magic_patterns）
 - 通知配置：列表 + 详情 + 更新 + 测试
