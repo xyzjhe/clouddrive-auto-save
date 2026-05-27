@@ -56,3 +56,30 @@ func (h *SearchHandler) ListSources(c *gin.Context) {
 		"data": sources,
 	})
 }
+
+// GetConfig 获取搜索源配置（密码脱敏）
+func (h *SearchHandler) GetConfig(c *gin.Context) {
+	config := h.client.GetConfig()
+	masked := *config
+	if masked.CloudSaver.Password != "" {
+		masked.CloudSaver.Password = "***"
+	}
+	if masked.CloudSaver.Token != "" {
+		masked.CloudSaver.Token = "***"
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 0, "data": masked})
+}
+
+// UpdateConfig 更新搜索源配置
+func (h *SearchHandler) UpdateConfig(c *gin.Context) {
+	var config search.SearchConfig
+	if err := c.ShouldBindJSON(&config); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "请求参数错误"})
+		return
+	}
+	if err := h.client.SaveAndUpdateConfig(&config); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "保存配置失败"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "配置已更新"})
+}

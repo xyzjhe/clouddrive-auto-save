@@ -92,6 +92,8 @@ func InitRouter(wm *worker.Manager, version, commit, date string) *gin.Engine {
 		// 资源搜索
 		api.GET("/search", searchResources)
 		api.GET("/search/sources", listSearchSources)
+		api.GET("/search/config", getSearchConfig)
+		api.PUT("/search/config", updateSearchConfig)
 
 		// 通知配置
 		api.GET("/notify", listNotifiers)
@@ -827,6 +829,22 @@ func listSearchSources(c *gin.Context) {
 		return
 	}
 	searchHandler.ListSources(c)
+}
+
+func getSearchConfig(c *gin.Context) {
+	if searchHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "搜索服务未初始化"})
+		return
+	}
+	searchHandler.GetConfig(c)
+}
+
+func updateSearchConfig(c *gin.Context) {
+	if searchHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "搜索服务未初始化"})
+		return
+	}
+	searchHandler.UpdateConfig(c)
 }
 
 // 通知处理函数
