@@ -155,7 +155,6 @@ func (s *CloudSaverSource) cleanResults(data []map[string]interface{}) []SearchI
 	patternHTML := regexp.MustCompile(`<[^>]+>`)
 
 	for _, channel := range data {
-		channelID, _ := channel["channelId"].(string)
 		list, _ := channel["list"].([]interface{})
 		for _, item := range list {
 			itemMap, ok := item.(map[string]interface{})
@@ -165,6 +164,7 @@ func (s *CloudSaverSource) cleanResults(data []map[string]interface{}) []SearchI
 			title, _ := itemMap["title"].(string)
 			content, _ := itemMap["content"].(string)
 			pubDate, _ := itemMap["pubDate"].(string)
+			channelID, _ := itemMap["channelId"].(string)
 
 			var tags []string
 			if tagsRaw, ok := itemMap["tags"].([]interface{}); ok {
