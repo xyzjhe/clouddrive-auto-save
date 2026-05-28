@@ -14,7 +14,7 @@ import (
 func TestPanSou_Search_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "哪吒", r.URL.Query().Get("kw"))
-		assert.Equal(t, `["quark"]`, r.URL.Query().Get("cloud_types"))
+		assert.Equal(t, "quark", r.URL.Query().Get("cloud_types"))
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"code": 0,
 			"data": map[string]interface{}{

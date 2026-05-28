@@ -50,7 +50,7 @@ func (s *PanSouSource) Search(query string, page int) (*SearchResult, error) {
 
 	params := url.Values{}
 	params.Set("kw", query)
-	params.Set("cloud_types", `["quark"]`)
+	params.Set("cloud_types", "quark")
 	params.Set("res", "merge")
 
 	reqURL := fmt.Sprintf("%s/api/search?%s", s.baseURL, params.Encode())
