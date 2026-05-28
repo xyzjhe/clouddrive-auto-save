@@ -70,6 +70,13 @@ func (c *Client) GetConfig() *SearchConfig {
 
 // SaveAndUpdateConfig 保存配置并热更新
 func (c *Client) SaveAndUpdateConfig(config *SearchConfig) error {
+	// 保留脱敏字段的原值：前端返回 *** 表示未修改，不应覆盖真实密码
+	if config.CloudSaver.Password == "***" {
+		config.CloudSaver.Password = c.config.CloudSaver.Password
+	}
+	if config.CloudSaver.Token == "***" {
+		config.CloudSaver.Token = c.config.CloudSaver.Token
+	}
 	if c.db != nil {
 		if err := SaveConfig(c.db, config); err != nil {
 			return err
