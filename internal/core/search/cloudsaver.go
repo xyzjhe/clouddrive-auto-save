@@ -78,7 +78,6 @@ func (s *CloudSaverSource) login() error {
 
 // Search 搜索资源
 func (s *CloudSaverSource) Search(query string, platforms []string, page int) (*SearchResult, error) {
-	_ = platforms
 	result, err := s.doSearch(query, "")
 	if err != nil {
 		return nil, err
@@ -98,7 +97,7 @@ func (s *CloudSaverSource) Search(query string, platforms []string, page int) (*
 		return nil, fmt.Errorf("搜索失败: %s", result.Message)
 	}
 
-	items := s.cleanResults(result.Data)
+	items := s.cleanResults(result.Data, platforms)
 	return &SearchResult{
 		Total: len(items),
 		Page:  page,
@@ -147,7 +146,7 @@ func (s *CloudSaverSource) doSearch(query, lastMessageID string) (*csSearchRespo
 }
 
 // cleanResults 清洗搜索结果
-func (s *CloudSaverSource) cleanResults(data []map[string]interface{}) []SearchItem {
+func (s *CloudSaverSource) cleanResults(data []map[string]interface{}, platforms []string) []SearchItem {
 	var items []SearchItem
 	seen := make(map[string]bool)
 
@@ -193,9 +192,12 @@ func (s *CloudSaverSource) cleanResults(data []map[string]interface{}) []SearchI
 					continue
 				}
 				cloudType, _ := linkMap["cloudType"].(string)
-				if cloudType != "quark" {
+
+				// 根据 platforms 过滤（如果指定了）
+				if len(platforms) > 0 && !contains(platforms, cloudType) {
 					continue
 				}
+
 				linkURL, _ := linkMap["link"].(string)
 				if linkURL == "" || seen[linkURL] {
 					continue
@@ -206,7 +208,7 @@ func (s *CloudSaverSource) cleanResults(data []map[string]interface{}) []SearchI
 					Title:     title,
 					URL:       linkURL,
 					Source:    "CloudSaver",
-					Platform:  "quark",
+					Platform:  cloudType,
 					Summary:   content,
 					UpdatedAt: toCST(pubDate),
 					Tags:      tags,

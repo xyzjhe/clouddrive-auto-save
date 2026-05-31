@@ -49,12 +49,13 @@ func TestCloudSaver_Search_Success(t *testing.T) {
 
 	result, err := src.Search("黑镜", nil, 1)
 	require.NoError(t, err)
-	assert.Len(t, result.Items, 1)
+	assert.Len(t, result.Items, 2)
 	assert.Equal(t, "黑镜 第七季", result.Items[0].Title)
 	assert.Equal(t, "https://pan.quark.cn/s/abc123", result.Items[0].URL)
 	assert.Equal(t, "科幻美剧", result.Items[0].Summary)
 	assert.Equal(t, "CloudSaver", result.Items[0].Source)
 	assert.Equal(t, "quark", result.Items[0].Platform)
+	assert.Equal(t, "alipan", result.Items[1].Platform)
 }
 
 func TestCloudSaver_Search_TokenExpired(t *testing.T) {
@@ -109,7 +110,7 @@ func TestCloudSaver_CleanResults_FilterNonQuark(t *testing.T) {
 			},
 		},
 	}
-	items := src.cleanResults(raw)
+	items := src.cleanResults(raw, []string{"quark"})
 	assert.Len(t, items, 1)
 	assert.Equal(t, "quark", items[0].Platform)
 }
