@@ -3,7 +3,21 @@ import { ElMessage } from 'element-plus'
 
 const service = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 10000
+  timeout: 10000,
+  paramsSerializer: params => {
+    const parts = []
+    for (const key in params) {
+      const value = params[key]
+      if (Array.isArray(value)) {
+        value.forEach(v => {
+          parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(v)}`)
+        })
+      } else if (value !== undefined && value !== null) {
+        parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+      }
+    }
+    return parts.join('&')
+  }
 })
 
 // 请求拦截器
