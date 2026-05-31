@@ -87,7 +87,7 @@ func (c *Client) SaveAndUpdateConfig(config *SearchConfig) error {
 }
 
 // Search 搜索资源（并发 + 去重 + 排序）
-func (c *Client) Search(query string, sources []string, page int) (*SearchResult, error) {
+func (c *Client) Search(query string, sources []string, platforms []string, page int) (*SearchResult, error) {
 	c.mu.RLock()
 	activeSources := make([]Source, len(c.sources))
 	copy(activeSources, c.sources)
@@ -105,7 +105,7 @@ func (c *Client) Search(query string, sources []string, page int) (*SearchResult
 		wg.Add(1)
 		go func(src Source) {
 			defer wg.Done()
-			result, err := src.Search(query, nil, page)
+			result, err := src.Search(query, platforms, page)
 			if err != nil {
 				slog.Error("搜索源失败", "name", src.Name(), "error", err)
 				return

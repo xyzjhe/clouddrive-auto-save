@@ -56,7 +56,7 @@ func TestClient_Search_MergeAndDedup(t *testing.T) {
 		}),
 	}
 
-	result, err := client.Search("test", []string{}, 1)
+	result, err := client.Search("test", []string{}, nil, 1)
 	require.NoError(t, err)
 	assert.Len(t, result.Items, 3)
 	// 验证按时间降序
@@ -78,7 +78,7 @@ func TestClient_Search_FilterSources(t *testing.T) {
 		}),
 	}
 
-	result, err := client.Search("test", []string{"PanSou"}, 1)
+	result, err := client.Search("test", []string{"PanSou"}, nil, 1)
 	require.NoError(t, err)
 	assert.Len(t, result.Items, 1)
 	assert.Equal(t, "PanSou", result.Items[0].Source)

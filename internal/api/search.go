@@ -29,9 +29,10 @@ func (h *SearchHandler) Search(c *gin.Context) {
 	}
 
 	sources := c.QueryArray("source")
+	platforms := c.QueryArray("platform")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 
-	result, err := h.client.Search(query, sources, page)
+	result, err := h.client.Search(query, sources, platforms, page)
 	if err != nil {
 		c.PureJSON(http.StatusInternalServerError, gin.H{"error": "搜索失败"})
 		return
