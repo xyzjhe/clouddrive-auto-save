@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strings"
@@ -80,10 +82,14 @@ func (s *CloudSaverSource) login() error {
 func (s *CloudSaverSource) Search(query string, platforms []string, page int) (*SearchResult, error) {
 	result, err := s.doSearch(query, "")
 	if err != nil {
+		slog.Error("CloudSaver 首次搜索失败", "error", err)
 		return nil, err
 	}
 
+	slog.Info("CloudSaver 搜索响应", "success", result.Success, "message", result.Message, "data_len", len(result.Data))
+
 	if result.Message == "无效的 token" || result.Message == "未提供 token" {
+		slog.Info("CloudSaver token 无效，尝试自动登录")
 		if loginErr := s.login(); loginErr != nil {
 			return nil, fmt.Errorf("自动登录失败: %w", loginErr)
 		}
@@ -98,6 +104,7 @@ func (s *CloudSaverSource) Search(query string, platforms []string, page int) (*
 	}
 
 	items := s.cleanResults(result.Data, platforms)
+	slog.Info("CloudSaver 清洗结果", "input_channels", len(result.Data), "output_items", len(items))
 	return &SearchResult{
 		Total: len(items),
 		Page:  page,
@@ -114,7 +121,7 @@ type csSearchResponse struct {
 
 // doSearch 执行搜索请求
 func (s *CloudSaverSource) doSearch(query, lastMessageID string) (*csSearchResponse, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	url := fmt.Sprintf("%s/api/search?keyword=%s&lastMessageId=%s", s.baseURL, query, lastMessageID)
@@ -132,14 +139,25 @@ func (s *CloudSaverSource) doSearch(query, lastMessageID string) (*csSearchRespo
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 UCAS/1.0")
 
+	slog.Debug("CloudSaver 请求", "url", url, "token_len", len(token))
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("搜索请求失败: %w", err)
 	}
 	defer resp.Body.Close()
 
+	slog.Debug("CloudSaver 响应头", "status", resp.StatusCode, "content_length", resp.ContentLength, "transfer_encoding", resp.TransferEncoding, "uncompressed", resp.Uncompressed, "content_encoding", resp.Header.Get("Content-Encoding"))
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("读取响应体失败: %w", err)
+	}
+
+	slog.Info("CloudSaver 响应大小", "bytes", len(body), "content_length", resp.ContentLength)
+
 	var result csSearchResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("解析搜索响应失败: %w", err)
 	}
 	return &result, nil
@@ -155,7 +173,10 @@ func (s *CloudSaverSource) cleanResults(data []map[string]interface{}, platforms
 	patternHTML := regexp.MustCompile(`<[^>]+>`)
 
 	for _, channel := range data {
-		list, _ := channel["list"].([]interface{})
+		list, ok := channel["list"].([]interface{})
+		if !ok {
+			continue
+		}
 		for _, item := range list {
 			itemMap, ok := item.(map[string]interface{})
 			if !ok {
