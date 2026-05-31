@@ -8,7 +8,7 @@ import (
 // Source 搜索源接口
 type Source interface {
 	Name() string
-	Search(query string, page int) (*SearchResult, error)
+	Search(query string, platforms []string, page int) (*SearchResult, error)
 }
 
 // SearchResult 搜索结果
