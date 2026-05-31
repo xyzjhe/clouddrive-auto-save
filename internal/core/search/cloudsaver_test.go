@@ -47,7 +47,7 @@ func TestCloudSaver_Search_Success(t *testing.T) {
 
 	src := NewCloudSaverSource(server.URL, "admin", "pass", "test-token")
 
-	result, err := src.Search("黑镜", 1)
+	result, err := src.Search("黑镜", nil, 1)
 	require.NoError(t, err)
 	assert.Len(t, result.Items, 1)
 	assert.Equal(t, "黑镜 第七季", result.Items[0].Title)
@@ -84,7 +84,7 @@ func TestCloudSaver_Search_TokenExpired(t *testing.T) {
 	defer server.Close()
 
 	src := NewCloudSaverSource(server.URL, "admin", "pass", "expired-token")
-	result, err := src.Search("test", 1)
+	result, err := src.Search("test", nil, 1)
 	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, 2, callCount)

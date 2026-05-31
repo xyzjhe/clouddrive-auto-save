@@ -105,7 +105,7 @@ func (c *Client) Search(query string, sources []string, page int) (*SearchResult
 		wg.Add(1)
 		go func(src Source) {
 			defer wg.Done()
-			result, err := src.Search(query, page)
+			result, err := src.Search(query, nil, page)
 			if err != nil {
 				slog.Error("搜索源失败", "name", src.Name(), "error", err)
 				return

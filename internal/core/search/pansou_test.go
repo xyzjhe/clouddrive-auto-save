@@ -34,7 +34,7 @@ func TestPanSou_Search_Success(t *testing.T) {
 	defer server.Close()
 
 	src := NewPanSouSource(server.URL)
-	result, err := src.Search("哪吒", 1)
+	result, err := src.Search("哪吒", nil, 1)
 	require.NoError(t, err)
 	assert.Len(t, result.Items, 1)
 	assert.Equal(t, "哪吒之魔童降世", result.Items[0].Title)
@@ -65,7 +65,7 @@ func TestPanSou_Search_EmptyNote(t *testing.T) {
 	defer server.Close()
 
 	src := NewPanSouSource(server.URL)
-	result, err := src.Search("test", 1)
+	result, err := src.Search("test", nil, 1)
 	require.NoError(t, err)
 	assert.Len(t, result.Items, 1)
 	assert.Equal(t, "简单标题没有简介", result.Items[0].Title)
@@ -90,7 +90,7 @@ func TestPanSou_Search_Dedup(t *testing.T) {
 	defer server.Close()
 
 	src := NewPanSouSource(server.URL)
-	result, err := src.Search("test", 1)
+	result, err := src.Search("test", nil, 1)
 	require.NoError(t, err)
 	assert.Len(t, result.Items, 2)
 }
@@ -102,7 +102,7 @@ func TestPanSou_Search_Error(t *testing.T) {
 	defer server.Close()
 
 	src := NewPanSouSource(server.URL)
-	result, err := src.Search("test", 1)
+	result, err := src.Search("test", nil, 1)
 	require.NoError(t, err)
 	assert.Len(t, result.Items, 0)
 }

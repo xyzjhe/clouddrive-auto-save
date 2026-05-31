@@ -44,7 +44,8 @@ type psItem struct {
 }
 
 // Search 搜索资源
-func (s *PanSouSource) Search(query string, page int) (*SearchResult, error) {
+func (s *PanSouSource) Search(query string, platforms []string, page int) (*SearchResult, error) {
+	_ = platforms
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

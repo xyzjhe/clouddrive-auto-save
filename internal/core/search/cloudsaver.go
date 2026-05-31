@@ -77,7 +77,8 @@ func (s *CloudSaverSource) login() error {
 }
 
 // Search 搜索资源
-func (s *CloudSaverSource) Search(query string, page int) (*SearchResult, error) {
+func (s *CloudSaverSource) Search(query string, platforms []string, page int) (*SearchResult, error) {
+	_ = platforms
 	result, err := s.doSearch(query, "")
 	if err != nil {
 		return nil, err

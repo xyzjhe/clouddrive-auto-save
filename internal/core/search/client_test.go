@@ -26,7 +26,8 @@ func (s *MockSource) Name() string {
 	return s.name
 }
 
-func (s *MockSource) Search(query string, page int) (*SearchResult, error) {
+func (s *MockSource) Search(query string, platforms []string, page int) (*SearchResult, error) {
+	_ = platforms
 	if s.searchErr != nil {
 		return nil, s.searchErr
 	}
