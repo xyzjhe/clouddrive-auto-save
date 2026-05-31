@@ -57,7 +57,7 @@ func (s *PanSouSource) Search(query string, platforms []string, page int) (*Sear
 	if len(platforms) > 0 {
 		params.Set("cloud_types", strings.Join(platforms, ","))
 	} else {
-		params.Set("cloud_types", "quark,139")
+		params.Set("cloud_types", PlatformQuark+","+Platform139)
 	}
 
 	reqURL := fmt.Sprintf("%s/api/search?%s", s.baseURL, params.Encode())
@@ -83,8 +83,9 @@ func (s *PanSouSource) Search(query string, platforms []string, page int) (*Sear
 	}
 
 	var allItems []SearchItem
-	allItems = append(allItems, s.formatResults(result.Data.MergedByType.Quark, "quark")...)
-	allItems = append(allItems, s.formatResults(result.Data.MergedByType.Cloud139, "139")...)
+	seen := make(map[string]bool)
+	allItems = append(allItems, s.formatResults(result.Data.MergedByType.Quark, PlatformQuark, seen)...)
+	allItems = append(allItems, s.formatResults(result.Data.MergedByType.Cloud139, Platform139, seen)...)
 
 	return &SearchResult{
 		Total: len(allItems),
@@ -93,12 +94,11 @@ func (s *PanSouSource) Search(query string, platforms []string, page int) (*Sear
 	}, nil
 }
 
-// formatResults 格式化搜索结果
-func (s *PanSouSource) formatResults(data []psItem, platform string) []SearchItem {
+// formatResults 格式化搜索结果，seen 用于跨平台去重
+func (s *PanSouSource) formatResults(data []psItem, platform string, seen map[string]bool) []SearchItem {
 	pattern := regexp.MustCompile(`^(.*?)(?:【(?:简介|介绍|描述)】|\[(?:简介|介绍|描述)\]|(?:简介|介绍|描述)[:：])(.*)$`)
 
 	var items []SearchItem
-	seen := make(map[string]bool)
 
 	for _, item := range data {
 		if item.URL == "" || seen[item.URL] {

@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+// 平台常量
+const (
+	PlatformQuark = "quark"
+	Platform139   = "139"
+)
+
 // Source 搜索源接口
 type Source interface {
 	Name() string
