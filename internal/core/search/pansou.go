@@ -31,7 +31,8 @@ type psSearchResponse struct {
 	Code int `json:"code"`
 	Data struct {
 		MergedByType struct {
-			Quark []psItem `json:"quark"`
+			Quark    []psItem `json:"quark"`
+			Cloud139 []psItem `json:"139"`
 		} `json:"merged_by_type"`
 	} `json:"data"`
 }
@@ -45,14 +46,19 @@ type psItem struct {
 
 // Search 搜索资源
 func (s *PanSouSource) Search(query string, platforms []string, page int) (*SearchResult, error) {
-	_ = platforms
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	params := url.Values{}
 	params.Set("kw", query)
-	params.Set("cloud_types", "quark")
 	params.Set("res", "merge")
+
+	// 根据 platforms 动态构建 cloud_types
+	if len(platforms) > 0 {
+		params.Set("cloud_types", strings.Join(platforms, ","))
+	} else {
+		params.Set("cloud_types", "quark,139")
+	}
 
 	reqURL := fmt.Sprintf("%s/api/search?%s", s.baseURL, params.Encode())
 	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
@@ -76,16 +82,19 @@ func (s *PanSouSource) Search(query string, platforms []string, page int) (*Sear
 		return &SearchResult{Page: page}, nil
 	}
 
-	items := s.formatResults(result.Data.MergedByType.Quark)
+	var allItems []SearchItem
+	allItems = append(allItems, s.formatResults(result.Data.MergedByType.Quark, "quark")...)
+	allItems = append(allItems, s.formatResults(result.Data.MergedByType.Cloud139, "139")...)
+
 	return &SearchResult{
-		Total: len(items),
+		Total: len(allItems),
 		Page:  page,
-		Items: items,
+		Items: allItems,
 	}, nil
 }
 
 // formatResults 格式化搜索结果
-func (s *PanSouSource) formatResults(data []psItem) []SearchItem {
+func (s *PanSouSource) formatResults(data []psItem, platform string) []SearchItem {
 	pattern := regexp.MustCompile(`^(.*?)(?:【(?:简介|介绍|描述)】|\[(?:简介|介绍|描述)\]|(?:简介|介绍|描述)[:：])(.*)$`)
 
 	var items []SearchItem
@@ -109,7 +118,7 @@ func (s *PanSouSource) formatResults(data []psItem) []SearchItem {
 			Title:     title,
 			URL:       item.URL,
 			Source:    "PanSou",
-			Platform:  "quark",
+			Platform:  platform,
 			Summary:   content,
 			UpdatedAt: toCST(item.DateTime),
 			Channel:   item.Source,
