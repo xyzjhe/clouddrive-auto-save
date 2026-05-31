@@ -1,17 +1,34 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search as SearchIcon, Link as LinkIcon, Clock as ClockIcon, FileText as FileTextIcon } from 'lucide-vue-next'
-import { searchResources } from '../api/search'
+import { searchResources, listSearchSources } from '../api/search'
 
 const router = useRouter()
 const query = ref('')
+const sources = ref([])
 const selectedSources = ref([])
-const sources = ref(['CloudSaver', 'PanSou'])
 const results = ref([])
 const loading = ref(false)
 const page = ref(1)
+
+// 网盘类型筛选
+const platforms = [
+  { label: '全部', value: '' },
+  { label: '夸克网盘', value: 'quark' },
+  { label: '移动云盘', value: '139' }
+]
+const selectedPlatforms = ref([])
+
+onMounted(async () => {
+  try {
+    const data = await listSearchSources()
+    sources.value = data || []
+  } catch (error) {
+    console.error('获取搜索源失败:', error)
+  }
+})
 
 const handleSearch = async () => {
   if (!query.value.trim()) {
@@ -27,6 +44,9 @@ const handleSearch = async () => {
     }
     if (selectedSources.value.length > 0) {
       params.source = selectedSources.value
+    }
+    if (selectedPlatforms.value.length > 0) {
+      params.platform = selectedPlatforms.value
     }
     const data = await searchResources(params)
     results.value = data.items || []
@@ -73,16 +93,32 @@ const handleCreateTask = (item) => {
         </template>
       </el-input>
 
-      <div class="source-filter">
-        <el-checkbox-group v-model="selectedSources">
-          <el-checkbox
-            v-for="source in sources"
-            :key="source"
-            :label="source"
-          >
-            {{ source }}
-          </el-checkbox>
-        </el-checkbox-group>
+      <div class="filter-section">
+        <div v-if="sources.length > 0" class="source-filter">
+          <span class="filter-label">搜索源：</span>
+          <el-checkbox-group v-model="selectedSources">
+            <el-checkbox
+              v-for="source in sources"
+              :key="source"
+              :label="source"
+            >
+              {{ source }}
+            </el-checkbox>
+          </el-checkbox-group>
+        </div>
+
+        <div class="platform-filter">
+          <span class="filter-label">网盘类型：</span>
+          <el-checkbox-group v-model="selectedPlatforms">
+            <el-checkbox
+              v-for="p in platforms"
+              :key="p.value"
+              :label="p.value"
+            >
+              {{ p.label }}
+            </el-checkbox>
+          </el-checkbox-group>
+        </div>
       </div>
     </div>
 
@@ -180,8 +216,24 @@ const handleCreateTask = (item) => {
   margin-bottom: 1.5rem;
 }
 
-.source-filter {
+.filter-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
   margin-top: 1rem;
+}
+
+.source-filter,
+.platform-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 .search-results {
