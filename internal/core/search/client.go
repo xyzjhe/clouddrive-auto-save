@@ -4,6 +4,7 @@ package search
 import (
 	"log/slog"
 	"sort"
+	"strings"
 	"sync"
 
 	"gorm.io/gorm"
@@ -120,14 +121,23 @@ func (c *Client) Search(query string, sources []string, platforms []string, page
 
 	wg.Wait()
 
-	// 去重
-	seen := make(map[string]bool)
+	// 去重（按 URL + 标题双重去重）
+	seenURL := make(map[string]bool)
+	seenTitle := make(map[string]bool)
 	var deduped []SearchItem
 	for _, item := range allItems {
-		if !seen[item.URL] {
-			seen[item.URL] = true
-			deduped = append(deduped, item)
+		if seenURL[item.URL] {
+			continue
 		}
+		normalizedTitle := strings.TrimSpace(strings.ToLower(item.Title))
+		if normalizedTitle != "" && seenTitle[normalizedTitle] {
+			continue
+		}
+		seenURL[item.URL] = true
+		if normalizedTitle != "" {
+			seenTitle[normalizedTitle] = true
+		}
+		deduped = append(deduped, item)
 	}
 
 	// 按时间降序排序
