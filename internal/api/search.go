@@ -3,7 +3,9 @@ package api
 
 import (
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zcq/clouddrive-auto-save/internal/core"
@@ -74,21 +76,49 @@ func (h *SearchHandler) UpdateConfig(c *gin.Context) {
 	c.PureJSON(http.StatusOK, gin.H{"message": "配置已更新"})
 }
 
+// isSafeURL 基础 URL 安全校验：仅阻止内网地址和非 HTTP(S) 协议（防止 SSRF）
+// 平台域名合法性由 GetDriverByURL 判定，此处不重复
+func isSafeURL(rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	host := strings.ToLower(u.Hostname())
+	// 阻止内网地址
+	internal := []string{"localhost", "127.0.0.1", "0.0.0.0"}
+	for _, h := range internal {
+		if host == h {
+			return false
+		}
+	}
+	if strings.HasPrefix(host, "192.168.") || strings.HasPrefix(host, "10.") || strings.HasPrefix(host, "172.") {
+		return false
+	}
+	return true
+}
+
 // ValidateLink 验证分享链接有效性
 func (h *SearchHandler) ValidateLink(c *gin.Context) {
-	url := c.Query("url")
-	if url == "" {
+	rawURL := c.Query("url")
+	if rawURL == "" {
 		c.PureJSON(http.StatusBadRequest, gin.H{"error": "请提供链接"})
 		return
 	}
+	if !isSafeURL(rawURL) {
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": "链接地址不合法"})
+		return
+	}
 
-	driver := core.GetDriverByURL(url)
+	driver := core.GetDriverByURL(rawURL)
 	if driver == nil {
 		c.PureJSON(http.StatusOK, gin.H{"valid": false, "message": "不支持的链接格式"})
 		return
 	}
 
-	_, err := driver.ParseShare(c.Request.Context(), url, "", "")
+	_, err := driver.ParseShare(c.Request.Context(), rawURL, "", "")
 	if err != nil {
 		c.PureJSON(http.StatusOK, gin.H{"valid": false, "message": err.Error()})
 		return

@@ -83,10 +83,10 @@ func TestNotifyAPI_UpdateNotifier(t *testing.T) {
 func TestNotifyAPI_TestNotifier(t *testing.T) {
 	router := setupNotifyRouter(t)
 
-	// 测试不存在的渠道应返回错误
+	// 测试不在白名单中的渠道名应返回 400
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/notify/not_exist/test", nil)
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 500, w.Code)
+	assert.Equal(t, 400, w.Code)
 }

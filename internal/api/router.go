@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -472,7 +473,13 @@ func runTask(c *gin.Context) {
 	utils.BroadcastTaskUpdate(&task)
 	utils.BroadcastStatsUpdate()
 
-	WorkerManager.Submit(worker.Job{Task: &task})
+	if err := WorkerManager.Submit(worker.Job{Task: &task}); err != nil {
+		// 队列满，回滚状态
+		db.DB.Model(&task).Updates(map[string]interface{}{"status": "pending", "stage": ""})
+		utils.BroadcastTaskUpdate(&task)
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		return
+	}
 	c.PureJSON(http.StatusOK, gin.H{"message": "task submitted to worker pool"})
 }
 
@@ -514,7 +521,13 @@ func runAllTasks(c *gin.Context) {
 		})
 		utils.BroadcastTaskUpdate(task)
 
-		WorkerManager.Submit(worker.Job{Task: task, BatchID: batchID})
+		if err := WorkerManager.Submit(worker.Job{Task: task, BatchID: batchID}); err != nil {
+			// 队列满，回滚该任务状态并跳过
+			db.DB.Model(task).Updates(map[string]interface{}{"status": "pending", "stage": ""})
+			utils.BroadcastTaskUpdate(task)
+			slog.Warn("批量提交跳过：队列已满", "task_id", task.ID)
+			continue
+		}
 		count++
 	}
 
@@ -696,6 +709,17 @@ func updateGlobalSettings(c *gin.Context) {
 		return
 	}
 
+	// 保护校验：禁止覆盖其他模块的配置前缀（通知、Telegram、搜索、插件等）
+	protectedPrefix := []string{"notify_config_", "telegram_config_", "search_config_", "plugin_config_"}
+	for k := range input {
+		for _, prefix := range protectedPrefix {
+			if strings.HasPrefix(k, prefix) {
+				c.PureJSON(http.StatusBadRequest, gin.H{"error": "不允许通过此接口修改: " + k})
+				return
+			}
+		}
+	}
+
 	// 提前检查 Cron 校验，避免在循环中重复或次序问题
 	if cronExpr, ok := input["global_schedule_cron"]; ok {
 		enabled := false
@@ -732,6 +756,23 @@ func updateGlobalSettings(c *gin.Context) {
 	c.PureJSON(http.StatusOK, gin.H{"message": "settings updated"})
 }
 
+// isSafeBarkURL 校验 Bark 服务器 URL 是否安全（防止 SSRF）
+func isSafeBarkURL(serverURL string) bool {
+	if serverURL == "" {
+		return false
+	}
+	u, err := url.Parse(strings.TrimSpace(serverURL))
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	// 禁止内网地址
+	if host == "localhost" || host == "127.0.0.1" || host == "0.0.0.0" || strings.HasPrefix(host, "192.168.") || strings.HasPrefix(host, "10.") || strings.HasPrefix(host, "172.") {
+		return false
+	}
+	return u.Scheme == "http" || u.Scheme == "https"
+}
+
 func testBarkNotification(c *gin.Context) {
 	var input struct {
 		Server  string `json:"bark_server"`
@@ -745,6 +786,10 @@ func testBarkNotification(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if !isSafeBarkURL(input.Server) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Bark 服务器地址不合法或为内网地址"})
 		return
 	}
 

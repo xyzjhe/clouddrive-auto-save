@@ -29,6 +29,10 @@ func (h *NotifyHandler) ListNotifiers(c *gin.Context) {
 // GetNotifier 获取通知渠道配置
 func (h *NotifyHandler) GetNotifier(c *gin.Context) {
 	name := c.Param("name")
+	if !allowedNotifierNames[name] {
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": "未知的通知渠道: " + name})
+		return
+	}
 
 	var setting db.Setting
 	err := db.DB.Where("key = ?", "notify_config_"+name).First(&setting).Error
@@ -52,9 +56,18 @@ func (h *NotifyHandler) GetNotifier(c *gin.Context) {
 	c.PureJSON(http.StatusOK, config)
 }
 
+// allowedNotifierNames 允许的通知渠道名称白名单
+var allowedNotifierNames = map[string]bool{
+	"bark": true, "wechat": true, "wxpusher": true, "telegram": true,
+}
+
 // UpdateNotifier 更新通知渠道配置
 func (h *NotifyHandler) UpdateNotifier(c *gin.Context) {
 	name := c.Param("name")
+	if !allowedNotifierNames[name] {
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": "未知的通知渠道: " + name})
+		return
+	}
 
 	var config notify.NotifierConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
@@ -91,6 +104,10 @@ func (h *NotifyHandler) UpdateNotifier(c *gin.Context) {
 // TestNotifier 测试通知渠道
 func (h *NotifyHandler) TestNotifier(c *gin.Context) {
 	name := c.Param("name")
+	if !allowedNotifierNames[name] {
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": "未知的通知渠道: " + name})
+		return
+	}
 
 	if err := h.manager.Test(c.Request.Context(), name); err != nil {
 		c.PureJSON(http.StatusInternalServerError, gin.H{"error": "测试失败: " + err.Error()})
