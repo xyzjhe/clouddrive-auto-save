@@ -131,16 +131,24 @@ func parseShareLinkInfo(c *gin.Context) {
 
 	slog.Info("正在解析分享链接", "url", req.ShareURL, "account_id", req.AccountID, "parent_id", req.ParentID, "save_path", req.SavePath)
 
-	var account db.Account
-	if err := db.DB.First(&account, req.AccountID).Error; err != nil {
-		slog.Error("解析失败: 账号未找到", "account_id", req.AccountID)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
-		return
+	var driver core.CloudDrive
+
+	// 如果提供了 account_id，使用账号对应的驱动
+	if req.AccountID > 0 {
+		var account db.Account
+		if err := db.DB.First(&account, req.AccountID).Error; err != nil {
+			slog.Error("解析失败: 账号未找到", "account_id", req.AccountID)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+			return
+		}
+		driver = core.GetDriver(&account)
+	} else {
+		// 否则根据 URL 自动识别平台（公共分享链接不需要账号）
+		driver = core.GetDriverByURL(req.ShareURL)
 	}
 
-	driver := core.GetDriver(&account)
 	if driver == nil {
-		slog.Error("解析失败: 驱动加载失败", "platform", account.Platform)
+		slog.Error("解析失败: 驱动加载失败", "url", req.ShareURL)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Driver not found"})
 		return
 	}
