@@ -89,7 +89,9 @@ func (s *Scheduler) UpdateGlobalSchedule(cronExpr string, enabled bool) {
 				}
 
 				slog.Info("全局调度：正在触发任务", "task_id", task.ID)
-				s.wm.Submit(worker.Job{Task: &task})
+				if err := s.wm.Submit(worker.Job{Task: &task}); err != nil {
+					slog.Warn("全局调度提交失败：队列已满", "task_id", task.ID, "error", err)
+				}
 			}
 		})
 
@@ -132,8 +134,10 @@ func (s *Scheduler) UpdateTask(taskID uint, mode string, customCron string) {
 			}
 
 			slog.Info("自定义调度：正在触发任务", "task_id", taskID)
-			s.wm.Submit(worker.Job{Task: &task})
-		})
+		if err := s.wm.Submit(worker.Job{Task: &task}); err != nil {
+			slog.Warn("自定义调度提交失败：队列已满", "task_id", task.ID, "error", err)
+		}
+	})
 
 		if err != nil {
 			slog.Error("更新任务自定义调度失败", "task_id", taskID, "error", err)

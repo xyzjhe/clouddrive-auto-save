@@ -62,9 +62,14 @@ func (m *Manager) Stop() {
 	m.wg.Wait()
 }
 
-// Submit 提交一个任务
-func (m *Manager) Submit(job Job) {
-	m.jobQueue <- job
+// Submit 提交一个任务，队列满时返回错误而非阻塞
+func (m *Manager) Submit(job Job) error {
+	select {
+	case m.jobQueue <- job:
+		return nil
+	default:
+		return fmt.Errorf("任务队列已满（容量 %d），请稍后重试", cap(m.jobQueue))
+	}
 }
 
 // RegisterBatch 注册一个批量执行批次
@@ -204,7 +209,10 @@ func (m *Manager) execute(job Job) {
 
 	var compiledReg *regexp.Regexp
 	if pattern != "" {
-		compiledReg, _ = regexp.Compile(pattern)
+		compiledReg, err = regexp.Compile(pattern)
+		if err != nil {
+			slog.Warn("正则表达式编译失败，跳过正则过滤", "pattern", pattern, "error", err)
+		}
 	}
 
 	for _, f := range files {
@@ -296,10 +304,19 @@ func (m *Manager) execute(job Job) {
 func isFatalError(message string) bool {
 	fatalPatterns := []string{
 		"链接失效", "链接过期", "提取码错误", "提取码无效",
-		"分享已删除", "分享已过期", "不存在", "权限不足",
-		"cookie", "Cookie", "token", "Token",
+		"分享已删除", "分享已过期", "权限不足",
 	}
 	for _, p := range fatalPatterns {
+		if strings.Contains(message, p) {
+			return true
+		}
+	}
+	// 精确匹配容易误判的模式，避免 "timeout" / "target directory does not exist" 等被误判
+	exactChecks := []string{
+		"不存在", "cookie过期", "Cookie过期",
+		"token无效", "token过期", "Token无效", "Token过期",
+	}
+	for _, p := range exactChecks {
 		if strings.Contains(message, p) {
 			return true
 		}
@@ -339,10 +356,18 @@ func (m *Manager) finishTask(job Job, status, message string, files []string, st
 			utils.BroadcastTaskUpdate(task)
 			utils.BroadcastStatsUpdate()
 
-			// 延迟后重新入队
+			// 延迟后重新入队（使用 select 等待，支持 context 取消）
 			go func() {
-				time.Sleep(time.Duration(delay) * time.Second)
-				m.Submit(Job{Task: task, BatchID: job.BatchID})
+				timer := time.NewTimer(time.Duration(delay) * time.Second)
+				defer timer.Stop()
+				select {
+				case <-m.ctx.Done():
+					slog.Info("重试已取消（服务关闭）", "task_id", task.ID)
+				case <-timer.C:
+					if err := m.Submit(Job{Task: task, BatchID: job.BatchID}); err != nil {
+					slog.Warn("重试提交失败：队列已满", "task_id", task.ID, "error", err)
+				}
+				}
 			}()
 			return
 		}
