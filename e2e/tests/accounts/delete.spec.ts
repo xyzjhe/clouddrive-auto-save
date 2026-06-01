@@ -18,7 +18,7 @@ test.describe('账号管理：删除测试', () => {
     await page.getByRole('button', { name: '确定' }).click();
 
     // 等待 Element Plus 消息提示出现
-    await expect(page.locator('.el-message')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.el-message').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('取消删除账号', async ({ page }) => {
