@@ -70,13 +70,15 @@ Authorization: Bearer <token>
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `keyword` | string | 是 | 搜索关键词 |
-| `lastMessageId` | string | 否 | 上一条消息 ID，用于分页翻页 |
+| `keyword` | string | 是 | 搜索关键词（必须 URL 编码） |
+| `lastMessageId` | string | 否 | 上一条消息 ID，用于分页翻页（空值时不要包含此参数） |
 
 **请求示例:**
 ```
-GET /api/search?keyword=黑镜&lastMessageId=
+GET /api/search?keyword=%E9%BB%91%E9%95%9C
 ```
+
+> **重要：** `keyword` 参数必须进行 URL 编码（尤其是中文关键词）。使用 `fmt.Sprintf` 拼接原始中文会导致服务器返回截断的空结果（8772 字节）。Go 中应使用 `url.Values.Encode()` 自动处理编码。
 
 **成功响应:**
 ```json
