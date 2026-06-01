@@ -48,7 +48,7 @@ onMounted(async () => {
   }
 })
 
-// 批量校验链接有效性，过滤失效链接
+// 批量校验链接有效性，过滤失效链接，返回有效列表
 const validateLinks = async (items) => {
   validating.value = true
   const promises = items.map(async (item) => {
@@ -62,8 +62,8 @@ const validateLinks = async (items) => {
     }
   })
   await Promise.allSettled(promises)
-  // 过滤失效链接
-  results.value = results.value.filter(item => item.valid !== false)
+  // 过滤失效链接后设置最终结果
+  results.value = items.filter(item => item.valid !== false)
   validating.value = false
 }
 
@@ -87,11 +87,13 @@ const handleSearch = async () => {
       params.platform = selectedPlatforms.value
     }
     const data = await searchResources(params)
-    results.value = data.items || []
+    const items = data.items || []
 
-    // 自动校验链接有效性
-    if (results.value.length > 0) {
-      validateLinks(results.value)
+    // 先校验链接有效性，验证完成后再展示过滤后的结果
+    if (items.length > 0) {
+      await validateLinks(items)
+    } else {
+      results.value = []
     }
   } catch (error) {
     console.error('搜索失败:', error)
@@ -296,7 +298,7 @@ const handleCreateTaskFromDialog = (data) => {
   margin: 0;
   font-size: 26px;
   font-weight: 800;
-  color: var(--neutral-800);
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
