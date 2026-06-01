@@ -2,6 +2,7 @@
 package search
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -41,9 +42,16 @@ func (s *CloudSaverSource) Name() string {
 
 // login 登录获取 Token
 func (s *CloudSaverSource) login() error {
-	url := fmt.Sprintf("%s/api/user/login", s.baseURL)
-	body := fmt.Sprintf(`{"username":"%s","password":"%s"}`, s.username, s.password)
-	req, err := http.NewRequestWithContext(context.Background(), "POST", url, strings.NewReader(body))
+	reqURL := fmt.Sprintf("%s/api/user/login", s.baseURL)
+	// 使用 json.Marshal 防止用户名/密码中的特殊字符导致 JSON 注入
+	loginPayload, err := json.Marshal(map[string]string{
+		"username": s.username,
+		"password": s.password,
+	})
+	if err != nil {
+		return fmt.Errorf("构造登录请求失败: %w", err)
+	}
+	req, err := http.NewRequestWithContext(context.Background(), "POST", reqURL, bytes.NewReader(loginPayload))
 	if err != nil {
 		return fmt.Errorf("创建登录请求失败: %w", err)
 	}
@@ -169,14 +177,17 @@ func (s *CloudSaverSource) doSearch(query, lastMessageID string) (*csSearchRespo
 	return &result, nil
 }
 
+// 预编译 CloudSaver 清洗正则，避免每次调用重新编译
+var (
+	csPatternTitle   = regexp.MustCompile(`(?:名称|标题)[：:]?\s*(.*)`)
+	csPatternContent = regexp.MustCompile(`(?:描述|简介)[：:]?\s*(.*?)(?:链接|标签|$)`)
+	csPatternHTML    = regexp.MustCompile(`<[^>]+>`)
+)
+
 // cleanResults 清洗搜索结果
 func (s *CloudSaverSource) cleanResults(data []map[string]interface{}, platforms []string) []SearchItem {
 	var items []SearchItem
 	seen := make(map[string]bool)
-
-	patternTitle := regexp.MustCompile(`(?:名称|标题)[：:]?\s*(.*)`)
-	patternContent := regexp.MustCompile(`(?:描述|简介)[：:]?\s*(.*?)(?:链接|标签|$)`)
-	patternHTML := regexp.MustCompile(`<[^>]+>`)
 
 	for _, channel := range data {
 		list, ok := channel["list"].([]interface{})
@@ -202,14 +213,14 @@ func (s *CloudSaverSource) cleanResults(data []map[string]interface{}, platforms
 				}
 			}
 
-			if m := patternTitle.FindStringSubmatch(title); len(m) > 1 {
+			if m := csPatternTitle.FindStringSubmatch(title); len(m) > 1 {
 				title = strings.TrimSpace(m[1])
 			}
 
-			if m := patternContent.FindStringSubmatch(content); len(m) > 1 {
+			if m := csPatternContent.FindStringSubmatch(content); len(m) > 1 {
 				content = strings.TrimSpace(m[1])
 			}
-			content = patternHTML.ReplaceAllString(content, "")
+			content = csPatternHTML.ReplaceAllString(content, "")
 			content = strings.TrimSpace(content)
 
 			cloudLinks, _ := itemMap["cloudLinks"].([]interface{})
