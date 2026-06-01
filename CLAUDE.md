@@ -11,8 +11,9 @@
 所有任务通过 `make` 管理（详见 `Makefile`）：
 
 ```bash
-make dev-server     # 在 :8080 端口启动 Go 后端（DEBUG 模式）
-make dev-web        # 在 :5173 端口启动 Vue 3 开发服务器（代理 /api 到 :8080）
+make dev            # 同时启动前端 (5173) 和后端 (8080)，自动清理端口占用
+make dev-server     # 在 :8080 端口启动 Go 后端（DEBUG 模式，自动清理端口占用）
+make dev-web        # 在 :5173 端口启动 Vue 3 开发服务器（代理 /api 到 :8080，自动清理端口占用）
 make build          # 完整生产构建：前端编译 -> 嵌入 Go 二进制 -> bin/ucas
 make build-web      # 仅构建前端（web/dist -> internal/api/dist）
 make test           # 运行 Go 单元测试（带 -race 和覆盖率）
