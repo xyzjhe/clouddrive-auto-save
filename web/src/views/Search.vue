@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search as SearchIcon, Link as LinkIcon, Clock as ClockIcon, FileText as FileTextIcon } from 'lucide-vue-next'
@@ -14,6 +14,22 @@ const results = ref([])
 const loading = ref(false)
 const page = ref(1)
 const validating = ref(false)
+
+// 分页
+const currentPage = ref(1)
+const pageSize = ref(20)
+const totalResults = computed(() => results.value.length)
+const paginatedResults = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return results.value.slice(start, start + pageSize.value)
+})
+const handlePageChange = (newPage) => {
+  currentPage.value = newPage
+}
+const handleSizeChange = (newSize) => {
+  pageSize.value = newSize
+  currentPage.value = 1
+}
 
 // 网盘类型筛选
 const platforms = [
@@ -32,7 +48,7 @@ onMounted(async () => {
   }
 })
 
-// 批量校验链接有效性
+// 批量校验链接有效性，过滤失效链接
 const validateLinks = async (items) => {
   validating.value = true
   const promises = items.map(async (item) => {
@@ -46,6 +62,8 @@ const validateLinks = async (items) => {
     }
   })
   await Promise.allSettled(promises)
+  // 过滤失效链接
+  results.value = results.value.filter(item => item.valid !== false)
   validating.value = false
 }
 
@@ -56,6 +74,7 @@ const handleSearch = async () => {
   }
 
   loading.value = true
+  currentPage.value = 1
   try {
     const params = {
       q: query.value,
@@ -175,7 +194,7 @@ const handleCreateTaskFromDialog = (data) => {
       class="search-results"
     >
       <div
-        v-for="item in results"
+        v-for="item in paginatedResults"
         :key="item.url"
         class="result-item clickable"
         @click="handleResultClick(item)"
@@ -233,9 +252,21 @@ const handleCreateTaskFromDialog = (data) => {
       </div>
 
       <el-empty
-        v-if="!loading && results.length === 0 && query"
+        v-if="!loading && totalResults === 0 && query"
         description="未找到相关资源"
       />
+
+      <div v-if="totalResults > 0" class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="totalResults"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+        />
+      </div>
     </div>
 
     <ShareContentDialog
@@ -371,5 +402,12 @@ const handleCreateTaskFromDialog = (data) => {
 
 .result-item.clickable:hover {
   box-shadow: var(--shadow-md);
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+  padding: 1rem 0;
 }
 </style>
