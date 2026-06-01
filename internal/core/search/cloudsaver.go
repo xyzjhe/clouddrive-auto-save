@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"sync"
@@ -124,8 +125,13 @@ func (s *CloudSaverSource) doSearch(query, lastMessageID string) (*csSearchRespo
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	url := fmt.Sprintf("%s/api/search?keyword=%s&lastMessageId=%s", s.baseURL, query, lastMessageID)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	params := url.Values{}
+	params.Set("keyword", query)
+	if lastMessageID != "" {
+		params.Set("lastMessageId", lastMessageID)
+	}
+	reqURL := fmt.Sprintf("%s/api/search?%s", s.baseURL, params.Encode())
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("创建搜索请求失败: %w", err)
 	}
@@ -139,7 +145,7 @@ func (s *CloudSaverSource) doSearch(query, lastMessageID string) (*csSearchRespo
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 UCAS/1.0")
 
-	slog.Debug("CloudSaver 请求", "url", url, "token_len", len(token))
+	slog.Debug("CloudSaver 请求", "url", reqURL, "token_len", len(token))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
