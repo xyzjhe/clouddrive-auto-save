@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search as SearchIcon, Link as LinkIcon, Clock as ClockIcon, FileText as FileTextIcon } from 'lucide-vue-next'
-import { searchResources, listSearchSources } from '../api/search'
+import { searchResources, listSearchSources, validateLink } from '../api/search'
 
 const router = useRouter()
 const query = ref('')
@@ -12,6 +12,7 @@ const selectedSources = ref([])
 const results = ref([])
 const loading = ref(false)
 const page = ref(1)
+const validating = ref(false)
 
 // 网盘类型筛选
 const platforms = [
@@ -29,6 +30,23 @@ onMounted(async () => {
     console.error('获取搜索源失败:', error)
   }
 })
+
+// 批量校验链接有效性
+const validateLinks = async (items) => {
+  validating.value = true
+  const promises = items.map(async (item) => {
+    try {
+      const res = await validateLink(item.url)
+      item.valid = res.valid
+      item.validMessage = res.message || ''
+    } catch (e) {
+      item.valid = false
+      item.validMessage = '校验失败'
+    }
+  })
+  await Promise.allSettled(promises)
+  validating.value = false
+}
 
 const handleSearch = async () => {
   if (!query.value.trim()) {
@@ -50,6 +68,11 @@ const handleSearch = async () => {
     }
     const data = await searchResources(params)
     results.value = data.items || []
+
+    // 自动校验链接有效性
+    if (results.value.length > 0) {
+      validateLinks(results.value)
+    }
   } catch (error) {
     console.error('搜索失败:', error)
   } finally {
@@ -132,7 +155,12 @@ const handleCreateTask = (item) => {
         class="result-item"
       >
         <div class="result-header">
-          <div class="result-title">{{ item.title }}</div>
+          <div class="result-title">
+            <span v-if="item.valid === true" class="valid-icon">✅</span>
+            <span v-else-if="item.valid === false" class="valid-icon invalid" :title="item.validMessage">❌</span>
+            <span v-else-if="validating" class="valid-icon">⏳</span>
+            {{ item.title }}
+          </div>
           <el-button
             type="primary"
             size="small"
@@ -290,5 +318,14 @@ const handleCreateTask = (item) => {
   color: var(--text-secondary);
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+.valid-icon {
+  margin-right: 4px;
+  font-size: 14px;
+}
+
+.valid-icon.invalid {
+  cursor: help;
 }
 </style>
