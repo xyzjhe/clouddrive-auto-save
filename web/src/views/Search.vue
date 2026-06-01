@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search as SearchIcon, Link as LinkIcon, Clock as ClockIcon, FileText as FileTextIcon } from 'lucide-vue-next'
 import { searchResources, listSearchSources, validateLink } from '../api/search'
+import ShareContentDialog from '../components/ShareContentDialog.vue'
 
 const router = useRouter()
 const query = ref('')
@@ -90,6 +91,30 @@ const handleCreateTask = (item) => {
     }
   })
 }
+
+// 分享内容弹窗
+const shareDialogVisible = ref(false)
+const shareDialogUrl = ref('')
+const shareDialogExtractCode = ref('')
+const shareDialogTitle = ref('')
+
+const handleResultClick = (item) => {
+  shareDialogUrl.value = item.url
+  shareDialogExtractCode.value = ''
+  shareDialogTitle.value = item.title
+  shareDialogVisible.value = true
+}
+
+const handleCreateTaskFromDialog = (data) => {
+  shareDialogVisible.value = false
+  router.push({
+    name: 'Tasks',
+    query: {
+      share_url: data.url,
+      extract_code: data.extractCode
+    }
+  })
+}
 </script>
 
 <template>
@@ -152,7 +177,8 @@ const handleCreateTask = (item) => {
       <div
         v-for="item in results"
         :key="item.url"
-        class="result-item"
+        class="result-item clickable"
+        @click="handleResultClick(item)"
       >
         <div class="result-header">
           <div class="result-title">
@@ -164,7 +190,7 @@ const handleCreateTask = (item) => {
           <el-button
             type="primary"
             size="small"
-            @click="handleCreateTask(item)"
+            @click.stop="handleCreateTask(item)"
           >
             创建任务
           </el-button>
@@ -211,6 +237,15 @@ const handleCreateTask = (item) => {
         description="未找到相关资源"
       />
     </div>
+
+    <ShareContentDialog
+      v-model:visible="shareDialogVisible"
+      :url="shareDialogUrl"
+      :extract-code="shareDialogExtractCode"
+      :title="shareDialogTitle"
+      :show-replace="false"
+      @create-task="handleCreateTaskFromDialog"
+    />
   </div>
 </template>
 
@@ -327,5 +362,14 @@ const handleCreateTask = (item) => {
 
 .valid-icon.invalid {
   cursor: help;
+}
+
+.result-item.clickable {
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+.result-item.clickable:hover {
+  box-shadow: var(--shadow-md);
 }
 </style>
