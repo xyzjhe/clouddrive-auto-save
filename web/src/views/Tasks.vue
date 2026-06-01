@@ -223,6 +223,13 @@
                 :disabled="!form.share_url"
                 @click="openExternalLink(form.share_url, form.extract_code)"
               />
+              <el-button
+                type="primary"
+                title="搜索替换资源"
+                @click="handleSearchReplace"
+              >
+                搜索替换
+              </el-button>
             </el-button-group>
           </div>
         </el-form-item>
@@ -553,6 +560,47 @@
         <p>* 过滤规则：如果设置了起始文件，则该文件之后（更旧）的文件将不执行转存。</p>
       </div>
     </el-dialog>
+
+    <!-- 搜索替换弹窗 -->
+    <el-dialog
+      v-model="searchReplaceVisible"
+      title="搜索替换资源"
+      width="600px"
+    >
+      <div class="search-replace-bar">
+        <el-input
+          v-model="searchReplaceQuery"
+          placeholder="输入搜索关键词"
+          @keyup.enter="doSearchReplace"
+        >
+          <template #append>
+            <el-button @click="doSearchReplace">搜索</el-button>
+          </template>
+        </el-input>
+      </div>
+      <div v-loading="searchReplaceLoading" class="search-replace-results">
+        <div v-for="item in searchReplaceResults" :key="item.url" class="search-result-item">
+          <div class="result-info">
+            <span class="result-title">{{ item.title }}</span>
+            <span class="result-source">{{ item.source }} - {{ item.platform }}</span>
+          </div>
+          <div class="result-actions">
+            <el-button size="small" @click="handleViewShareContent(item)">查看内容</el-button>
+            <el-button size="small" type="primary" @click="handleReplaceFromSearch(item)">替换</el-button>
+          </div>
+        </div>
+        <el-empty v-if="!searchReplaceLoading && searchReplaceResults.length === 0" description="暂无搜索结果" />
+      </div>
+    </el-dialog>
+
+    <ShareContentDialog
+      v-model:visible="shareDialogVisible"
+      :url="shareDialogUrl"
+      :extract-code="shareDialogExtractCode"
+      :title="shareDialogTitle"
+      :show-replace="true"
+      @replace-link="handleReplaceFromDialog"
+    />
   </div>
 </template>
 
@@ -563,7 +611,9 @@ import { Plus, Play, Edit, Trash2, RefreshCw, Folder, File, Info, Cloud, Externa
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTasks, createTask, updateTask, deleteTask, runTask, runAllTasks, previewTask, parseShareLink, getScheduleSettings } from '../api/task'
 import { getAccounts, getFolders, createFolder } from '../api/account'
+import { searchResources } from '../api/search'
 import TaskCard from '../components/cards/TaskCard.vue'
+import ShareContentDialog from '../components/ShareContentDialog.vue'
 
 const route = useRoute()
 const taskList = ref([])
@@ -577,6 +627,18 @@ const statusFilter = ref('all')
 const searchQuery = ref('')
 
 const smartInput = ref('')
+
+// 搜索替换相关
+const searchReplaceVisible = ref(false)
+const searchReplaceQuery = ref('')
+const searchReplaceResults = ref([])
+const searchReplaceLoading = ref(false)
+
+// 分享内容弹窗
+const shareDialogVisible = ref(false)
+const shareDialogUrl = ref('')
+const shareDialogExtractCode = ref('')
+const shareDialogTitle = ref('')
 
 const handleSmartInput = (val) => {
   if (!val) return
@@ -603,6 +665,48 @@ const handleSmartInput = (val) => {
       form.value.extract_code = purePwdMatch[1]
     }
   }
+}
+
+const handleSearchReplace = () => {
+  searchReplaceQuery.value = form.value.name
+  searchReplaceResults.value = []
+  searchReplaceVisible.value = true
+  if (searchReplaceQuery.value) {
+    doSearchReplace()
+  }
+}
+
+const doSearchReplace = async () => {
+  if (!searchReplaceQuery.value.trim()) return
+  searchReplaceLoading.value = true
+  try {
+    const data = await searchResources({ q: searchReplaceQuery.value })
+    searchReplaceResults.value = data.items || []
+  } catch (e) {
+    ElMessage.error('搜索失败')
+  } finally {
+    searchReplaceLoading.value = false
+  }
+}
+
+const handleReplaceFromSearch = (item) => {
+  form.value.share_url = item.url
+  searchReplaceVisible.value = false
+  ElMessage.success('链接已替换，请保存任务')
+}
+
+const handleViewShareContent = (item) => {
+  shareDialogUrl.value = item.url
+  shareDialogExtractCode.value = ''
+  shareDialogTitle.value = item.title
+  shareDialogVisible.value = true
+}
+
+const handleReplaceFromDialog = (data) => {
+  form.value.share_url = data.url
+  form.value.extract_code = data.extractCode || ''
+  shareDialogVisible.value = false
+  ElMessage.success('链接已替换，请保存任务')
 }
 
 const toggleViewMode = (mode) => {
@@ -1854,5 +1958,47 @@ html.dark .existed-row {
   padding: 8px 12px;
   display: flex;
   align-items: center;
+}
+
+.search-replace-bar {
+  margin-bottom: 16px;
+}
+
+.search-replace-results {
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.search-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.result-info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.result-title {
+  display: block;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-source {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.result-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 16px;
 }
 </style>
