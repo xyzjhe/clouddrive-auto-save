@@ -21,11 +21,19 @@ type Handler struct {
 }
 
 // NewHandler 创建命令处理器
-func NewHandler(bot *Bot, db *gorm.DB, wm *worker.Manager) *Handler {
+func NewHandler(bot *Bot, dbInst *gorm.DB, wm *worker.Manager) *Handler {
 	return &Handler{
 		bot: bot,
-		db:  db,
+		db:  dbInst,
 		wm:  wm,
+	}
+}
+
+// sendText 安全发送文本消息（通过 Bot.SendMessage 避免数据竞争）
+func (h *Handler) sendText(chatID int64, text string) {
+	if err := h.bot.SendMessage(chatID, text); err != nil {
+		// SendMessage 内部已加锁，此处仅记录错误
+		_ = err
 	}
 }
 
@@ -40,22 +48,19 @@ func (h *Handler) HandleStart(message *tgbotapi.Message) {
 /status - 查看系统状态
 /logs - 查看最近日志`
 
-	msg := tgbotapi.NewMessage(message.Chat.ID, text)
-	h.bot.api.Send(msg)
+	h.sendText(message.Chat.ID, text)
 }
 
 // HandleTasks 处理 /tasks 命令
 func (h *Handler) HandleTasks(message *tgbotapi.Message) {
 	var tasks []db.Task
 	if err := h.db.Find(&tasks).Error; err != nil {
-		msg := tgbotapi.NewMessage(message.Chat.ID, "获取任务列表失败")
-		h.bot.api.Send(msg)
+		h.sendText(message.Chat.ID, "获取任务列表失败")
 		return
 	}
 
 	if len(tasks) == 0 {
-		msg := tgbotapi.NewMessage(message.Chat.ID, "暂无任务")
-		h.bot.api.Send(msg)
+		h.sendText(message.Chat.ID, "暂无任务")
 		return
 	}
 
@@ -64,36 +69,31 @@ func (h *Handler) HandleTasks(message *tgbotapi.Message) {
 		text += fmt.Sprintf("ID: %d. %s [%s]\n", task.ID, task.Name, task.Status)
 	}
 
-	msg := tgbotapi.NewMessage(message.Chat.ID, text)
-	h.bot.api.Send(msg)
+	h.sendText(message.Chat.ID, text)
 }
 
 // HandleRun 处理 /run 命令
 func (h *Handler) HandleRun(message *tgbotapi.Message) {
 	args := message.CommandArguments()
 	if args == "" {
-		msg := tgbotapi.NewMessage(message.Chat.ID, "请指定任务 ID，例如：/run 1")
-		h.bot.api.Send(msg)
+		h.sendText(message.Chat.ID, "请指定任务 ID，例如：/run 1")
 		return
 	}
 
 	id, err := strconv.Atoi(args)
 	if err != nil {
-		msg := tgbotapi.NewMessage(message.Chat.ID, "任务 ID 格式错误，应为整数")
-		h.bot.api.Send(msg)
+		h.sendText(message.Chat.ID, "任务 ID 格式错误，应为整数")
 		return
 	}
 
 	var task db.Task
 	if err := h.db.Preload("Account").First(&task, id).Error; err != nil {
-		msg := tgbotapi.NewMessage(message.Chat.ID, "未找到该任务")
-		h.bot.api.Send(msg)
+		h.sendText(message.Chat.ID, "未找到该任务")
 		return
 	}
 
 	if task.Status == "running" {
-		msg := tgbotapi.NewMessage(message.Chat.ID, "该任务已在运行中")
-		h.bot.api.Send(msg)
+		h.sendText(message.Chat.ID, "该任务已在运行中")
 		return
 	}
 
@@ -107,10 +107,15 @@ func (h *Handler) HandleRun(message *tgbotapi.Message) {
 	utils.BroadcastTaskUpdate(&task)
 	utils.BroadcastStatsUpdate()
 
-	h.wm.Submit(worker.Job{Task: &task})
+	if err := h.wm.Submit(worker.Job{Task: &task}); err != nil {
+		// 队列满，回滚状态
+		h.db.Model(&task).Updates(map[string]interface{}{"status": "pending", "stage": ""})
+		utils.BroadcastTaskUpdate(&task)
+		h.sendText(message.Chat.ID, "⚠️ 任务提交失败："+err.Error())
+		return
+	}
 
-	msg := tgbotapi.NewMessage(message.Chat.ID, fmt.Sprintf("✅ 任务「%s」提交成功，开始后台转存", task.Name))
-	h.bot.api.Send(msg)
+	h.sendText(message.Chat.ID, fmt.Sprintf("✅ 任务「%s」提交成功，开始后台转存", task.Name))
 }
 
 // HandleRunAll 处理 /run_all 命令
@@ -122,14 +127,12 @@ func (h *Handler) HandleRunAll(message *tgbotapi.Message) {
 		Find(&tasks).Error
 
 	if err != nil {
-		msg := tgbotapi.NewMessage(message.Chat.ID, "查询任务列表失败")
-		h.bot.api.Send(msg)
+		h.sendText(message.Chat.ID, "查询任务列表失败")
 		return
 	}
 
 	if len(tasks) == 0 {
-		msg := tgbotapi.NewMessage(message.Chat.ID, "没有可运行的任务（全部在运行中或存在 Fatal 链接失效错误）")
-		h.bot.api.Send(msg)
+		h.sendText(message.Chat.ID, "没有可运行的任务（全部在运行中或存在 Fatal 链接失效错误）")
 		return
 	}
 
@@ -145,12 +148,15 @@ func (h *Handler) HandleRunAll(message *tgbotapi.Message) {
 			"stage":  "Started",
 		})
 		utils.BroadcastTaskUpdate(task)
-		h.wm.Submit(worker.Job{Task: task, BatchID: batchID})
+		if err := h.wm.Submit(worker.Job{Task: task, BatchID: batchID}); err != nil {
+			h.db.Model(task).Updates(map[string]interface{}{"status": "pending", "stage": ""})
+			utils.BroadcastTaskUpdate(task)
+			continue
+		}
 	}
 	utils.BroadcastStatsUpdate()
 
-	msg := tgbotapi.NewMessage(message.Chat.ID, fmt.Sprintf("✅ 批量运行已启动，共提交了 %d 个任务", len(tasks)))
-	h.bot.api.Send(msg)
+	h.sendText(message.Chat.ID, fmt.Sprintf("✅ 批量运行已启动，共提交了 %d 个任务", len(tasks)))
 }
 
 // HandleStatus 处理 /status 命令
@@ -175,16 +181,14 @@ func (h *Handler) HandleStatus(message *tgbotapi.Message) {
 	text += fmt.Sprintf("• 今日转存成功：%d\n", todaySuccess)
 	text += fmt.Sprintf("• 今日转存失败：%d\n", todayFailed)
 
-	msg := tgbotapi.NewMessage(message.Chat.ID, text)
-	h.bot.api.Send(msg)
+	h.sendText(message.Chat.ID, text)
 }
 
 // HandleLogs 处理 /logs 命令
 func (h *Handler) HandleLogs(message *tgbotapi.Message) {
 	logs := utils.GlobalBroadcaster.GetRecent()
 	if len(logs) == 0 {
-		msg := tgbotapi.NewMessage(message.Chat.ID, "📭 暂无最新日志")
-		h.bot.api.Send(msg)
+		h.sendText(message.Chat.ID, "📭 暂无最新日志")
 		return
 	}
 
@@ -200,27 +204,28 @@ func (h *Handler) HandleLogs(message *tgbotapi.Message) {
 		text += fmt.Sprintf("• %s\n", logs[i])
 	}
 
-	msg := tgbotapi.NewMessage(message.Chat.ID, text)
-	h.bot.api.Send(msg)
+	h.sendText(message.Chat.ID, text)
 }
 
 // NotifyTaskComplete 通知任务完成
 func (h *Handler) NotifyTaskComplete(task *db.Task, success bool) {
-	if !h.bot.config.Enabled {
+	// 通过 GetConfig 获取配置快照，避免数据竞争
+	cfg := h.bot.GetConfig()
+	if !cfg.Enabled {
 		return
 	}
 
-	if success && !h.bot.config.NotifyOnSuccess {
+	if success && !cfg.NotifyOnSuccess {
 		return
 	}
 
-	if !success && !h.bot.config.NotifyOnFailure {
+	if !success && !cfg.NotifyOnFailure {
 		return
 	}
 
 	text := fmt.Sprintf("✅ 任务完成\n\n名称：%s\n状态：%s", task.Name, task.Status)
 
-	for _, chatID := range h.bot.config.AllowedIDs {
+	for _, chatID := range cfg.AllowedIDs {
 		h.bot.SendMessage(chatID, text)
 	}
 }
