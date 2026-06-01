@@ -188,7 +188,7 @@
                   >
                     <div class="account-option-item">
                       <div class="acc-info">
-                        <el-icon class="acc-icon" :color="acc.platform === 'quark' ? '#10b981' : '#f59e0b'">
+                        <el-icon class="acc-icon" :color="acc.platform === 'quark' ? 'var(--color-quark)' : 'var(--color-139)'">
                           <Cloud />
                         </el-icon>
                         <span class="acc-name">{{ acc.nickname }}</span>
@@ -476,8 +476,8 @@
             <template #default="{ row }">
               <div class="name-main" :class="{ 'folder-clickable': row.is_folder }" @click="row.is_folder && enterFolder(row)" @dblclick="!row.is_folder && handleRowDblClick(row)">
                 <el-icon size="16">
-                  <Folder v-if="row.is_folder" color="#eab308" />
-                  <File v-else color="#64748b" />
+                  <Folder v-if="row.is_folder" color="var(--neon-orange)" />
+                  <File v-else color="var(--text-muted)" />
                 </el-icon>
                 <span>{{ row.name }}</span>
               </div>
@@ -614,6 +614,7 @@ import { getAccounts, getFolders, createFolder } from '../api/account'
 import { searchResources } from '../api/search'
 import TaskCard from '../components/cards/TaskCard.vue'
 import ShareContentDialog from '../components/ShareContentDialog.vue'
+import { formatSize, formatTime, getStatusTagType as getStatusType } from '../utils/format'
 
 const route = useRoute()
 const taskList = ref([])
@@ -807,13 +808,7 @@ const selectedTreeId = ref('')
 const newFolderName = ref('')
 const creatingFolder = ref(false)
 
-const formatSize = (bytes) => {
-  const b = Number(bytes)
-  if (isNaN(b) || b <= 0) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(b) / Math.log(1024))
-  return `${(b / Math.pow(1024, i)).toFixed(2)} ${units[i]}`
-}
+
 
 const groupedAccounts = computed(() => {
   if (!accounts.value) return []
@@ -1442,15 +1437,7 @@ const handleDelete = (row) => {
   })
 }
 
-const getStatusType = (status) => {
-  const map = { pending: 'info', running: 'primary', success: 'success', failed: 'danger' }
-  return map[status] || 'info'
-}
 
-const formatTime = (timeStr) => {
-  if (!timeStr || timeStr.startsWith('0001')) return '从不'
-  return new Date(timeStr).toLocaleString()
-}
 
 let eventSource = null
 
@@ -1583,7 +1570,7 @@ const handleBeforeUnload = (e) => {
   margin: 0;
   font-size: 26px;
   font-weight: 800;
-  color: var(--neutral-800);
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
@@ -1630,7 +1617,7 @@ const handleBeforeUnload = (e) => {
 .setting-title {
   font-weight: 700;
   font-size: 16px;
-  color: var(--neutral-800);
+  color: var(--text-primary);
 }
 
 .setting-desc {
@@ -1685,7 +1672,7 @@ const handleBeforeUnload = (e) => {
 
 .task-name-cell .name {
   font-weight: 700;
-  color: var(--neutral-800);
+  color: var(--text-primary);
 }
 
 .status-inner {

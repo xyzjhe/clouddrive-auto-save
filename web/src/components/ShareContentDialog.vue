@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { parseShareLink } from '../api/task'
+import { formatSize } from '../utils/format'
 
 const props = defineProps({
   visible: Boolean,
@@ -41,16 +42,7 @@ const loadFiles = async () => {
   }
 }
 
-const formatSize = (bytes) => {
-  if (!bytes) return ''
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  let i = 0
-  while (bytes >= 1024 && i < units.length - 1) {
-    bytes /= 1024
-    i++
-  }
-  return `${bytes.toFixed(1)} ${units[i]}`
-}
+
 
 const handleCreateTask = () => {
   emit('create-task', { url: props.url, extractCode: props.extractCode })

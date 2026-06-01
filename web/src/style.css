@@ -331,7 +331,7 @@ body {
 
 .el-tag--danger {
   background: rgba(239, 68, 68, 0.1) !important;
-  color: #ef4444 !important;
+  color: var(--color-danger) !important;
 }
 
 .el-tag--primary {

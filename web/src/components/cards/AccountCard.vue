@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { formatSize } from '../../utils/format'
 
 const props = defineProps({
   account: {
@@ -21,22 +22,12 @@ const storagePercentage = computed(() => {
 })
 
 const storageColor = computed(() => {
-  if (storagePercentage.value < 60) return '#10b981'
-  if (storagePercentage.value < 80) return '#f59e0b'
-  return '#ef4444'
+  if (storagePercentage.value < 60) return 'var(--color-success)'
+  if (storagePercentage.value < 80) return 'var(--color-warning)'
+  return 'var(--color-danger)'
 })
 
-const formatSize = (bytes) => {
-  if (!bytes) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  let size = bytes
-  let unitIndex = 0
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024
-    unitIndex++
-  }
-  return `${size.toFixed(1)} ${units[unitIndex]}`
-}
+
 </script>
 
 <template>

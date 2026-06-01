@@ -258,6 +258,7 @@
 import { ref, onMounted } from 'vue'
 import { Plus, RefreshCcw, Trash2, Edit, HardDrive, Info, LayoutGrid, List, ExternalLink } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { formatSize as formatBytes, formatTime } from '../utils/format'
 import { getAccounts, createAccount, updateAccount, deleteAccount, checkAccount } from '../api/account'
 
 const accountList = ref([])
@@ -366,18 +367,7 @@ const handleDelete = (row) => {
   }).catch(() => {})
 }
 
-const formatTime = (timeStr) => {
-  if (!timeStr || timeStr.startsWith('0001')) return '从未检查'
-  return new Date(timeStr).toLocaleString()
-}
 
-const formatBytes = (bytes) => {
-  if (!bytes || bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
 
 const calcPercentage = (used, total) => {
   if (!total) return 0
@@ -410,7 +400,7 @@ onMounted(() => {
   margin: 0;
   font-size: 26px;
   font-weight: 800;
-  color: var(--neutral-800);
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
@@ -553,7 +543,7 @@ onMounted(() => {
 }
 
 .cap-item .value.is-over {
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
 .empty-capacity {
@@ -672,15 +662,15 @@ html.dark .card-footer {
 }
 
 .gradient-progress.is-success :deep(.el-progress-bar__inner) {
-  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+  background: linear-gradient(90deg, var(--color-success) 0%, #34d399 100%);
 }
 
 .gradient-progress.is-warning :deep(.el-progress-bar__inner) {
-  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+  background: linear-gradient(90deg, var(--color-warning) 0%, #fbbf24 100%);
 }
 
 .gradient-progress.is-exception :deep(.el-progress-bar__inner) {
-  background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+  background: linear-gradient(90deg, var(--color-danger) 0%, #f87171 100%);
 }
 
 .capacity-remaining.is-over, .remaining.is-over {

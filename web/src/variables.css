@@ -94,6 +94,17 @@
   --btn-danger: #ef4444;
   --btn-danger-bg: rgba(239, 68, 68, 0.1);
   --btn-danger-shadow: 0 1px 2px rgba(239, 68, 68, 0.2);
+
+  /* 补齐组件引用但之前未定义的变量 */
+  --bg-secondary: #f1f5f9;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --border: rgba(15, 23, 42, 0.08);
+  --neutral-50: #f8fafc;
+  --neutral-800: #1e293b;
+  --color-danger: #ef4444;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
 }
 
 html.dark {
@@ -158,4 +169,15 @@ html.dark {
   --btn-secondary-bg: #1f2937;
   --btn-secondary-border: #374151;
   --btn-ghost-border: #4b5563;
+
+  /* 补齐暗黑模式对应变量 */
+  --bg-secondary: rgba(255, 255, 255, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --border: rgba(255, 255, 255, 0.08);
+  --neutral-50: rgba(255, 255, 255, 0.06);
+  --neutral-800: #e2e8f0;
+  --color-danger: #f87171;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
 }

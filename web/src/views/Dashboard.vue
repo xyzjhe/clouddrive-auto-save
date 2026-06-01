@@ -22,7 +22,7 @@
                 :percentage="cpuUsage"
                 :stroke-width="6"
                 :show-text="false"
-                color="#00f2fe"
+                color="var(--neon-teal)"
               />
             </div>
 
@@ -36,7 +36,7 @@
                 :percentage="ramUsage"
                 :stroke-width="6"
                 :show-text="false"
-                color="#8b5cf6"
+                color="var(--neon-purple)"
               />
             </div>
 
@@ -48,7 +48,7 @@
                 :percentage="Math.min(100, Math.round((stats.capacity_used / (10 * 1024 * 1024 * 1024 * 1024)) * 100))" 
                 :stroke-width="8"
                 :width="120"
-                color="#39ff14"
+                color="var(--neon-green)"
               >
                 <template #default="{ percentage }">
                   <div class="progress-inner-value">{{ percentage }}%</div>
@@ -121,8 +121,8 @@
                   <span class="task-name">{{ task.name }}</span>
                   <div class="task-actions">
                     <el-icon v-if="task.percent < 100" class="is-loading"><Loader2 /></el-icon>
-                    <el-icon v-else-if="task.stage === 'Success'" color="#39ff14"><CheckCircle2 /></el-icon>
-                    <el-icon v-else-if="task.stage === 'Failed'" color="#f56c6c"><AlertCircle /></el-icon>
+                    <el-icon v-else-if="task.stage === 'Success'" color="var(--neon-green)"><CheckCircle2 /></el-icon>
+                    <el-icon v-else-if="task.stage === 'Failed'" color="var(--color-danger)"><AlertCircle /></el-icon>
                     <el-button v-if="task.percent === 100" type="info" link @click="dismissTask(task.id)" class="close-btn">
                       <el-icon><X /></el-icon>
                     </el-button>
@@ -226,6 +226,7 @@ import {
 import { getStats, clearLogsAPI } from '../api/dashboard'
 import { runTask, dismissTask as runDismissTask } from '../api/task'
 import { ElMessage } from 'element-plus'
+import { formatSize, formatTime as formatRelativeTime } from '../utils/format'
 
 // 系统遥测（暂无后端支持，显示 --）
 const cpuUsage = ref(0)
@@ -421,25 +422,7 @@ const getLogClass = (log) => {
   return ''
 }
 
-const formatSize = (bytes) => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i]
-}
 
-const formatRelativeTime = (timeStr) => {
-  if (!timeStr || timeStr.startsWith('0001')) return '从未执行'
-  const date = new Date(timeStr)
-  const now = new Date()
-  const diff = Math.floor((now - date) / 1000)
-
-  if (diff < 60) return '刚刚'
-  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`
-  return `${Math.floor(diff / 86400)}天前`
-}
 
 const getStatusType = (status) => {
   const types = {
@@ -647,7 +630,7 @@ onUnmounted(() => {
 }
 
 .tile-value.cyan { color: var(--neon-teal); }
-.tile-value.purple { color: #8b5cf6; }
+.tile-value.purple { color: var(--neon-purple); }
 .tile-value.green { color: var(--neon-green); }
 .tile-value.orange { color: var(--neon-orange); }
 
