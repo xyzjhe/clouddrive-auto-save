@@ -52,8 +52,8 @@ test.describe('仪表盘：数据概览测试', () => {
     await page.goto('/');
 
     await expect(page.locator('.mini-tile').nth(0).locator('.tile-value')).toHaveText('15');
-    // 验证前端 formatSize 的转换
-    await expect(page.locator('.mini-tile').nth(1).locator('.tile-value')).toHaveText('1.00 GB');
+    // 验证前端 formatSize 的转换（parseFloat 去尾零：1.00 → 1）
+    await expect(page.locator('.mini-tile').nth(1).locator('.tile-value')).toHaveText('1 GB');
     await expect(page.locator('.mini-tile').nth(2).locator('.tile-value')).toHaveText('5');
     await expect(page.locator('.mini-tile').nth(3).locator('.tile-value')).toHaveText('2');
   });

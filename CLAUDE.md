@@ -38,7 +38,7 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - **驱动注册**：通过 `init()` 副作用导入在 `internal/api/router.go` 中注册：
   - `internal/core/cloud139/client.go` — 移动云盘
   - `internal/core/quark/client.go` — 夸克网盘
-- **工作池** (`internal/core/worker/`) — 带缓冲的任务队列 (容量 100)，每个 worker 执行完整流水线：解析分享链接 → 去重检查 → 正则过滤 → 保存链接 → 重命名文件 → Bark 通知
+- **工作池** (`internal/core/worker/`) — 带缓冲的任务队列 (容量 100)，`Submit` 为非阻塞模式（队列满时返回 error）。每个 worker 执行完整流水线：解析分享链接 → 去重检查 → 正则过滤 → 保存链接 → 重命名文件 → Bark 通知。重试使用 `select + ctx.Done()` 支持优雅关闭。`isFatalError` 使用精确关键词匹配（如 `token无效`、`cookie过期`），宽泛词（如 `token`、`不存在`）已拆分为限定组合避免误判
 - **调度器** (`internal/core/scheduler/`) — 封装 robfig/cron，支持秒级精度。"global" 模式共享一个 cron 触发所有全局任务；"custom" 模式为每个任务独立 cron。带有 `[Fatal]` 消息的任务会被自动跳过
 - **重命名器** (`internal/core/renamer/`) — 支持魔法变量 `{TASKNAME}`、`{OLDNAME}`、`{CHINESE}`、`{DATE}`、`{YEAR}`、`{EXT}`，正则捕获组 `${1}`，以及 Go `text/template` 表达式
 - **SSE/事件系统** (`internal/utils/`) — `Broadcaster` 发布/订阅系统，向所有 SSE 客户端广播实时日志和 `[EVENT:task_update|task_delete|stats_update]` 结构化 JSON 事件。`DashboardLogger` 双写 slog 输出到控制台 + SSE
@@ -50,6 +50,10 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 ### 前端 (Vue 3 + Vite)
 
 5 个页面位于 `web/src/views/`：Dashboard（左右三栏极客面板 + SSE 实时日志）、Accounts（139/Quark 卡片网格账号管理与空间进度环）、Tasks（抽屉式 CRUD 任务管理 + 智能提取解析）、Settings（Tab 式集中管理：系统调度、四通道推送及扩展插件）、Search（云盘资源搜索引擎对接与跨页面联动创建）
+
+共享工具模块 `web/src/utils/`：
+- `format.js` — 统一的 `formatSize`（`parseFloat` 去尾零）、`formatTime`（相对时间）、`getStatusTagType`/`getStatusLabel` 状态映射
+- `sse.js` — 统一的 SSE 连接管理（自动重连、事件解析）
 
 ### 构建标签分离
 
@@ -69,6 +73,7 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - Element Plus `el-switch` 不是 checkbox/radio，不能用 `isChecked()`，需用 `evaluate(el => el.classList.contains('is-checked'))` 判断状态
 - Element Plus `el-radio` 的 input 被 label span 遮挡，点击时用 `getByText('标签文字')` 而非 `getByRole('radio')`
 - 嵌套 el-tabs 定位冲突防范：多层嵌套的选项卡面板 DOM 结构中，极易因为外层或隐藏面板中存在同名元素（如多个 `el-switch` 或 “保存” 按钮）引发 Playwright 模糊定位到不可见元素导致超时挂起。必须在前端为各自的表单和关键按钮分配专属 Class（如 `.bark-form`, `.save-bark-btn`），并在 E2E 中改用精准的类定位选择器
+- `formatSize` 使用 `parseFloat` 去尾零（`”2.00”` → `”2”`），E2E 断言容量的文本时应使用 `”1 GB”` 而非 `”1.00 GB”`
 
 ### 前端注意事项
 
