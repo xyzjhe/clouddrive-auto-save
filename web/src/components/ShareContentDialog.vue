@@ -31,7 +31,8 @@ const loadFiles = async () => {
       share_url: props.url,
       extract_code: props.extractCode || ''
     })
-    files.value = res.items || []
+    // 后端直接返回数组，不是 { items: [...] } 格式
+    files.value = Array.isArray(res) ? res : (res.items || [])
   } catch (e) {
     ElMessage.error('获取分享内容失败')
     files.value = []
