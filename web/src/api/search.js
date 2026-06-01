@@ -29,3 +29,11 @@ export function updateSearchConfig(data) {
     data
   })
 }
+
+export function validateLink(url) {
+  return request({
+    url: '/search/validate',
+    method: 'get',
+    params: { url }
+  })
+}
