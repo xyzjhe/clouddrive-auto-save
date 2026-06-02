@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { parseShareLink } from '../api/task'
 import { formatSize } from '../utils/format'
+import { Folder, File as FileIcon, ChevronRight, ArrowLeft } from 'lucide-vue-next'
 
 const props = defineProps({
   visible: Boolean,
@@ -16,23 +17,32 @@ const emit = defineEmits(['update:visible', 'create-task', 'replace-link'])
 
 const loading = ref(false)
 const files = ref([])
+// 面包屑：[{ id: '', name: '根目录' }, { id: 'xxx', name: '子目录' }]
+const breadcrumbs = ref([])
 
 watch(() => props.visible, async (val) => {
   if (val && props.url) {
-    await loadFiles()
+    breadcrumbs.value = []
+    await loadFiles('')
   } else {
     files.value = []
+    breadcrumbs.value = []
   }
 })
 
-const loadFiles = async () => {
+const currentParentId = () => {
+  if (breadcrumbs.value.length === 0) return ''
+  return breadcrumbs.value[breadcrumbs.value.length - 1].id
+}
+
+const loadFiles = async (parentId) => {
   loading.value = true
   try {
     const res = await parseShareLink({
       share_url: props.url,
-      extract_code: props.extractCode || ''
+      extract_code: props.extractCode || '',
+      parent_id: parentId || ''
     })
-    // 后端直接返回数组，不是 { items: [...] } 格式
     files.value = Array.isArray(res) ? res : (res.items || [])
   } catch (e) {
     ElMessage.error('获取分享内容失败')
@@ -42,10 +52,39 @@ const loadFiles = async () => {
   }
 }
 
+// 进入子目录
+const enterFolder = async (folder) => {
+  breadcrumbs.value.push({ id: folder.id, name: folder.name })
+  await loadFiles(folder.id)
+}
 
+// 点击面包屑跳转
+const navigateToBreadcrumb = async (index) => {
+  // index = -1 表示根目录
+  if (index === -1) {
+    breadcrumbs.value = []
+    await loadFiles('')
+  } else {
+    breadcrumbs.value = breadcrumbs.value.slice(0, index + 1)
+    const target = breadcrumbs.value[breadcrumbs.value.length - 1]
+    await loadFiles(target.id)
+  }
+}
+
+// 返回上一级
+const goUp = async () => {
+  if (breadcrumbs.value.length === 0) return
+  breadcrumbs.value.pop()
+  await loadFiles(currentParentId())
+}
 
 const handleCreateTask = () => {
-  emit('create-task', { url: props.url, extractCode: props.extractCode })
+  // 把当前所在目录 ID 一并传给任务创建页（可作为 share_parent_id）
+  emit('create-task', {
+    url: props.url,
+    extractCode: props.extractCode,
+    parentId: currentParentId()
+  })
 }
 
 const handleReplaceLink = () => {
@@ -62,18 +101,45 @@ const handleClose = () => {
     :model-value="visible"
     @update:model-value="handleClose"
     :title="`📁 分享内容：${title || '未知'}`"
-    width="500px"
+    width="640px"
   >
+    <!-- 面包屑导航 -->
+    <div v-if="breadcrumbs.length > 0" class="dialog-breadcrumb">
+      <el-button link :icon="ArrowLeft" size="small" @click="goUp">上一级</el-button>
+      <el-divider direction="vertical" />
+      <el-breadcrumb separator-icon="ChevronRight">
+        <el-breadcrumb-item>
+          <a href="#" @click.prevent="navigateToBreadcrumb(-1)">根目录</a>
+        </el-breadcrumb-item>
+        <el-breadcrumb-item v-for="(crumb, idx) in breadcrumbs" :key="crumb.id">
+          <a v-if="idx < breadcrumbs.length - 1" href="#" @click.prevent="navigateToBreadcrumb(idx)">{{ crumb.name }}</a>
+          <span v-else>{{ crumb.name }}</span>
+        </el-breadcrumb-item>
+      </el-breadcrumb>
+    </div>
+
     <div v-loading="loading" class="file-list">
       <div v-if="files.length === 0 && !loading" class="empty-tip">
         暂无文件信息
       </div>
-      <div v-for="file in files" :key="file.id" class="file-item">
-        <span class="file-icon">{{ file.is_folder ? '📁' : '📄' }}</span>
+      <div
+        v-for="file in files"
+        :key="file.id"
+        class="file-item"
+        :class="{ 'is-folder': file.is_folder }"
+        @click="file.is_folder && enterFolder(file)"
+      >
+        <component
+          :is="file.is_folder ? Folder : FileIcon"
+          class="file-icon"
+          :size="16"
+        />
         <span class="file-name">{{ file.name }}</span>
         <span v-if="!file.is_folder" class="file-size">{{ formatSize(file.size) }}</span>
+        <ChevronRight v-if="file.is_folder" class="enter-icon" :size="16" />
       </div>
     </div>
+
     <template #footer>
       <el-button type="primary" @click="handleCreateTask">创建任务</el-button>
       <el-button v-if="showReplace" type="warning" @click="handleReplaceLink">替换任务链接</el-button>
@@ -83,22 +149,42 @@ const handleClose = () => {
 </template>
 
 <style scoped>
+.dialog-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
 .file-list {
-  min-height: 200px;
-  max-height: 400px;
+  min-height: 240px;
+  max-height: 480px;
   overflow-y: auto;
 }
 
 .file-item {
   display: flex;
   align-items: center;
-  padding: 8px 0;
+  padding: 10px 8px;
   border-bottom: 1px solid var(--el-border-color-lighter);
+  cursor: default;
+  transition: background-color 0.15s;
+}
+
+.file-item.is-folder {
+  cursor: pointer;
+}
+
+.file-item.is-folder:hover {
+  background-color: var(--hover-bg);
 }
 
 .file-icon {
-  margin-right: 8px;
-  font-size: 16px;
+  margin-right: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .file-name {
@@ -109,14 +195,20 @@ const handleClose = () => {
 }
 
 .file-size {
-  color: var(--el-text-color-secondary);
+  color: var(--text-muted);
   font-size: 12px;
   margin-left: 8px;
+  font-family: var(--font-mono, monospace);
+}
+
+.enter-icon {
+  margin-left: 8px;
+  color: var(--text-muted);
 }
 
 .empty-tip {
   text-align: center;
-  color: var(--el-text-color-secondary);
+  color: var(--text-muted);
   padding: 40px 0;
 }
 </style>

@@ -1501,6 +1501,10 @@ onMounted(async () => {
         handleAccountChange()
       }
     }
+    // 从搜索页带来的子目录 ID（139 平台）
+    if (route.query.share_parent_id) {
+      form.value.share_parent_id = route.query.share_parent_id
+    }
   }
 
   // 全局快捷键
