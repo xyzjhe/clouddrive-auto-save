@@ -31,3 +31,17 @@ func BroadcastStatsUpdate() {
 	b, _ := json.Marshal(Event{Type: "stats_update"})
 	slog.Info("[EVENT:" + string(b) + "]")
 }
+
+// SearchValidateEvent 搜索链接验证结果事件
+type SearchValidateEvent struct {
+	SearchID string `json:"search_id"`
+	Index    int    `json:"index"`
+	Valid    bool   `json:"valid"`
+	Message  string `json:"message,omitempty"`
+}
+
+// BroadcastSearchValidate 推送搜索链接验证结果
+func BroadcastSearchValidate(evt SearchValidateEvent) {
+	b, _ := json.Marshal(evt)
+	slog.Info("[EVENT:search_validate|" + string(b) + "]")
+}

@@ -11,6 +11,7 @@
  * @param {function(Object)} handlers.onTaskUpdate 接收到任务更新事件
  * @param {function(Object)} handlers.onStatsUpdate 接收到统计更新事件
  * @param {function(Object)} handlers.onTaskDelete 接收到任务删除事件
+ * @param {function(Object)} handlers.onSearchValidate 接收到搜索验证结果事件
  * @returns {{ close: function() }} 包含 close 方法的控制对象
  */
 export function createSSEConnection(url, handlers = {}) {
@@ -43,6 +44,9 @@ export function createSSEConnection(url, handlers = {}) {
               break
             case 'stats_update':
               handlers.onStatsUpdate?.(payload)
+              break
+            case 'search_validate':
+              handlers.onSearchValidate?.(payload)
               break
           }
         } catch {
