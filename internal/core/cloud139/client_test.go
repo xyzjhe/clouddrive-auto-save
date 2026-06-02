@@ -73,6 +73,18 @@ func TestParseShareLink(t *testing.T) {
 			wantCaID:   "root",
 		},
 		{
+			name:       "caiyun.139 裸 query ID 尾部带 emoji",
+			input:      "https://caiyun.139.com/m/i?2j3ahPrfeGrp0🏷",
+			wantLinkID: "2j3ahPrfeGrp0",
+			wantCaID:   "root",
+		},
+		{
+			name:       "yun.139 Fragment 格式尾部带特殊符号",
+			input:      "https://yun.139.com/shareweb/#/w/i/ABC123!!!",
+			wantLinkID: "ABC123",
+			wantCaID:   "root",
+		},
+		{
 			name:       "Fragment 带 query 参数",
 			input:      "https://yun.139.com/shareweb/#/w/i/ABC?linkID=fromFragment&pCaID=fold1",
 			wantLinkID: "fromFragment",

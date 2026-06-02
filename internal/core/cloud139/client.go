@@ -840,6 +840,9 @@ func (c *Cloud139) parseShareLink(input string) (string, string, string, error) 
 	if trimmed == "" {
 		return "", "", "", fmt.Errorf("empty share link")
 	}
+	// 剥离尾部非 URL 安全字符（搜索源数据常带 emoji、标签符号等）
+	reClean := regexp.MustCompile(`[^\w\-./?:@&=#]+$`)
+	trimmed = reClean.ReplaceAllString(trimmed, "")
 	linkID, passwd, pCaID := "", "", "root"
 	urlStr := trimmed
 	if !strings.HasPrefix(strings.ToLower(urlStr), "http") {
