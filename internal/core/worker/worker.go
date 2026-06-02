@@ -365,8 +365,8 @@ func (m *Manager) finishTask(job Job, status, message string, files []string, st
 					slog.Info("重试已取消（服务关闭）", "task_id", task.ID)
 				case <-timer.C:
 					if err := m.Submit(Job{Task: task, BatchID: job.BatchID}); err != nil {
-					slog.Warn("重试提交失败：队列已满", "task_id", task.ID, "error", err)
-				}
+						slog.Warn("重试提交失败：队列已满", "task_id", task.ID, "error", err)
+					}
 				}
 			}()
 			return
