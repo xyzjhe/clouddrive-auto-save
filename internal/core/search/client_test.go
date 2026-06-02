@@ -34,6 +34,29 @@ func (s *MockSource) Search(query string, platforms []string, page int) (*Search
 	return s.results, nil
 }
 
+func TestNormalizeURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"http转https", "http://pan.quark.cn/s/abc", "https://pan.quark.cn/s/abc"},
+		{"尾部分隔符去除", "https://pan.quark.cn/s/abc/", "https://pan.quark.cn/s/abc"},
+		{"查询参数排序", "https://pan.quark.cn/s/abc?b=2&a=1", "https://pan.quark.cn/s/abc?a=1&b=2"},
+		{"片段去除", "https://pan.quark.cn/s/abc#section", "https://pan.quark.cn/s/abc"},
+		{"主机名小写", "https://PAN.Quark.CN/s/abc", "https://pan.quark.cn/s/abc"},
+		{"空URL", "", ""},
+		{"纯http+尾部斜杠+参数乱序", "http://PAN.Quark.CN/s/abc/?b=2&a=1#frag", "https://pan.quark.cn/s/abc?a=1&b=2"},
+		{"已是标准格式", "https://pan.quark.cn/s/abc", "https://pan.quark.cn/s/abc"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, normalizeURL(tt.input))
+		})
+	}
+}
+
 func TestClient_Search_MergeAndDedup(t *testing.T) {
 	config := &SearchConfig{
 		PanSou: PanSouConfig{Server: "http://test"},

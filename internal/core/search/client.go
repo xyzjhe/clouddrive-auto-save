@@ -3,6 +3,7 @@ package search
 
 import (
 	"log/slog"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -139,22 +140,15 @@ func (c *Client) Search(query string, sources []string, platforms []string, page
 
 	wg.Wait()
 
-	// 去重（按 URL + 标题双重去重）
-	seenURL := make(map[string]bool)
-	seenTitle := make(map[string]bool)
+	// 按 URL 去重（归一化后再比较）
+	seen := make(map[string]bool, len(allItems))
 	var deduped []SearchItem
 	for _, item := range allItems {
-		if seenURL[item.URL] {
+		key := normalizeURL(item.URL)
+		if key == "" || seen[key] {
 			continue
 		}
-		normalizedTitle := strings.TrimSpace(strings.ToLower(item.Title))
-		if normalizedTitle != "" && seenTitle[normalizedTitle] {
-			continue
-		}
-		seenURL[item.URL] = true
-		if normalizedTitle != "" {
-			seenTitle[normalizedTitle] = true
-		}
+		seen[key] = true
 		deduped = append(deduped, item)
 	}
 
@@ -189,4 +183,46 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// normalizeURL 对 URL 进行归一化，用于去重比较
+// 处理：协议统一 https、去除尾部分隔符、排序查询参数、去除片段
+func normalizeURL(rawURL string) string {
+	u, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return strings.ToLower(strings.TrimSpace(rawURL))
+	}
+
+	// 协议统一为小写，http → https 视为相同
+	u.Scheme = strings.ToLower(u.Scheme)
+	if u.Scheme == "http" {
+		u.Scheme = "https"
+	}
+
+	// 主机名统一小写
+	u.Host = strings.ToLower(u.Host)
+
+	// 去除尾部分隔符
+	u.Path = strings.TrimRight(u.Path, "/")
+
+	// 排序查询参数，确保不同顺序的相同参数被视为相同
+	if u.RawQuery != "" {
+		q := u.Query()
+		if len(q) > 0 {
+			// 收集并排序键值对
+			var pairs []string
+			for k, vals := range q {
+				for _, v := range vals {
+					pairs = append(pairs, k+"="+v)
+				}
+			}
+			sort.Strings(pairs)
+			u.RawQuery = strings.Join(pairs, "&")
+		}
+	}
+
+	// 去除片段
+	u.Fragment = ""
+
+	return u.String()
 }
