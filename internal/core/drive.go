@@ -74,7 +74,7 @@ func GetDriverByURL(url string) CloudDrive {
 			return factory(&db.Account{Platform: "quark"})
 		}
 	}
-	if strings.Contains(url, "cloud.139.com") || strings.Contains(url, "yun.139.com") {
+	if strings.Contains(url, "cloud.139.com") || strings.Contains(url, "yun.139.com") || strings.Contains(url, "caiyun.139.com") {
 		if factory, ok := drivers["139"]; ok {
 			return factory(&db.Account{Platform: "139"})
 		}
