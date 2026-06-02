@@ -49,17 +49,11 @@ func (h *SearchHandler) ListSources(c *gin.Context) {
 	c.PureJSON(http.StatusOK, sources)
 }
 
-// GetConfig 获取搜索源配置（密码脱敏）
+// GetConfig 获取搜索源配置
+// 密码/token 返回真实值，前端通过 type="password" + show-password 做视觉隐藏
 func (h *SearchHandler) GetConfig(c *gin.Context) {
 	config := h.client.GetConfig()
-	masked := *config
-	if masked.CloudSaver.Password != "" {
-		masked.CloudSaver.Password = "***"
-	}
-	if masked.CloudSaver.Token != "" {
-		masked.CloudSaver.Token = "***"
-	}
-	c.PureJSON(http.StatusOK, masked)
+	c.PureJSON(http.StatusOK, config)
 }
 
 // UpdateConfig 更新搜索源配置

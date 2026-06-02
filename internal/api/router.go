@@ -674,30 +674,14 @@ func updateScheduleSettings(c *gin.Context) {
 	c.PureJSON(http.StatusOK, gin.H{"message": "settings updated"})
 }
 
-// sensitiveKeyPatterns 需要脱敏的配置 key 关键字
-var sensitiveKeyPatterns = []string{"token", "key", "password", "secret", "cookie"}
-
-func isSensitiveKey(k string) bool {
-	lower := strings.ToLower(k)
-	for _, p := range sensitiveKeyPatterns {
-		if strings.Contains(lower, p) {
-			return true
-		}
-	}
-	return false
-}
-
 func getGlobalSettings(c *gin.Context) {
 	var settings []db.Setting
 	db.DB.Find(&settings)
 
+	// 返回真实值，前端通过 type="password" + show-password 做视觉隐藏
 	res := make(map[string]string)
 	for _, s := range settings {
-		if isSensitiveKey(s.Key) && s.Value != "" {
-			res[s.Key] = "***"
-		} else {
-			res[s.Key] = s.Value
-		}
+		res[s.Key] = s.Value
 	}
 	c.PureJSON(http.StatusOK, res)
 }
