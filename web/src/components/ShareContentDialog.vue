@@ -17,6 +17,7 @@ const emit = defineEmits(['update:visible', 'create-task', 'replace-link'])
 
 const loading = ref(false)
 const files = ref([])
+const fileListRef = ref(null)
 // 面包屑：[{ id: '', name: '根目录' }, { id: 'xxx', name: '子目录' }]
 const breadcrumbs = ref([])
 
@@ -37,6 +38,10 @@ const currentParentId = () => {
 
 const loadFiles = async (parentId) => {
   loading.value = true
+  // 滚动到列表顶部，确保 loading 转圈可见
+  if (fileListRef.value) {
+    fileListRef.value.scrollTop = 0
+  }
   try {
     const res = await parseShareLink({
       share_url: props.url,
@@ -52,14 +57,16 @@ const loadFiles = async (parentId) => {
   }
 }
 
-// 进入子目录
+// 进入子目录（防重入）
 const enterFolder = async (folder) => {
+  if (loading.value) return
   breadcrumbs.value.push({ id: folder.id, name: folder.name })
   await loadFiles(folder.id)
 }
 
-// 点击面包屑跳转
+// 点击面包屑跳转（防重入）
 const navigateToBreadcrumb = async (index) => {
+  if (loading.value) return
   // index = -1 表示根目录
   if (index === -1) {
     breadcrumbs.value = []
@@ -71,8 +78,9 @@ const navigateToBreadcrumb = async (index) => {
   }
 }
 
-// 返回上一级
+// 返回上一级（防重入）
 const goUp = async () => {
+  if (loading.value) return
   if (breadcrumbs.value.length === 0) return
   breadcrumbs.value.pop()
   await loadFiles(currentParentId())
@@ -118,7 +126,7 @@ const handleClose = () => {
       </el-breadcrumb>
     </div>
 
-    <div v-loading="loading" class="file-list">
+    <div ref="fileListRef" v-loading="loading" class="file-list">
       <div v-if="files.length === 0 && !loading" class="empty-tip">
         暂无文件信息
       </div>
@@ -126,8 +134,8 @@ const handleClose = () => {
         v-for="file in files"
         :key="file.id"
         class="file-item"
-        :class="{ 'is-folder': file.is_folder }"
-        @click="file.is_folder && enterFolder(file)"
+        :class="{ 'is-folder': file.is_folder, 'is-disabled': loading }"
+        @click="file.is_folder && !loading && enterFolder(file)"
       >
         <component
           :is="file.is_folder ? Folder : FileIcon"
@@ -179,6 +187,11 @@ const handleClose = () => {
 
 .file-item.is-folder:hover {
   background-color: var(--hover-bg);
+}
+
+.file-item.is-disabled {
+  pointer-events: none;
+  opacity: 0.5;
 }
 
 .file-icon {
