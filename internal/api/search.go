@@ -2,14 +2,20 @@
 package api
 
 import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zcq/clouddrive-auto-save/internal/core"
 	"github.com/zcq/clouddrive-auto-save/internal/core/search"
+	"github.com/zcq/clouddrive-auto-save/internal/utils"
 )
 
 // SearchHandler 搜索 API 处理器
@@ -40,7 +46,20 @@ func (h *SearchHandler) Search(c *gin.Context) {
 		return
 	}
 
-	c.PureJSON(http.StatusOK, result)
+	// 生成 search_id 用于关联 SSE 验证事件
+	searchID := "srch_" + generateHexID(8)
+
+	// 异步启动链接验证
+	if len(result.Items) > 0 {
+		go validateSearchResults(searchID, result.Items)
+	}
+
+	c.PureJSON(http.StatusOK, gin.H{
+		"total":     result.Total,
+		"page":      result.Page,
+		"items":     result.Items,
+		"search_id": searchID,
+	})
 }
 
 // ListSources 列出搜索源
@@ -119,4 +138,57 @@ func (h *SearchHandler) ValidateLink(c *gin.Context) {
 	}
 
 	c.PureJSON(http.StatusOK, gin.H{"valid": true, "message": "链接有效"})
+}
+
+// generateHexID 生成指定长度的随机 hex 字符串
+func generateHexID(n int) string {
+	b := make([]byte, n)
+	rand.Read(b)
+	return hex.EncodeToString(b)[:n]
+}
+
+// validateSearchResults 并发验证搜索结果中的链接有效性
+// 通过 SSE 推送每条结果的验证状态
+func validateSearchResults(searchID string, items []search.SearchItem) {
+	sem := make(chan struct{}, 15) // 15 并发
+	var wg sync.WaitGroup
+
+	for i, item := range items {
+		wg.Add(1)
+		sem <- struct{}{} // 获取信号量
+		go func(idx int, url string) {
+			defer wg.Done()
+			defer func() { <-sem }() // 释放信号量
+
+			valid, message := validateSingleLink(url)
+			utils.BroadcastSearchValidate(utils.SearchValidateEvent{
+				SearchID: searchID,
+				Index:    idx,
+				Valid:    valid,
+				Message:  message,
+			})
+		}(i, item.URL)
+	}
+	wg.Wait()
+}
+
+// validateSingleLink 验证单个分享链接有效性
+func validateSingleLink(rawURL string) (bool, string) {
+	if !isSafeURL(rawURL) {
+		return false, "链接地址不合法"
+	}
+
+	driver := core.GetDriverByURL(rawURL)
+	if driver == nil {
+		return false, "不支持的链接格式"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := driver.ParseShare(ctx, rawURL, "", "")
+	if err != nil {
+		return false, err.Error()
+	}
+	return true, ""
 }
