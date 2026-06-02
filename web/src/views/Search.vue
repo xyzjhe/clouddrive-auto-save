@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search as SearchIcon, Link as LinkIcon, Clock as ClockIcon, FileText as FileTextIcon } from 'lucide-vue-next'
@@ -36,6 +36,9 @@ const platforms = [
   { label: '移动云盘', value: '139' }
 ]
 const selectedPlatforms = ref([])
+// 搜索验证状态
+const currentSearchId = ref('')
+const validateProgress = ref({ total: 0, valid: 0, invalid: 0, done: 0 })
 const allPlatforms = ref(true)
 
 const onAllPlatformsChange = (val) => {
@@ -54,12 +57,52 @@ const onPlatformChange = (val) => {
   }
 }
 
+// SSE 验证监听
+let validateEventSource = null
+
 onMounted(async () => {
   try {
     const data = await listSearchSources()
     sources.value = data || []
   } catch (error) {
     console.error('获取搜索源失败:', error)
+  }
+
+  // 建立 SSE 连接监听验证事件
+  validateEventSource = new EventSource('/api/dashboard/logs')
+  validateEventSource.onmessage = (event) => {
+    const msg = event.data
+    if (!msg || !msg.includes('[EVENT:search_validate|')) return
+
+    const match = msg.match(/\[EVENT:search_validate\|(.+)\]/)
+    if (!match) return
+    try {
+      const payload = JSON.parse(match[1])
+      // 只处理当前搜索会话的事件
+      if (payload.search_id !== currentSearchId.value) return
+
+      const idx = payload.index
+      if (idx >= 0 && idx < results.value.length) {
+        results.value[idx].valid = payload.valid
+        results.value[idx].validMessage = payload.message || ''
+      }
+      // 更新进度
+      validateProgress.value.done++
+      if (payload.valid) {
+        validateProgress.value.valid++
+      } else {
+        validateProgress.value.invalid++
+      }
+    } catch (e) {
+      // 解析失败忽略
+    }
+  }
+})
+
+onUnmounted(() => {
+  if (validateEventSource) {
+    validateEventSource.close()
+    validateEventSource = null
   }
 })
 
@@ -85,8 +128,9 @@ const handleSearch = async () => {
       params.platform = selectedPlatforms.value
     }
     const data = await searchResources(params)
-    results.value = data.items || []
-    // 搜索结果直接展示，不做逐条验证（验证在创建任务时由后端处理）
+    results.value = (data.items || []).map(item => ({ ...item, valid: null, validMessage: '' }))
+    currentSearchId.value = data.search_id || ''
+    validateProgress.value = { total: results.value.length, valid: 0, invalid: 0, done: 0 }
   } catch (error) {
     console.error('搜索失败:', error)
   } finally {
@@ -185,6 +229,15 @@ const handleCreateTaskFromDialog = (data) => {
           </el-checkbox-group>
         </div>
       </div>
+
+      <!-- 验证进度 -->
+      <div v-if="validateProgress.total > 0 && validateProgress.done < validateProgress.total" class="validate-progress">
+        <el-icon class="is-loading"><SearchIcon /></el-icon>
+        <span>验证进度：{{ validateProgress.done }}/{{ validateProgress.total }} ✅ {{ validateProgress.valid }} 条有效 | ❌ {{ validateProgress.invalid }} 条失效</span>
+      </div>
+      <div v-else-if="validateProgress.total > 0 && validateProgress.done === validateProgress.total" class="validate-progress done">
+        <span>验证完成：✅ {{ validateProgress.valid }} 条有效 | ❌ {{ validateProgress.invalid }} 条失效</span>
+      </div>
     </div>
 
     <div
@@ -195,17 +248,20 @@ const handleCreateTaskFromDialog = (data) => {
         v-for="item in paginatedResults"
         :key="item.url"
         class="result-item clickable"
-        @click="handleResultClick(item)"
+        :class="{ 'is-disabled': item.valid === false }"
+        @click="item.valid !== false && handleResultClick(item)"
       >
         <div class="result-header">
           <div class="result-title">
             <span v-if="item.valid === true" class="valid-icon">✅</span>
             <span v-else-if="item.valid === false" class="valid-icon invalid" :title="item.validMessage">❌</span>
+            <span v-else class="valid-icon pending">⏳</span>
             {{ item.title }}
           </div>
           <el-button
             type="primary"
             size="small"
+            :disabled="item.valid === false"
             @click.stop="handleCreateTask(item)"
           >
             创建任务
@@ -422,5 +478,37 @@ const handleCreateTaskFromDialog = (data) => {
 
 .validation-progress .el-icon {
   color: var(--brand-500);
+}
+
+.validate-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  margin-top: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.validate-progress.done {
+  color: var(--el-color-success);
+}
+
+.valid-icon.pending {
+  opacity: 0.5;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.result-item.is-disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 </style>
