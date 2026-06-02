@@ -2,9 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Loading } from '@element-plus/icons-vue'
 import { Search as SearchIcon, Link as LinkIcon, Clock as ClockIcon, FileText as FileTextIcon } from 'lucide-vue-next'
-import { searchResources, listSearchSources, validateLink } from '../api/search'
+import { searchResources, listSearchSources } from '../api/search'
 import ShareContentDialog from '../components/ShareContentDialog.vue'
 
 const router = useRouter()
@@ -14,9 +13,6 @@ const selectedSources = ref([])
 const results = ref([])
 const loading = ref(false)
 const page = ref(1)
-const validating = ref(false)
-const validatedCount = ref(0)
-const totalCount = ref(0)
 
 // 分页
 const currentPage = ref(1)
@@ -51,49 +47,6 @@ onMounted(async () => {
   }
 })
 
-// 批量校验链接有效性，渐进式展示有效结果
-// 使用并发限流（避免一次性发起几十个请求）+ 单请求超时（5s）+ 增量渲染
-const validateLinks = async (items) => {
-  validating.value = true
-  validatedCount.value = 0
-  totalCount.value = items.length
-  // 保持原顺序的存放区
-  const slotMap = new Map()
-  let displayedCount = 0
-
-  // 并发限流：最多同时 6 个请求，避免浏览器/服务端连接饱和
-  const CONCURRENCY = 6
-  let cursor = 0
-
-  const runOne = async (idx) => {
-    const item = items[idx]
-    try {
-      const res = await validateLink(item.url)
-      if (res.valid) {
-        slotMap.set(idx, item)
-      }
-    } catch {
-      // 超时或失败，跳过
-    }
-    validatedCount.value++
-
-    // 增量更新：按原顺序补齐到 results 中（保证显示顺序与搜索顺序一致）
-    while (slotMap.has(displayedCount)) {
-      results.value.push(slotMap.get(displayedCount))
-      slotMap.delete(displayedCount)
-      displayedCount++
-    }
-  }
-
-  const workers = Array.from({ length: CONCURRENCY }, async () => {
-    while (cursor < items.length) {
-      const idx = cursor++
-      await runOne(idx)
-    }
-  })
-  await Promise.allSettled(workers)
-  validating.value = false
-}
 
 const handleSearch = async () => {
   if (!query.value.trim()) {
@@ -102,6 +55,7 @@ const handleSearch = async () => {
   }
 
   loading.value = true
+  results.value = [] // 清空上次搜索结果，避免累加
   currentPage.value = 1
   try {
     const params = {
@@ -115,14 +69,8 @@ const handleSearch = async () => {
       params.platform = selectedPlatforms.value
     }
     const data = await searchResources(params)
-    const items = data.items || []
-
-    // 先校验链接有效性，验证完成后再展示过滤后的结果
-    if (items.length > 0) {
-      await validateLinks(items)
-    } else {
-      results.value = []
-    }
+    results.value = data.items || []
+    // 搜索结果直接展示，不做逐条验证（验证在创建任务时由后端处理）
   } catch (error) {
     console.error('搜索失败:', error)
   } finally {
@@ -235,7 +183,6 @@ const handleCreateTaskFromDialog = (data) => {
           <div class="result-title">
             <span v-if="item.valid === true" class="valid-icon">✅</span>
             <span v-else-if="item.valid === false" class="valid-icon invalid" :title="item.validMessage">❌</span>
-            <span v-else-if="validating" class="valid-icon">⏳</span>
             {{ item.title }}
           </div>
           <el-button
@@ -284,14 +231,10 @@ const handleCreateTaskFromDialog = (data) => {
       </div>
 
       <el-empty
-        v-if="!loading && totalResults === 0 && query && !validating"
+        v-if="!loading && totalResults === 0 && query"
         description="未找到相关资源"
       />
 
-      <div v-if="validating && totalCount > 0" class="validation-progress">
-        <el-icon class="is-loading"><Loading /></el-icon>
-        <span>正在校验链接有效性（{{ validatedCount }} / {{ totalCount }}）</span>
-      </div>
 
       <div v-if="totalResults > 0" class="pagination-wrapper">
         <el-pagination

@@ -4,7 +4,8 @@ export function searchResources(params) {
   return request({
     url: '/search',
     method: 'get',
-    params
+    params,
+    timeout: 30000 // 搜索需要调用多个源，超时设为 30s
   })
 }
 
