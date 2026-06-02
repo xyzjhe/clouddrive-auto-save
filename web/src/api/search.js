@@ -30,10 +30,13 @@ export function updateSearchConfig(data) {
   })
 }
 
-export function validateLink(url) {
+export function validateLink(url, timeoutMs = 5000) {
   return request({
     url: '/search/validate',
     method: 'get',
-    params: { url }
+    params: { url },
+    timeout: timeoutMs,
+    // 链接校验的错误是预期内的（无效链接），不弹全局 toast
+    skipErrorHandler: true
   })
 }

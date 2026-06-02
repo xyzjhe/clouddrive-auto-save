@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Loading } from '@element-plus/icons-vue'
 import { Search as SearchIcon, Link as LinkIcon, Clock as ClockIcon, FileText as FileTextIcon } from 'lucide-vue-next'
 import { searchResources, listSearchSources, validateLink } from '../api/search'
 import ShareContentDialog from '../components/ShareContentDialog.vue'
@@ -14,6 +15,8 @@ const results = ref([])
 const loading = ref(false)
 const page = ref(1)
 const validating = ref(false)
+const validatedCount = ref(0)
+const totalCount = ref(0)
 
 // 分页
 const currentPage = ref(1)
@@ -48,22 +51,47 @@ onMounted(async () => {
   }
 })
 
-// 批量校验链接有效性，过滤失效链接，返回有效列表
+// 批量校验链接有效性，渐进式展示有效结果
+// 使用并发限流（避免一次性发起几十个请求）+ 单请求超时（5s）+ 增量渲染
 const validateLinks = async (items) => {
   validating.value = true
-  const promises = items.map(async (item) => {
+  validatedCount.value = 0
+  totalCount.value = items.length
+  // 保持原顺序的存放区
+  const slotMap = new Map()
+  let displayedCount = 0
+
+  // 并发限流：最多同时 6 个请求，避免浏览器/服务端连接饱和
+  const CONCURRENCY = 6
+  let cursor = 0
+
+  const runOne = async (idx) => {
+    const item = items[idx]
     try {
       const res = await validateLink(item.url)
-      item.valid = res.valid
-      item.validMessage = res.message || ''
-    } catch (e) {
-      item.valid = false
-      item.validMessage = '校验失败'
+      if (res.valid) {
+        slotMap.set(idx, item)
+      }
+    } catch {
+      // 超时或失败，跳过
+    }
+    validatedCount.value++
+
+    // 增量更新：按原顺序补齐到 results 中（保证显示顺序与搜索顺序一致）
+    while (slotMap.has(displayedCount)) {
+      results.value.push(slotMap.get(displayedCount))
+      slotMap.delete(displayedCount)
+      displayedCount++
+    }
+  }
+
+  const workers = Array.from({ length: CONCURRENCY }, async () => {
+    while (cursor < items.length) {
+      const idx = cursor++
+      await runOne(idx)
     }
   })
-  await Promise.allSettled(promises)
-  // 过滤失效链接后设置最终结果
-  results.value = items.filter(item => item.valid !== false)
+  await Promise.allSettled(workers)
   validating.value = false
 }
 
@@ -128,13 +156,15 @@ const handleResultClick = (item) => {
 
 const handleCreateTaskFromDialog = (data) => {
   shareDialogVisible.value = false
-  router.push({
-    name: 'Tasks',
-    query: {
-      share_url: data.url,
-      extract_code: data.extractCode
-    }
-  })
+  const query = {
+    share_url: data.url,
+    extract_code: data.extractCode
+  }
+  // 若在子目录中创建任务，一并带上 parent_id（139 平台作为 share_parent_id）
+  if (data.parentId) {
+    query.share_parent_id = data.parentId
+  }
+  router.push({ name: 'Tasks', query })
 }
 </script>
 
@@ -254,9 +284,14 @@ const handleCreateTaskFromDialog = (data) => {
       </div>
 
       <el-empty
-        v-if="!loading && totalResults === 0 && query"
+        v-if="!loading && totalResults === 0 && query && !validating"
         description="未找到相关资源"
       />
+
+      <div v-if="validating && totalCount > 0" class="validation-progress">
+        <el-icon class="is-loading"><Loading /></el-icon>
+        <span>正在校验链接有效性（{{ validatedCount }} / {{ totalCount }}）</span>
+      </div>
 
       <div v-if="totalResults > 0" class="pagination-wrapper">
         <el-pagination
@@ -411,5 +446,20 @@ const handleCreateTaskFromDialog = (data) => {
   justify-content: center;
   margin-top: 1.5rem;
   padding: 1rem 0;
+}
+
+.validation-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.validation-progress .el-icon {
+  color: var(--brand-500);
 }
 </style>

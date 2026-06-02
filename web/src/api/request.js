@@ -37,6 +37,10 @@ service.interceptors.response.use(
     return res
   },
   error => {
+    // 调用方可通过 config.skipErrorHandler 自行处理错误（如链接校验场景）
+    if (error.config?.skipErrorHandler) {
+      return Promise.reject(error)
+    }
     let msg
     if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
       msg = '请求超时，请稍后重试'
