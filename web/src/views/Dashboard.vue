@@ -12,11 +12,12 @@
           </template>
 
           <div class="telemetry-body">
-            <!-- CPU 负载环 -->
+            <!-- CPU 负载 -->
             <div class="telemetry-item">
               <div class="telemetry-info">
                 <span>CPU 负载</span>
                 <span class="value-highlight">{{ cpuUsage > 0 ? cpuUsage + '%' : '--' }}</span>
+                <span v-if="numCPU > 0" class="value-sub">{{ numCPU }} 核</span>
               </div>
               <el-progress
                 :percentage="cpuUsage"
@@ -26,11 +27,12 @@
               />
             </div>
 
-            <!-- RAM 负载条 -->
+            <!-- RAM 负载 -->
             <div class="telemetry-item">
               <div class="telemetry-info">
                 <span>RAM 负载</span>
                 <span class="value-highlight">{{ ramUsage > 0 ? ramUsage + '%' : '--' }}</span>
+                <span v-if="ramTotalGB > 0" class="value-sub">{{ ramUsedGB.toFixed(1) }} / {{ ramTotalGB.toFixed(1) }} GB</span>
               </div>
               <el-progress
                 :percentage="ramUsage"
@@ -228,9 +230,12 @@ import { runTask, dismissTask as runDismissTask } from '../api/task'
 import { ElMessage } from 'element-plus'
 import { formatSize, formatTime as formatRelativeTime } from '../utils/format'
 
-// 系统遥测（暂无后端支持，显示 --）
+// 系统遥测
 const cpuUsage = ref(0)
 const ramUsage = ref(0)
+const ramUsedGB = ref(0)
+const ramTotalGB = ref(0)
+const numCPU = ref(0)
 
 const activeTab = ref('schedule')
 const stats = reactive({
@@ -253,6 +258,15 @@ const fetchStats = async (isPoll = false) => {
   try {
     const data = await getStats()
     Object.assign(stats, data)
+
+    // 更新系统遥测
+    if (data.sys_info) {
+      cpuUsage.value = data.sys_info.cpu_percent
+      ramUsage.value = data.sys_info.ram_percent
+      ramUsedGB.value = data.sys_info.ram_used_gb
+      ramTotalGB.value = data.sys_info.ram_total_gb
+      numCPU.value = data.sys_info.num_cpu
+    }
 
     const apiTasks = data.running_tasks_list || []
 
@@ -540,6 +554,22 @@ onUnmounted(() => {
 
 .value-highlight {
   color: var(--neon-teal);
+}
+
+.value-sub {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-left: 4px;
+  font-family: var(--font-mono, monospace);
+}
+
+.telemetry-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding-top: 4px;
 }
 
 .circle-progress-item {

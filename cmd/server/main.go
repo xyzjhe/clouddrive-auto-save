@@ -140,6 +140,9 @@ func main() {
 	searchClient.WarmupToken() // 后台预热 token，避免首次搜索延迟
 	api.InitSearchHandler(searchClient)
 
+	// 5.5 启动系统遥测采集（后台周期采样 CPU）
+	utils.StartCPUCollector()
+
 	// 6. 启动 API 服务
 	listenAddr := os.Getenv("LISTEN_ADDR")
 	if listenAddr == "" {

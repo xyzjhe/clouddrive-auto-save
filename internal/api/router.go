@@ -589,6 +589,7 @@ func getDashboardStats(c *gin.Context) {
 		"active_accounts":    activeAccounts,
 		"recent_activities":  recentTasks,
 		"running_tasks_list": runningTasksList,
+		"sys_info":           utils.GetSysInfo(),
 	})
 }
 
