@@ -32,11 +32,27 @@ const handleSizeChange = (newSize) => {
 
 // 网盘类型筛选
 const platforms = [
-  { label: '全部', value: '' },
   { label: '夸克网盘', value: 'quark' },
   { label: '移动云盘', value: '139' }
 ]
 const selectedPlatforms = ref([])
+const allPlatforms = ref(true)
+
+const onAllPlatformsChange = (val) => {
+  if (val) {
+    selectedPlatforms.value = []
+  }
+}
+
+const onPlatformChange = (val) => {
+  // 勾选具体平台 → 取消"全部"
+  allPlatforms.value = false
+  // 如果勾选了所有具体项，等效于全部
+  if (val.length === platforms.length) {
+    selectedPlatforms.value = []
+    allPlatforms.value = true
+  }
+}
 
 onMounted(async () => {
   try {
@@ -156,11 +172,13 @@ const handleCreateTaskFromDialog = (data) => {
 
         <div class="platform-filter">
           <span class="filter-label">网盘类型：</span>
-          <el-checkbox-group v-model="selectedPlatforms">
+          <el-checkbox v-model="allPlatforms" @change="onAllPlatformsChange">全部</el-checkbox>
+          <el-checkbox-group v-model="selectedPlatforms" @change="onPlatformChange">
             <el-checkbox
               v-for="p in platforms"
               :key="p.value"
               :label="p.value"
+              :disabled="allPlatforms"
             >
               {{ p.label }}
             </el-checkbox>
