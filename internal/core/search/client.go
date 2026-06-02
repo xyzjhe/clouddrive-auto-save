@@ -28,6 +28,24 @@ func NewClient(config *SearchConfig, db *gorm.DB) *Client {
 	return c
 }
 
+// WarmupToken 启动时主动校验 CloudSaver token，过期则重登，避免首次搜索延迟
+func (c *Client) WarmupToken() {
+	go func() {
+		c.mu.RLock()
+		var cs *CloudSaverSource
+		for _, src := range c.sources {
+			if v, ok := src.(*CloudSaverSource); ok {
+				cs = v
+				break
+			}
+		}
+		c.mu.RUnlock()
+		if cs != nil {
+			cs.EnsureToken()
+		}
+	}()
+}
+
 // buildSources 根据配置构建搜索源
 func (c *Client) buildSources() {
 	c.mu.Lock()

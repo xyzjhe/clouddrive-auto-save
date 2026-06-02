@@ -40,6 +40,18 @@ func (s *CloudSaverSource) Name() string {
 	return "CloudSaver"
 }
 
+// EnsureToken 确保 token 有效，过期则重新登录（启动时预热用，不执行搜索）
+func (s *CloudSaverSource) EnsureToken() {
+	s.mu.RLock()
+	token := s.token
+	s.mu.RUnlock()
+	if token == "" {
+		if err := s.login(); err != nil {
+			slog.Warn("CloudSaver token 预热失败", "error", err)
+		}
+	}
+}
+
 // login 登录获取 Token
 func (s *CloudSaverSource) login() error {
 	reqURL := fmt.Sprintf("%s/api/user/login", s.baseURL)

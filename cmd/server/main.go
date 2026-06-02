@@ -137,6 +137,7 @@ func main() {
 		searchConfig = &search.SearchConfig{}
 	}
 	searchClient := search.NewClient(searchConfig, db.DB)
+	searchClient.WarmupToken() // 后台预热 token，避免首次搜索延迟
 	api.InitSearchHandler(searchClient)
 
 	// 6. 启动 API 服务
