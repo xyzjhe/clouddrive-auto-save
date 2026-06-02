@@ -4,12 +4,16 @@ package search
 import (
 	"log/slog"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
 
 	"gorm.io/gorm"
 )
+
+// reTrailingGarbage 匹配 URL 尾部非 URL 安全字符（搜索源数据常带 emoji、标签符号等）
+var reTrailingGarbage = regexp.MustCompile(`[^\w\-./?:@&=#]+$`)
 
 // Client 搜索客户端
 type Client struct {
@@ -186,9 +190,15 @@ func contains(slice []string, item string) bool {
 }
 
 // normalizeURL 对 URL 进行归一化，用于去重比较
-// 处理：协议统一 https、去除尾部分隔符、排序查询参数、去除片段
+// 处理：剥离尾部垃圾字符、协议统一 https、去除尾部分隔符、排序查询参数、去除片段
 func normalizeURL(rawURL string) string {
-	u, err := url.Parse(strings.TrimSpace(rawURL))
+	// 剥离尾部非 URL 安全字符（搜索源数据常带 emoji、标签符号等）
+	rawURL = reTrailingGarbage.ReplaceAllString(strings.TrimSpace(rawURL), "")
+	if rawURL == "" {
+		return ""
+	}
+
+	u, err := url.Parse(rawURL)
 	if err != nil {
 		return strings.ToLower(strings.TrimSpace(rawURL))
 	}
@@ -213,7 +223,11 @@ func normalizeURL(rawURL string) string {
 			var pairs []string
 			for k, vals := range q {
 				for _, v := range vals {
-					pairs = append(pairs, k+"="+v)
+					if v == "" {
+						pairs = append(pairs, k)
+					} else {
+						pairs = append(pairs, k+"="+v)
+					}
 				}
 			}
 			sort.Strings(pairs)

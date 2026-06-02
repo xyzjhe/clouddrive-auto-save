@@ -48,6 +48,9 @@ func TestNormalizeURL(t *testing.T) {
 		{"空URL", "", ""},
 		{"纯http+尾部斜杠+参数乱序", "http://PAN.Quark.CN/s/abc/?b=2&a=1#frag", "https://pan.quark.cn/s/abc?a=1&b=2"},
 		{"已是标准格式", "https://pan.quark.cn/s/abc", "https://pan.quark.cn/s/abc"},
+		{"尾部emoji去除", "https://caiyun.139.com/m/i?2j3ahPrfeGrp0🏷", "https://caiyun.139.com/m/i?2j3ahPrfeGrp0"},
+		{"尾部特殊符号去除", "https://pan.quark.cn/s/abc!!!", "https://pan.quark.cn/s/abc"},
+		{"仅尾部垃圾", "!!!", ""},
 	}
 
 	for _, tt := range tests {
