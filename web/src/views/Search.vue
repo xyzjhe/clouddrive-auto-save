@@ -136,9 +136,15 @@ const handleSearch = async () => {
       params.platform = selectedPlatforms.value
     }
     const data = await searchResources(params)
-    results.value = (data.items || []).map(item => ({ ...item, valid: null, validMessage: '' }))
+    const validateCount = data.validate_count || data.items?.length || 0
+    results.value = (data.items || []).map((item, idx) => ({
+      ...item,
+      // 超出验证范围的结果直接标记为"跳过"，不显示转圈
+      valid: idx < validateCount ? null : 'skipped',
+      validMessage: idx < validateCount ? '' : '未验证'
+    }))
     currentSearchId.value = data.search_id || ''
-    validateProgress.value = { total: results.value.length, valid: 0, invalid: 0, done: 0 }
+    validateProgress.value = { total: validateCount, valid: 0, invalid: 0, done: 0 }
 
     // 30 秒超时兜底：将未收到验证事件的结果标记为超时
     if (validateTimeoutTimer) clearTimeout(validateTimeoutTimer)
@@ -281,6 +287,7 @@ const handleCreateTaskFromDialog = (data) => {
             <span v-if="item.valid === true" class="valid-icon"><PhCheckCircle :size="16" weight="fill" style="color: var(--color-success)" /></span>
             <span v-else-if="item.valid === false" class="valid-icon invalid" :title="item.validMessage"><PhXCircle :size="16" weight="fill" style="color: var(--color-danger)" /></span>
             <span v-else-if="item.valid === 'timeout'" class="valid-icon timeout" :title="item.validMessage"><PhWarningCircle :size="16" weight="fill" style="color: var(--text-muted)" /></span>
+            <span v-else-if="item.valid === 'skipped'" class="valid-icon skipped">—</span>
             <span v-else class="valid-icon pending"><PhSpinner :size="16" class="spin-icon" /></span>
             {{ item.title }}
           </div>

@@ -60,10 +60,11 @@ func (h *SearchHandler) Search(c *gin.Context) {
 	}
 
 	c.PureJSON(http.StatusOK, gin.H{
-		"total":     result.Total,
-		"page":      result.Page,
-		"items":     result.Items,
-		"search_id": searchID,
+		"total":          result.Total,
+		"page":           result.Page,
+		"items":          result.Items,
+		"search_id":      searchID,
+		"validate_count": len(validateItems),
 	})
 }
 
