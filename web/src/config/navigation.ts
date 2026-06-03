@@ -7,28 +7,23 @@ export interface NavItem {
 
 export interface NavGroup {
   name: string
-  icon: string
   items: NavItem[]
-  collapsible?: boolean
-  defaultCollapsed?: boolean
 }
 
 export const navigationConfig: NavGroup[] = [
   {
     name: '概览',
-    icon: '📊',
     items: [
       {
         name: '控制台',
         path: '/console',
-        icon: 'LayoutDashboard',
+        icon: 'SquaresFour',
         description: '系统状态与实时转存监控'
       }
     ]
   },
   {
     name: '管理',
-    icon: '🔧',
     items: [
       {
         name: '账号管理',
@@ -39,31 +34,29 @@ export const navigationConfig: NavGroup[] = [
       {
         name: '任务列表',
         path: '/tasks',
-        icon: 'ListTodo',
+        icon: 'ListChecks',
         description: '管理转存任务'
       }
     ]
   },
   {
     name: '工具',
-    icon: '🛠️',
     items: [
       {
         name: '资源发现',
         path: '/search',
-        icon: 'Search',
+        icon: 'MagnifyingGlass',
         description: '搜索并发现云盘资源'
       }
     ]
   },
   {
     name: '系统',
-    icon: '⚙️',
     items: [
       {
         name: '系统设置',
         path: '/settings',
-        icon: 'Settings',
+        icon: 'GearSix',
         description: '全局参数、推送与插件管理'
       }
     ]
