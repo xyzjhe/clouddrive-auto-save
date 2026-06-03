@@ -433,6 +433,12 @@ onMounted(() => {
   position: relative;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex: 1;
+}
+
+/* 确保同一行内的卡片等高 */
+.card-view-container :deep(.el-row > .el-col) {
+  display: flex;
 }
 
 .account-card:hover {

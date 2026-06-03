@@ -876,6 +876,12 @@ onMounted(async () => {
   border: 1px solid var(--border-color) !important;
   margin-bottom: 16px;
   border-radius: 12px !important;
+  flex: 1;
+}
+
+/* 确保同一行内的卡片等高 */
+.settings-tabs :deep(.el-row > .el-col) {
+  display: flex;
 }
 
 .card-header {
