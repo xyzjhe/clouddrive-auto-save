@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { Play, Edit, Trash2 } from 'lucide-vue-next'
+import { PhPlay, PhPencilSimple, PhTrash } from '@phosphor-icons/vue'
 
 const props = defineProps({
   task: {
@@ -36,7 +36,6 @@ const scheduleText = computed(() => {
       <div class="task-name">{{ task.name }}</div>
       <el-tag
         :color="currentStatus.color"
-        effect="dark"
         size="small"
       >
         {{ currentStatus.label }}
@@ -62,8 +61,6 @@ const scheduleText = computed(() => {
       <el-progress
         :percentage="task.percent || 0"
         :stroke-width="8"
-        striped
-        striped-flow
       />
       <div class="progress-text">{{ task.message }}</div>
     </div>
@@ -77,7 +74,7 @@ const scheduleText = computed(() => {
           :disabled="task.status === 'running'"
           @click="emit('run', task.id)"
         >
-          <Play :size="14" />
+          <PhPlay :size="16" weight="fill" />
         </button>
         <button
           class="btn-icon btn-icon--primary"
@@ -85,7 +82,7 @@ const scheduleText = computed(() => {
           aria-label="编辑"
           @click="emit('edit', task.id)"
         >
-          <Edit :size="14" />
+          <PhPencilSimple :size="16" />
         </button>
         <button
           class="btn-icon btn-icon--danger"
@@ -93,7 +90,7 @@ const scheduleText = computed(() => {
           aria-label="删除"
           @click="emit('delete', task.id)"
         >
-          <Trash2 :size="14" />
+          <PhTrash :size="16" />
         </button>
       </div>
     </div>
@@ -102,15 +99,15 @@ const scheduleText = computed(() => {
 
 <style scoped>
 .task-card {
-  background: var(--bg-secondary);
-  border-radius: 12px;
+  background: var(--surface-bg);
+  border-radius: var(--radius-lg, 14px);
   padding: 1.25rem;
   box-shadow: var(--shadow-sm);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .task-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
@@ -134,7 +131,7 @@ const scheduleText = computed(() => {
   display: flex;
   justify-content: space-between;
   padding: 0.5rem 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .info-item:last-child {

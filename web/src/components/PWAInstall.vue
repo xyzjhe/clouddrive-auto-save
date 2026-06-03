@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { PhCloud } from '@phosphor-icons/vue'
 
 const deferredPrompt = ref(null)
 const showInstallPrompt = ref(false)
@@ -45,7 +46,9 @@ const dismiss = () => {
   <transition name="slide-up">
     <div v-if="showInstallPrompt" class="install-prompt">
       <div class="install-content">
-        <div class="install-icon">☁️</div>
+        <div class="install-icon">
+          <PhCloud :size="40" weight="duotone" />
+        </div>
         <div class="install-text">
           <div class="install-title">安装 UCAS</div>
           <div class="install-desc">添加到主屏幕，获得更好的使用体验</div>
@@ -80,7 +83,9 @@ const dismiss = () => {
 }
 
 .install-icon {
-  font-size: 2.5rem;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
 }
 
 .install-text {

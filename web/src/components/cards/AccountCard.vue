@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { formatSize } from '../../utils/format'
+import { PhHardDrives } from '@phosphor-icons/vue'
 
 const props = defineProps({
   account: {
@@ -10,11 +11,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['check', 'edit', 'delete'])
-
-const platformColors = {
-  '139': 'linear-gradient(135deg, #f59e0b, #f97316)',
-  'quark': 'linear-gradient(135deg, #6366f1, #8b5cf6)'
-}
 
 const storagePercentage = computed(() => {
   if (!props.account.capacity) return 0
@@ -32,10 +28,8 @@ const storageColor = computed(() => {
 
 <template>
   <div class="account-card">
-    <div
-      class="card-header"
-      :style="{ background: platformColors[account.platform] || platformColors.quark }"
-    >
+    <div class="card-header">
+      <PhHardDrives :size="24" class="platform-icon" />
       <div class="platform-name">{{ account.platform === '139' ? '移动云盘' : '夸克网盘' }}</div>
       <div class="nickname">{{ account.nickname }}</div>
     </div>
@@ -57,14 +51,15 @@ const storageColor = computed(() => {
       </div>
 
       <div class="card-actions">
-        <el-button size="small" @click="emit('check', account.id)">
+        <el-button size="small" text @click="emit('check', account.id)">
           校验
         </el-button>
-        <el-button size="small" @click="emit('edit', account.id)">
+        <el-button size="small" text @click="emit('edit', account.id)">
           编辑
         </el-button>
         <el-button
           size="small"
+          text
           type="danger"
           @click="emit('delete', account.id)"
         >
@@ -77,21 +72,27 @@ const storageColor = computed(() => {
 
 <style scoped>
 .account-card {
-  background: var(--bg-secondary);
-  border-radius: 12px;
+  background: var(--surface-bg);
+  border-radius: var(--radius-lg, 14px);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .account-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
 .card-header {
-  padding: 1.25rem;
-  color: white;
+  padding: 1rem 1.25rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.platform-icon {
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
 }
 
 .platform-name {
@@ -102,7 +103,7 @@ const storageColor = computed(() => {
 
 .nickname {
   font-size: 0.9rem;
-  opacity: 0.9;
+  color: var(--text-secondary);
 }
 
 .card-body {

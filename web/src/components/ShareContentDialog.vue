@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { parseShareLink } from '../api/task'
 import { formatSize } from '../utils/format'
-import { Folder, File as FileIcon, ChevronRight, ArrowLeft } from 'lucide-vue-next'
+import { PhFolder, PhFile, PhCaretRight, PhArrowLeft } from '@phosphor-icons/vue'
 
 const props = defineProps({
   visible: Boolean,
@@ -113,9 +113,9 @@ const handleClose = () => {
   >
     <!-- 面包屑导航 -->
     <div v-if="breadcrumbs.length > 0" class="dialog-breadcrumb">
-      <el-button link :icon="ArrowLeft" size="small" @click="goUp">上一级</el-button>
+      <el-button link :icon="PhArrowLeft" size="small" @click="goUp">上一级</el-button>
       <el-divider direction="vertical" />
-      <el-breadcrumb separator-icon="ChevronRight">
+      <el-breadcrumb separator-icon="PhCaretRight">
         <el-breadcrumb-item>
           <a href="#" @click.prevent="navigateToBreadcrumb(-1)">根目录</a>
         </el-breadcrumb-item>
@@ -138,13 +138,13 @@ const handleClose = () => {
         @click="file.is_folder && !loading && enterFolder(file)"
       >
         <component
-          :is="file.is_folder ? Folder : FileIcon"
+          :is="file.is_folder ? PhFolder : PhFile"
           class="file-icon"
           :size="16"
         />
         <span class="file-name">{{ file.name }}</span>
         <span v-if="!file.is_folder" class="file-size">{{ formatSize(file.size) }}</span>
-        <ChevronRight v-if="file.is_folder" class="enter-icon" :size="16" />
+        <PhCaretRight v-if="file.is_folder" class="enter-icon" :size="16" />
       </div>
     </div>
 
