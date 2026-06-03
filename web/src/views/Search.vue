@@ -52,8 +52,9 @@ const triggerPageValidation = async () => {
 
   if (toValidate.length === 0) return
 
-  // 重置进度
-  validateProgress.value = { total: toValidate.length, valid: 0, invalid: 0, done: 0 }
+  // 只重置当前批次的 total/done，保留累计的 valid/invalid
+  validateProgress.value.total = toValidate.length
+  validateProgress.value.done = 0
 
   // 30 秒超时兜底
   if (validateTimeoutTimer) clearTimeout(validateTimeoutTimer)
