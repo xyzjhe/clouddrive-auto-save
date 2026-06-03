@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('系统设置：调度配置测试', () => {
   test('启用全局调度并设置简易定时', async ({ page }) => {
     await page.goto('/settings');
-    await expect(page.getByRole('heading', { name: '系统设置 ⚙️' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '系统设置' })).toBeVisible();
 
     const scheduleCard = page.locator('.el-card').filter({ hasText: '全局定时任务' });
 

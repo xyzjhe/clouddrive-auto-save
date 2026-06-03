@@ -20,9 +20,9 @@ test.describe('仪表盘：日志管理测试', () => {
     await expect(taskRow.locator('.el-tag').filter({ hasText: 'SUCCESS' })).toBeVisible({ timeout: 60000 });
 
     await page.goto('/');
-    await expect(page.getByText('TERMINAL LOG')).toBeVisible();
+    await expect(page.getByText('系统日志', { exact: true })).toBeVisible();
 
-    const logArea = page.locator('.log-terminal, .log-content, pre').first();
+    const logArea = page.locator('.log-list').first();
     await expect(logArea).toBeVisible();
   });
 

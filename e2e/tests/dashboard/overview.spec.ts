@@ -19,15 +19,15 @@ test.describe('仪表盘：数据概览测试', () => {
     });
 
     await page.goto('/');
-    
+
     // 验证基础标题
-    await expect(page.locator('body')).toContainText('SYSTEM TELEMETRY');
-    
+    await expect(page.locator('body')).toContainText('已规划任务');
+
     // 验证四个统计卡片的值
-    await expect(page.locator('.mini-tile').nth(0).locator('.tile-value')).toHaveText('0');
-    await expect(page.locator('.mini-tile').nth(1).locator('.tile-value')).toHaveText('0 B');
-    await expect(page.locator('.mini-tile').nth(2).locator('.tile-value')).toHaveText('0');
-    await expect(page.locator('.mini-tile').nth(3).locator('.tile-value')).toHaveText('0');
+    await expect(page.locator('.stat-tile').nth(0).locator('.stat-value')).toHaveText('0');
+    await expect(page.locator('.stat-tile').nth(1).locator('.stat-value')).toHaveText('0 B');
+    await expect(page.locator('.stat-tile').nth(2).locator('.stat-value')).toHaveText('0');
+    await expect(page.locator('.stat-tile').nth(3).locator('.stat-value')).toHaveText('0');
     
     // 验证空状态提示
     await expect(page.getByText('近期暂无转存动态')).toBeVisible();
@@ -51,11 +51,11 @@ test.describe('仪表盘：数据概览测试', () => {
 
     await page.goto('/');
 
-    await expect(page.locator('.mini-tile').nth(0).locator('.tile-value')).toHaveText('15');
+    await expect(page.locator('.stat-tile').nth(0).locator('.stat-value')).toHaveText('15');
     // 验证前端 formatSize 的转换（parseFloat 去尾零：1.00 → 1）
-    await expect(page.locator('.mini-tile').nth(1).locator('.tile-value')).toHaveText('1 GB');
-    await expect(page.locator('.mini-tile').nth(2).locator('.tile-value')).toHaveText('5');
-    await expect(page.locator('.mini-tile').nth(3).locator('.tile-value')).toHaveText('2');
+    await expect(page.locator('.stat-tile').nth(1).locator('.stat-value')).toHaveText('1 GB');
+    await expect(page.locator('.stat-tile').nth(2).locator('.stat-value')).toHaveText('5');
+    await expect(page.locator('.stat-tile').nth(3).locator('.stat-value')).toHaveText('2');
   });
 
   test('场景三：实时执行与近期动态状态', async ({ page }) => {

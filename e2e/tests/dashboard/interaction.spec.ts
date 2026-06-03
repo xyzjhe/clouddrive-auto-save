@@ -33,7 +33,7 @@ test.describe('仪表盘：任务交互测试', () => {
     // 去仪表盘查看
     await page.goto('/');
     // Dashboard 有 SSE 长连接，不能用 waitForLoadState('networkidle')
-    await expect(page.getByText('SYSTEM TELEMETRY')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.stat-tile').first()).toBeVisible({ timeout: 10000 });
 
     // 验证重试按钮存在
     const retryBtn = page.getByRole('button', { name: '重试' });
@@ -47,7 +47,7 @@ test.describe('仪表盘：任务交互测试', () => {
 
   test('清空日志后日志区域被清空', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('SYSTEM TELEMETRY')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.stat-tile').first()).toBeVisible({ timeout: 10000 });
 
     const clearBtn = page.getByRole('button', { name: '清理结束任务' });
     if (await clearBtn.isVisible()) {
