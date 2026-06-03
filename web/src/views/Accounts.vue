@@ -429,7 +429,6 @@ onMounted(() => {
   border-radius: 16px;
   margin-bottom: 20px;
   background: var(--surface-bg) !important;
-  backdrop-filter: blur(16px);
   border: 1px solid var(--border-color) !important;
   position: relative;
   overflow: hidden;

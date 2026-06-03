@@ -1,7 +1,7 @@
 <template>
   <div class="settings-container" v-loading="pageLoading">
     <div class="welcome-section">
-      <h2>系统设置 ⚙️</h2>
+      <h2>系统设置</h2>
       <p>集中管理全局任务调度、OpenList 触发、多渠道消息通知及功能扩展插件</p>
     </div>
 
@@ -318,7 +318,7 @@
         <div v-loading="pluginsLoading" class="plugins-grid">
           <div v-for="plugin in plugins" :key="plugin.name" class="plugin-card">
             <div class="plugin-header">
-              <div class="plugin-icon">🧩</div>
+              <div class="plugin-icon"><PhPuzzlePiece :size="20" /></div>
               <div class="plugin-info">
                 <div class="plugin-name">{{ plugin.name }}</div>
                 <div class="plugin-version">v{{ plugin.version }}</div>
@@ -897,14 +897,14 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: rgba(0, 242, 254, 0.08);
-  color: var(--neon-teal);
+  background-color: var(--accent-light);
+  color: var(--accent);
   padding: 10px 14px;
   border-radius: 10px;
   margin-bottom: 20px;
   font-size: 13px;
   font-weight: 500;
-  border: 1px solid rgba(0, 242, 254, 0.15);
+  border: 1px solid var(--border-color);
 }
 
 .schedule-summary.is-disabled {

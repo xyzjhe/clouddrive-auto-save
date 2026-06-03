@@ -13,17 +13,17 @@ import (
 
 // SysInfo 系统资源信息
 type SysInfo struct {
-	CPUPercent float64 `json:"cpu_percent"` // CPU 使用率 0-100
-	RAMPercent float64 `json:"ram_percent"` // 内存使用率 0-100
+	CPUPercent float64 `json:"cpu_percent"`  // CPU 使用率 0-100
+	RAMPercent float64 `json:"ram_percent"`  // 内存使用率 0-100
 	RAMUsedGB  float64 `json:"ram_used_gb"`  // 已用内存 GB
 	RAMTotalGB float64 `json:"ram_total_gb"` // 总内存 GB
 	NumCPU     int     `json:"num_cpu"`      // CPU 核心数
 }
 
 var (
-	cachedCPU    float64
-	cpuOnce      sync.Once
-	cpuStop      chan struct{}
+	cachedCPU float64
+	cpuOnce   sync.Once
+	cpuStop   chan struct{}
 )
 
 // StartCPUCollector 启动后台 CPU 采样（每 5 秒采样一次）
