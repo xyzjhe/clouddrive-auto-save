@@ -8,10 +8,10 @@
       <div class="header-actions">
         <el-radio-group v-model="viewMode" size="default" class="view-toggle" @change="toggleViewMode">
           <el-radio-button label="table">
-            <el-icon><List /></el-icon>
+            <el-icon><PhList /></el-icon>
           </el-radio-button>
           <el-radio-button label="card">
-            <el-icon><LayoutGrid /></el-icon>
+            <el-icon><PhGridFour /></el-icon>
           </el-radio-button>
         </el-radio-group>
         <el-popconfirm
@@ -22,10 +22,10 @@
           @confirm="handleRunAll"
         >
           <template #reference>
-            <el-button type="primary" plain :icon="Play" :loading="runningAll">全部运行</el-button>
+            <el-button type="primary" plain :icon="PhPlay" :loading="runningAll">全部运行</el-button>
           </template>
         </el-popconfirm>
-        <el-button type="primary" :icon="Plus" @click="openAddDialog">创建任务</el-button>
+        <el-button type="primary" :icon="PhPlus" @click="openAddDialog">创建任务</el-button>
       </div>
     </div>
 
@@ -37,7 +37,7 @@
         <el-radio-button label="success">成功</el-radio-button>
         <el-radio-button label="failed">失败</el-radio-button>
       </el-radio-group>
-      <el-input v-model="searchQuery" placeholder="搜索任务名称..." clearable style="width: 200px" :prefix-icon="Search" />
+      <el-input v-model="searchQuery" placeholder="搜索任务名称..." clearable style="width: 200px" :prefix-icon="PhMagnifyingGlass" />
     </div>
 
     <el-card v-if="viewMode === 'table'" class="table-card">
@@ -63,15 +63,15 @@
         <el-table-column prop="schedule_mode" label="调度规则" width="140">
           <template #default="{ row }">
             <div v-if="row.schedule_mode === 'global'" class="schedule-tag">
-              <el-tag size="small" type="primary" effect="plain">跟随全局</el-tag>
+              <el-tag size="small" type="primary">跟随全局</el-tag>
               <div class="schedule-sub" v-if="globalSchedule.enabled">{{ globalSchedule.cron }}</div>
               <div class="schedule-sub disabled" v-else>全局已关闭</div>
             </div>
             <div v-else-if="row.schedule_mode === 'custom'" class="schedule-tag">
-              <el-tag size="small" type="warning" effect="plain">自定义</el-tag>
+              <el-tag size="small" type="warning">自定义</el-tag>
               <div class="schedule-sub">{{ row.cron }}</div>
             </div>
-            <el-tag v-else size="small" type="info" effect="plain">手动执行</el-tag>
+            <el-tag v-else size="small" type="info">手动执行</el-tag>
           </template>
         </el-table-column>
 
@@ -79,13 +79,13 @@
           <template #default="{ row }">
             <div class="status-wrapper">
               <el-tooltip v-if="row.message && row.message.includes('[Fatal]')" :content="row.message" placement="top" effect="dark">
-                <el-tag type="danger" style="cursor:help"><div class="status-inner"><el-icon><AlertTriangle /></el-icon>LINK ERROR</div></el-tag>
+                <el-tag type="danger" style="cursor:help"><div class="status-inner"><el-icon><PhWarning weight="fill" /></el-icon>LINK ERROR</div></el-tag>
               </el-tooltip>
               <el-tooltip v-else-if="row.retry_count > 0 && row.status === 'pending'" :content="`重试 ${row.retry_count}/${row.max_retries} 次`" placement="top" effect="dark">
-                <el-tag type="warning"><div class="status-inner"><el-icon class="icon-spin"><RefreshCw /></el-icon>RETRY {{ row.retry_count }}/{{ row.max_retries }}</div></el-tag>
+                <el-tag type="warning"><div class="status-inner"><el-icon class="icon-spin"><PhArrowsClockwise /></el-icon>RETRY {{ row.retry_count }}/{{ row.max_retries }}</div></el-tag>
               </el-tooltip>
               <el-tag v-else :type="getStatusType(row.status)">
-                <div class="status-inner"><el-icon v-if="row.status === 'running'" class="icon-spin"><RefreshCw /></el-icon>{{ row.status.toUpperCase() }}</div>
+                <div class="status-inner"><el-icon v-if="row.status === 'running'" class="icon-spin"><PhArrowsClockwise /></el-icon>{{ row.status.toUpperCase() }}</div>
               </el-tag>
             </div>
           </template>
@@ -107,7 +107,7 @@
                 :disabled="row.status === 'running' || !!(row.message && row.message.includes('[Fatal]'))"
                 @click="handleRun(row)"
               >
-                <Play :size="14" />
+                <PhPlay :size="14" />
               </button>
               <button
                 class="btn-icon btn-icon--primary"
@@ -115,7 +115,7 @@
                 aria-label="编辑"
                 @click="handleEdit(row)"
               >
-                <Edit :size="14" />
+                <PhPencilSimple :size="14" />
               </button>
               <button
                 class="btn-icon btn-icon--danger"
@@ -123,14 +123,14 @@
                 aria-label="删除"
                 @click="handleDelete(row)"
               >
-                <Trash2 :size="14" />
+                <PhTrash :size="14" />
               </button>
             </div>
           </template>
         </el-table-column>
       </el-table>
       <el-empty v-else description="当前没有任何转存任务">
-        <el-button type="primary" :icon="Plus" @click="openAddDialog">创建新任务</el-button>
+        <el-button type="primary" :icon="PhPlus" @click="openAddDialog">创建新任务</el-button>
       </el-empty>
     </el-card>
 
@@ -149,12 +149,12 @@
         </el-row>
       </template>
       <el-empty v-else description="当前没有任何转存任务">
-        <el-button type="primary" :icon="Plus" @click="openAddDialog">创建新任务</el-button>
+        <el-button type="primary" :icon="PhPlus" @click="openAddDialog">创建新任务</el-button>
       </el-empty>
     </div>
 
     <!-- 创建/编辑任务抽屉 -->
-    <el-drawer v-model="dialogVisible" :title="form.id ? '编辑任务' : '创建新任务'" direction="rtl" size="600px" destroy-on-close>
+    <el-drawer v-model="dialogVisible" :title="form.id ? '编辑任务' : '创建新任务'" direction="rtl" size="560px" destroy-on-close>
       <el-form :model="form" label-position="top" ref="formRef">
         <el-form-item label="智能粘贴解析" v-if="!form.id">
           <el-input
@@ -189,7 +189,7 @@
                     <div class="account-option-item">
                       <div class="acc-info">
                         <el-icon class="acc-icon" :color="acc.platform === 'quark' ? 'var(--color-quark)' : 'var(--color-139)'">
-                          <Cloud />
+                          <PhCloud weight="duotone" />
                         </el-icon>
                         <span class="acc-name">{{ acc.nickname }}</span>
                       </div>
@@ -197,7 +197,7 @@
                         <span class="acc-cap" v-if="acc.capacity_total > 0">
                           剩余 {{ formatSize(acc.capacity_total - acc.capacity_used) }}
                         </span>
-                        <el-tag v-if="acc.status === 0" size="small" type="danger" effect="dark">已失效</el-tag>
+                        <el-tag v-if="acc.status === 0" size="small" type="danger">已失效</el-tag>
                       </div>
                     </div>
                   </el-option>
@@ -212,13 +212,13 @@
             <el-input v-model="form.share_url" placeholder="请输入 139 或 Quark 分享链接" @change="handleUrlChange" />
             <el-button-group class="share-url-actions">
               <el-button
-                :icon="FolderOpen"
+                :icon="PhFolderOpen"
                 title="浏览分享内容并选择目录"
                 :disabled="!form.share_url || !form.account_id"
                 @click="openBrowseShareDialog"
               />
               <el-button
-                :icon="ExternalLink"
+                :icon="PhArrowSquareOut"
                 title="在新标签页中打开链接"
                 :disabled="!form.share_url"
                 @click="openExternalLink(form.share_url, form.extract_code)"
@@ -235,8 +235,8 @@
         </el-form-item>
 
         <div v-if="isSubDirMode" class="subdir-hint">
-          <el-tag type="warning" effect="light" closable @close="resetToShareRoot">
-            <el-icon style="margin-right: 4px; vertical-align: middle;"><FolderOpen /></el-icon>
+          <el-tag type="warning" closable @close="resetToShareRoot">
+            <el-icon style="margin-right: 4px; vertical-align: middle;"><PhFolderOpen /></el-icon>
             当前目录：{{ selectedDirName || '子目录' }}
           </el-tag>
         </div>
@@ -263,7 +263,7 @@
             </el-input>
           </div>
           <div class="start-id-tip" v-if="form.start_file_id">
-            <el-icon><Info /></el-icon>
+            <el-icon><PhInfo /></el-icon>
             <span>当前已锁定 ID: <code class="id-code" :title="form.start_file_id">{{ form.start_file_id }}</code></span>
           </div>
         </el-form-item>
@@ -319,7 +319,7 @@
                         格式：秒 分 时 日 月 周 (6位)<br/>
                         例如: */5 * * * * * (每5秒执行一次)
                       </template>
-                      <el-icon style="cursor: help"><Info /></el-icon>
+                      <el-icon style="cursor: help"><PhInfo /></el-icon>
                     </el-tooltip>
                   </template>
                 </el-input>
@@ -356,7 +356,7 @@
         </el-row>
 
         <div class="preview-action">
-          <el-button type="success" :icon="RefreshCw" @click="handlePreview" :loading="previewLoading">全量重命名预览</el-button>
+          <el-button type="success" :icon="PhArrowsClockwise" @click="handlePreview" :loading="previewLoading">全量重命名预览</el-button>
         </div>
       </el-form>
       
@@ -392,7 +392,7 @@
         >
           <template #default="{ node, data }">
             <span class="custom-tree-node">
-              <el-icon><Folder /></el-icon>
+              <el-icon><PhFolder /></el-icon>
               <span>{{ node.label }}</span>
             </span>
           </template>
@@ -476,8 +476,8 @@
             <template #default="{ row }">
               <div class="name-main" :class="{ 'folder-clickable': row.is_folder }" @click="row.is_folder && enterFolder(row)" @dblclick="!row.is_folder && handleRowDblClick(row)">
                 <el-icon size="16">
-                  <Folder v-if="row.is_folder" color="var(--neon-orange)" />
-                  <File v-else color="var(--text-muted)" />
+                  <PhFolder v-if="row.is_folder" color="var(--color-warning)" />
+                  <PhFile v-else color="var(--text-muted)" />
                 </el-icon>
                 <span>{{ row.name }}</span>
               </div>
@@ -497,7 +497,7 @@
 
           <el-table-column label="类型" width="80" align="center">
             <template #default="{ row }">
-              <el-tag size="small" :type="row.is_folder ? 'warning' : 'info'" effect="plain">
+              <el-tag size="small" :type="row.is_folder ? 'warning' : 'info'">
                 {{ row.is_folder ? '目录' : '文件' }}
               </el-tag>
             </template>
@@ -505,8 +505,8 @@
 
           <el-table-column label="状态" width="100" align="center">
             <template #default="{ row }">
-              <el-tag v-if="row.is_existed" size="small" type="success" effect="light">已在网盘</el-tag>
-              <el-tag v-else size="small" type="info" effect="plain">待转存</el-tag>
+              <el-tag v-if="row.is_existed" size="small" type="success">已在网盘</el-tag>
+              <el-tag v-else size="small" type="info">待转存</el-tag>
             </template>
           </el-table-column>
 
@@ -607,7 +607,12 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Plus, Play, Edit, Trash2, RefreshCw, Folder, File, Info, Cloud, ExternalLink, AlertTriangle, Clock, FolderOpen, List, LayoutGrid, Search } from 'lucide-vue-next'
+import {
+  PhPlus, PhPlay, PhPencilSimple, PhTrash, PhArrowsClockwise,
+  PhFolder, PhFile, PhInfo, PhCloud, PhArrowSquareOut,
+  PhWarning, PhClock, PhFolderOpen, PhList, PhGridFour,
+  PhMagnifyingGlass
+} from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTasks, createTask, updateTask, deleteTask, runTask, runAllTasks, previewTask, parseShareLink, getScheduleSettings } from '../api/task'
 import { getAccounts, getFolders, createFolder } from '../api/account'
@@ -1572,8 +1577,8 @@ const handleBeforeUnload = (e) => {
 
 .title-section h2 {
   margin: 0;
-  font-size: 26px;
-  font-weight: 800;
+  font-size: 24px;
+  font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.02em;
 }
@@ -1723,10 +1728,6 @@ const handleBeforeUnload = (e) => {
   white-space: nowrap;
 }
 
-html.dark .id-code {
-  background-color: rgba(255, 255, 255, 0.06);
-}
-
 .share-files-dialog-content {
   padding: 10px 0;
 }
@@ -1747,20 +1748,12 @@ html.dark .id-code {
   font-weight: 700;
 }
 
-html.dark .save-path-input :deep(.el-input-group__prepend) {
-  background-color: rgba(255, 255, 255, 0.04);
-}
-
 .folder-tree-container {
   height: 400px;
   overflow-y: auto;
   border: 1px solid var(--neutral-200);
   border-radius: 8px;
   padding: 8px;
-}
-
-html.dark .folder-tree-container {
-  border-color: rgba(255, 255, 255, 0.06);
 }
 
 .folder-dialog-footer {
@@ -1813,10 +1806,6 @@ html.dark .folder-tree-container {
 .existed-row {
   background-color: var(--neutral-100) !important;
   color: var(--neutral-400);
-}
-
-html.dark .existed-row {
-  background-color: rgba(255, 255, 255, 0.03) !important;
 }
 
 .existed-row span {
