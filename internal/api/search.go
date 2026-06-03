@@ -188,7 +188,7 @@ func validateSingleLink(rawURL string) (bool, string) {
 		return false, "不支持的链接格式"
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	_, err := driver.ParseShare(ctx, rawURL, "", "")
