@@ -884,6 +884,19 @@ onMounted(async () => {
   display: flex;
 }
 
+/* 让卡片 body 和 form 纵向 flex，使 form-actions 吸附底部 */
+.inner-settings-card :deep(.el-card__body) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.inner-settings-card :deep(.el-form) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -938,7 +951,8 @@ onMounted(async () => {
 }
 
 .form-actions {
-  margin-top: 24px;
+  margin-top: auto;
+  padding-top: 24px;
   display: flex;
   justify-content: flex-end;
 }
