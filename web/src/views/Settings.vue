@@ -5,12 +5,12 @@
       <p>集中管理全局任务调度、OpenList 触发、多渠道消息通知及功能扩展插件</p>
     </div>
 
-    <el-tabs v-model="activeTab" type="border-card" class="settings-tabs glass-card">
+    <el-tabs v-model="activeTab" class="settings-tabs">
       <!-- Tab 1: 任务调度与扫描 -->
       <el-tab-pane name="schedule">
         <template #label>
           <div class="tab-label-inner">
-            <el-icon><Calendar /></el-icon>
+            <el-icon><PhCalendarBlank /></el-icon>
             <span>系统调度与扫描</span>
           </div>
         </template>
@@ -22,7 +22,7 @@
               <template #header>
                 <div class="card-header">
                   <div class="header-title">
-                    <el-icon><Calendar /></el-icon>
+                    <el-icon><PhCalendarBlank /></el-icon>
                     <span>全局定时任务</span>
                   </div>
                   <el-switch
@@ -35,7 +35,7 @@
               </template>
 
               <div class="schedule-summary" :class="{ 'is-disabled': settings.global_schedule_enabled === 'false' }">
-                <el-icon><Info /></el-icon>
+                <el-icon><PhInfo /></el-icon>
                 <span class="summary-text">
                   当前设定：{{ settings.global_schedule_enabled === 'true' ? getCronDescription(settings.global_schedule_cron) : '未开启全局调度' }}
                 </span>
@@ -72,7 +72,7 @@
                   <el-input v-model="settings.global_schedule_cron" placeholder="e.g. 0 0 0 * * *">
                     <template #append>
                       <el-tooltip content="Cron 帮助" placement="top">
-                        <el-button :icon="Info" @click="showCronHelp" />
+                        <el-button :icon="PhInfo" @click="showCronHelp" />
                       </el-tooltip>
                     </template>
                   </el-input>
@@ -97,7 +97,7 @@
               <template #header>
                 <div class="card-header">
                   <div class="header-title">
-                    <el-icon><Scan /></el-icon>
+                    <el-icon><PhArrowsClockwise /></el-icon>
                     <span>OpenList 扫描</span>
                   </div>
                   <el-switch
@@ -150,13 +150,13 @@
       <el-tab-pane name="notify">
         <template #label>
           <div class="tab-label-inner">
-            <el-icon><Bell /></el-icon>
+            <el-icon><PhBell /></el-icon>
             <span>消息推送通道</span>
           </div>
         </template>
 
         <div class="notify-tabs-wrapper">
-          <el-tabs v-model="activeNotifyTab" type="border-card" class="nested-tabs">
+          <el-tabs v-model="activeNotifyTab" class="nested-tabs">
             <!-- 企业微信 -->
             <el-tab-pane label="企业微信" name="wechat">
               <el-form :model="wechatConfig" label-width="120px" class="wechat-form">
@@ -310,13 +310,13 @@
       <el-tab-pane name="plugins">
         <template #label>
           <div class="tab-label-inner">
-            <el-icon><Puzzle /></el-icon>
+            <el-icon><PhPuzzlePiece weight="duotone" /></el-icon>
             <span>功能扩展插件</span>
           </div>
         </template>
 
         <div v-loading="pluginsLoading" class="plugins-grid">
-          <div v-for="plugin in plugins" :key="plugin.name" class="plugin-card glass-card">
+          <div v-for="plugin in plugins" :key="plugin.name" class="plugin-card">
             <div class="plugin-header">
               <div class="plugin-icon">🧩</div>
               <div class="plugin-info">
@@ -336,7 +336,7 @@
           <!-- 安装新插件占位卡片 -->
           <div class="plugin-card add-card" @click="handleInstallPlugin">
             <div class="add-content">
-              <el-icon size="36"><Plus /></el-icon>
+              <el-icon size="36"><PhPlus /></el-icon>
               <div class="add-text">安装新插件</div>
             </div>
           </div>
@@ -347,7 +347,7 @@
       <el-tab-pane name="search">
         <template #label>
           <div class="tab-label-inner">
-            <el-icon><Search /></el-icon>
+            <el-icon><PhMagnifyingGlass /></el-icon>
             <span>搜索源</span>
           </div>
         </template>
@@ -429,7 +429,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { Calendar, Info, Scan, Bell, Puzzle, Plus, Search } from 'lucide-vue-next'
+import { PhCalendarBlank, PhInfo, PhArrowsClockwise, PhBell, PhPuzzlePiece, PhPlus, PhMagnifyingGlass } from '@phosphor-icons/vue'
 import { getGlobalSettings, updateGlobalSettings, triggerOpenListScan, testBark } from '../api/task'
 import { getSearchConfig, updateSearchConfig } from '../api/search'
 import request from '../api/request'
@@ -831,6 +831,7 @@ onMounted(async () => {
   font-size: 15px;
 }
 
+/* 主 Tab 下划线风格 */
 .settings-tabs {
   background: var(--surface-bg) !important;
   border: 1px solid var(--border-color) !important;
@@ -838,21 +839,29 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-:deep(.el-tabs__header) {
-  background: rgba(255, 255, 255, 0.02) !important;
+.settings-tabs :deep(.el-tabs__header) {
   border-bottom: 1px solid var(--border-color) !important;
+  background: transparent !important;
 }
 
-:deep(.el-tabs__item) {
+.settings-tabs :deep(.el-tabs__item) {
   color: var(--text-secondary) !important;
-  font-weight: 600;
+  font-weight: 500 !important;
+  border: none !important;
   transition: all 0.3s;
   height: 52px;
 }
 
-:deep(.el-tabs__item.is-active) {
-  color: var(--neon-teal) !important;
-  background: rgba(255, 255, 255, 0.04) !important;
+.settings-tabs :deep(.el-tabs__item.is-active) {
+  color: var(--accent) !important;
+}
+
+.settings-tabs :deep(.el-tabs__active-bar) {
+  background-color: var(--accent) !important;
+}
+
+.settings-tabs :deep(.el-tabs__nav-wrap::after) {
+  display: none !important;
 }
 
 .tab-label-inner {
@@ -862,7 +871,7 @@ onMounted(async () => {
 }
 
 .inner-settings-card {
-  background: transparent !important;
+  background: var(--surface-bg) !important;
   box-shadow: none !important;
   border: 1px solid var(--border-color) !important;
   margin-bottom: 16px;
@@ -972,7 +981,7 @@ onMounted(async () => {
   color: var(--text-secondary);
 }
 
-/* 插件卡片网络 */
+/* 插件卡片网格 */
 .plugins-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -981,7 +990,7 @@ onMounted(async () => {
 }
 
 .plugin-card {
-  background: rgba(255, 255, 255, 0.02) !important;
+  background: var(--surface-bg) !important;
   border: 1px solid var(--border-color) !important;
   border-radius: 12px;
   padding: 16px;
@@ -993,8 +1002,8 @@ onMounted(async () => {
 }
 
 .plugin-card:hover {
-  border-color: rgba(0, 242, 254, 0.25) !important;
-  box-shadow: var(--neon-glow-teal) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-md) !important;
   transform: translateY(-2px);
 }
 
@@ -1062,7 +1071,7 @@ onMounted(async () => {
 }
 
 .add-card:hover {
-  border-color: var(--neon-teal) !important;
+  border-color: var(--accent) !important;
 }
 
 .add-content {
