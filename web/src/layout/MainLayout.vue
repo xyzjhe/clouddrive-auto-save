@@ -1,10 +1,9 @@
 <template>
   <el-container class="app-wrapper">
     <!-- 侧边栏 -->
-    <el-aside width="240px" class="sidebar">
+    <el-aside width="220px" class="sidebar">
       <div class="logo">
-        <CloudLogo :size="36" id="sidebar-grad" />
-        <span>UCAS</span>
+        <span class="logo-text">UCAS</span>
       </div>
 
       <div class="search-wrapper">
@@ -15,7 +14,7 @@
           size="small"
         >
           <template #prefix>
-            <el-icon><Search /></el-icon>
+            <el-icon><PhMagnifyingGlass :size="16" weight="regular" /></el-icon>
           </template>
         </el-input>
       </div>
@@ -27,39 +26,24 @@
             :key="group.name"
             class="nav-group"
           >
-            <div
-              class="nav-group-header"
-              @click="toggleGroup(group.name)"
-            >
-              <span class="nav-group-icon">{{ group.icon }}</span>
+            <div class="nav-group-header">
               <span class="nav-group-name">{{ group.name }}</span>
-              <el-icon
-                class="nav-group-arrow"
-                :class="{ collapsed: collapsedGroups[group.name] }"
-              >
-                <ChevronRight />
-              </el-icon>
             </div>
 
-            <transition name="slide">
+            <div class="nav-items">
               <div
-                v-show="!collapsedGroups[group.name]"
-                class="nav-items"
+                v-for="item in group.items"
+                :key="item.path"
+                class="nav-item"
+                :class="{ active: isActive(item.path) }"
+                @click="navigateTo(item.path)"
               >
-                <div
-                  v-for="item in group.items"
-                  :key="item.path"
-                  class="nav-item"
-                  :class="{ active: isActive(item.path) }"
-                  @click="navigateTo(item.path)"
-                >
-                  <el-icon class="nav-item-icon">
-                    <component :is="item.icon" />
-                  </el-icon>
-                  <span class="nav-item-name">{{ item.name }}</span>
-                </div>
+                <el-icon class="nav-item-icon">
+                  <component :is="iconMap[item.icon]" :size="20" weight="regular" />
+                </el-icon>
+                <span class="nav-item-name">{{ item.name }}</span>
               </div>
-            </transition>
+            </div>
           </div>
         </div>
       </el-scrollbar>
@@ -69,7 +53,7 @@
 
     <el-container>
       <!-- 顶栏 -->
-      <el-header height="64px" class="navbar">
+      <el-header height="56px" class="navbar">
         <div class="header-left">
           <el-breadcrumb separator="/">
             <el-breadcrumb-item>首页</el-breadcrumb-item>
@@ -79,10 +63,13 @@
         <div class="header-right">
           <el-button
             circle
-            :icon="isDark ? Sun : Moon"
             @click="toggleDark()"
             class="theme-toggle"
-          />
+          >
+            <template #icon>
+              <component :is="isDark ? PhSun : PhMoon" :size="18" weight="regular" />
+            </template>
+          </el-button>
           <el-divider direction="vertical" />
           <el-avatar :size="32" src="https://github.com/identicons/user.png" />
         </div>
@@ -103,22 +90,26 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import CloudLogo from '../components/CloudLogo.vue'
 import SidebarFooter from '../components/SidebarFooter.vue'
 import { useDark, useToggle } from '@vueuse/core'
 import { navigationConfig } from '../config/navigation'
 import {
-  LayoutDashboard,
-  User,
-  ListChecks,
-  Settings as SettingsIcon,
-  Search,
-  Puzzle,
-  Bell,
-  Moon,
-  Sun,
-  ChevronRight
-} from 'lucide-vue-next'
+  PhMagnifyingGlass,
+  PhMoon,
+  PhSun,
+  PhSquaresFour,
+  PhUsers,
+  PhListChecks,
+  PhGearSix
+} from '@phosphor-icons/vue'
+
+const iconMap = {
+  SquaresFour: PhSquaresFour,
+  Users: PhUsers,
+  ListChecks: PhListChecks,
+  MagnifyingGlass: PhMagnifyingGlass,
+  GearSix: PhGearSix
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -130,14 +121,7 @@ if (!localStorage.getItem('vueuse-color-scheme')) {
 const isDark = useDark()
 const toggleDark = useToggle(isDark)
 
-// 折叠状态管理
-const collapsedGroups = ref(JSON.parse(localStorage.getItem('collapsedGroups') || '{}'))
 const searchQuery = ref('')
-
-const toggleGroup = (groupName) => {
-  collapsedGroups.value[groupName] = !collapsedGroups.value[groupName]
-  localStorage.setItem('collapsedGroups', JSON.stringify(collapsedGroups.value))
-}
 
 // 过滤导航项
 const filteredNavigation = computed(() => {
@@ -181,7 +165,7 @@ const currentPageTitle = computed(() => {
 }
 
 .sidebar {
-  background: var(--bg-sidebar);
+  background: var(--surface-bg);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -190,14 +174,17 @@ const currentPageTitle = computed(() => {
 }
 
 .logo {
-  height: 64px;
+  height: 56px;
   display: flex;
   align-items: center;
   padding: 0 24px;
   gap: 12px;
+}
+
+.logo-text {
   font-size: 20px;
-  font-weight: 800;
-  color: var(--brand-600);
+  font-weight: 700;
+  color: var(--accent);
   letter-spacing: -0.02em;
 }
 
@@ -218,40 +205,12 @@ const currentPageTitle = computed(() => {
 }
 
 .nav-group-header {
-  display: flex;
-  align-items: center;
-  padding: 0.5rem 0.75rem;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background-color 0.2s;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.nav-group-header:hover {
-  background: var(--neutral-100);
-}
-
-.nav-group-icon {
-  margin-right: 0.5rem;
-  font-size: 1rem;
-}
-
-.nav-group-name {
-  flex: 1;
-  font-size: 0.75rem;
+  padding: 0.75rem 1rem 0.25rem;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--neutral-500);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-
-.nav-group-arrow {
-  transition: transform 0.3s;
-  transform: rotate(90deg);
-}
-
-.nav-group-arrow.collapsed {
-  transform: rotate(0deg);
 }
 
 .nav-items {
@@ -261,41 +220,44 @@ const currentPageTitle = computed(() => {
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 0.75rem 1rem;
-  margin: 0.25rem 0;
+  padding: 0.6rem 1rem;
+  margin: 0.125rem 0;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
+  border-left: 3px solid transparent;
 }
 
 .nav-item:hover {
-  background: var(--neutral-100);
-  color: var(--neutral-700);
+  background: var(--hover-bg);
+  color: var(--text-primary);
 }
 
 .nav-item.active {
-  background: var(--brand-50);
-  color: var(--brand-600);
+  background: var(--accent-light);
+  color: var(--accent);
   font-weight: 600;
+  border-left-color: var(--accent);
 }
 
 .nav-item-icon {
-  margin-right: 0.75rem;
+  margin-right: 0.6rem;
   font-size: 1.1rem;
+  display: flex;
+  align-items: center;
 }
 
 .nav-item-name {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 .navbar {
-  background: var(--bg-navbar);
-  backdrop-filter: blur(16px) saturate(1.2);
+  background: var(--surface-bg);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 28px;
+  padding: 0 24px;
   z-index: 10;
 }
 
@@ -307,16 +269,14 @@ const currentPageTitle = computed(() => {
 
 .theme-toggle {
   border: 1px solid var(--border-color) !important;
-  background: var(--input-bg) !important;
+  background: transparent !important;
   color: var(--text-secondary) !important;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
 }
 
 .theme-toggle:hover {
-  border-color: var(--neon-teal) !important;
-  color: var(--neon-teal) !important;
-  background: var(--hover-bg) !important;
-  box-shadow: var(--neon-glow-teal) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
 }
 
 .fade-page-enter-active,
@@ -327,21 +287,5 @@ const currentPageTitle = computed(() => {
 .fade-page-enter-from,
 .fade-page-leave-to {
   opacity: 0;
-}
-
-.slide-enter-active,
-.slide-leave-active {
-  transition: all 0.3s;
-}
-
-.slide-enter-from,
-.slide-leave-to {
-  opacity: 0;
-  max-height: 0;
-}
-
-.slide-enter-to,
-.slide-leave-from {
-  max-height: 500px;
 }
 </style>
