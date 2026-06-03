@@ -2,7 +2,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Search as SearchIcon, Link as LinkIcon, Clock as ClockIcon, FileText as FileTextIcon } from 'lucide-vue-next'
+import {
+  PhMagnifyingGlass, PhLink, PhClock, PhFileText,
+  PhCheckCircle, PhXCircle, PhSpinner
+} from '@phosphor-icons/vue'
 import { searchResources, listSearchSources } from '../api/search'
 import ShareContentDialog from '../components/ShareContentDialog.vue'
 
@@ -194,7 +197,7 @@ const handleCreateTaskFromDialog = (data) => {
       >
         <template #append>
           <el-button @click="handleSearch">
-            <el-icon><SearchIcon /></el-icon>
+            <PhMagnifyingGlass :size="16" />
             搜索
           </el-button>
         </template>
@@ -232,11 +235,11 @@ const handleCreateTaskFromDialog = (data) => {
 
       <!-- 验证进度 -->
       <div v-if="validateProgress.total > 0 && validateProgress.done < validateProgress.total" class="validate-progress">
-        <el-icon class="is-loading"><SearchIcon /></el-icon>
-        <span>验证进度：{{ validateProgress.done }}/{{ validateProgress.total }} ✅ {{ validateProgress.valid }} 条有效 | ❌ {{ validateProgress.invalid }} 条失效</span>
+        <PhSpinner :size="16" class="spin-icon" />
+        <span>验证进度：{{ validateProgress.done }}/{{ validateProgress.total }} <PhCheckCircle :size="14" weight="fill" style="color: var(--color-success)" /> {{ validateProgress.valid }} 条有效 | <PhXCircle :size="14" weight="fill" style="color: var(--color-danger)" /> {{ validateProgress.invalid }} 条失效</span>
       </div>
       <div v-else-if="validateProgress.total > 0 && validateProgress.done === validateProgress.total" class="validate-progress done">
-        <span>验证完成：✅ {{ validateProgress.valid }} 条有效 | ❌ {{ validateProgress.invalid }} 条失效</span>
+        <span>验证完成：<PhCheckCircle :size="14" weight="fill" style="color: var(--color-success)" /> {{ validateProgress.valid }} 条有效 | <PhXCircle :size="14" weight="fill" style="color: var(--color-danger)" /> {{ validateProgress.invalid }} 条失效</span>
       </div>
     </div>
 
@@ -253,9 +256,9 @@ const handleCreateTaskFromDialog = (data) => {
       >
         <div class="result-header">
           <div class="result-title">
-            <span v-if="item.valid === true" class="valid-icon">✅</span>
-            <span v-else-if="item.valid === false" class="valid-icon invalid" :title="item.validMessage">❌</span>
-            <span v-else class="valid-icon pending">⏳</span>
+            <span v-if="item.valid === true" class="valid-icon"><PhCheckCircle :size="16" weight="fill" style="color: var(--color-success)" /></span>
+            <span v-else-if="item.valid === false" class="valid-icon invalid" :title="item.validMessage"><PhXCircle :size="16" weight="fill" style="color: var(--color-danger)" /></span>
+            <span v-else class="valid-icon pending"><PhSpinner :size="16" class="spin-icon" /></span>
             {{ item.title }}
           </div>
           <el-button
@@ -270,19 +273,19 @@ const handleCreateTaskFromDialog = (data) => {
 
         <div class="result-meta">
           <span class="meta-item">
-            <el-icon><LinkIcon /></el-icon>
+            <PhLink :size="14" />
             {{ item.source }}
           </span>
           <span v-if="item.channel" class="meta-item">
-            <el-icon><FileTextIcon /></el-icon>
+            <PhFileText :size="14" />
             {{ item.channel }}
           </span>
           <span class="meta-item">
-            <el-icon><ClockIcon /></el-icon>
+            <PhClock :size="14" />
             {{ item.updated_at }}
           </span>
           <span v-if="item.size" class="meta-item">
-            <el-icon><FileTextIcon /></el-icon>
+            <PhFileText :size="14" />
             {{ item.size }}
           </span>
         </div>
@@ -389,11 +392,12 @@ const handleCreateTaskFromDialog = (data) => {
 }
 
 .result-item {
-  background: var(--bg-secondary);
-  border-radius: 12px;
+  background: #fff;
+  border-radius: var(--radius-lg, 14px);
   padding: 1.25rem;
   margin-bottom: 1rem;
   box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s, transform 0.2s;
 }
 
 .result-header {
@@ -416,7 +420,7 @@ const handleCreateTaskFromDialog = (data) => {
 }
 
 .meta-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   font-size: 0.85rem;
@@ -442,7 +446,9 @@ const handleCreateTaskFromDialog = (data) => {
 
 .valid-icon {
   margin-right: 4px;
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
 }
 
 .valid-icon.invalid {
@@ -451,11 +457,11 @@ const handleCreateTaskFromDialog = (data) => {
 
 .result-item.clickable {
   cursor: pointer;
-  transition: box-shadow 0.2s;
 }
 
 .result-item.clickable:hover {
   box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .pagination-wrapper {
@@ -493,18 +499,28 @@ const handleCreateTaskFromDialog = (data) => {
   border-radius: 8px;
 }
 
+.validate-progress span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .validate-progress.done {
   color: var(--el-color-success);
 }
 
 .valid-icon.pending {
-  opacity: 0.5;
-  animation: pulse 1.5s ease-in-out infinite;
+  display: inline-flex;
+  align-items: center;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .result-item.is-disabled {
