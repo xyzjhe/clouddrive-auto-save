@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   PhMagnifyingGlass, PhLink, PhClock, PhFileText,
-  PhCheckCircle, PhXCircle, PhSpinner
+  PhCheckCircle, PhXCircle, PhSpinner, PhWarningCircle
 } from '@phosphor-icons/vue'
 import { searchResources, listSearchSources } from '../api/search'
 import ShareContentDialog from '../components/ShareContentDialog.vue'
@@ -62,6 +62,7 @@ const onPlatformChange = (val) => {
 
 // SSE 验证监听
 let validateEventSource = null
+let validateTimeoutTimer = null
 
 onMounted(async () => {
   try {
@@ -107,6 +108,10 @@ onUnmounted(() => {
     validateEventSource.close()
     validateEventSource = null
   }
+  if (validateTimeoutTimer) {
+    clearTimeout(validateTimeoutTimer)
+    validateTimeoutTimer = null
+  }
 })
 
 
@@ -134,6 +139,23 @@ const handleSearch = async () => {
     results.value = (data.items || []).map(item => ({ ...item, valid: null, validMessage: '' }))
     currentSearchId.value = data.search_id || ''
     validateProgress.value = { total: results.value.length, valid: 0, invalid: 0, done: 0 }
+
+    // 30 秒超时兜底：将未收到验证事件的结果标记为超时
+    if (validateTimeoutTimer) clearTimeout(validateTimeoutTimer)
+    validateTimeoutTimer = setTimeout(() => {
+      let timeoutCount = 0
+      results.value.forEach(item => {
+        if (item.valid === null) {
+          item.valid = 'timeout'
+          item.validMessage = '验证超时'
+          timeoutCount++
+        }
+      })
+      if (timeoutCount > 0) {
+        validateProgress.value.invalid += timeoutCount
+        validateProgress.value.done += timeoutCount
+      }
+    }, 30000)
   } catch (error) {
     console.error('搜索失败:', error)
   } finally {
@@ -258,6 +280,7 @@ const handleCreateTaskFromDialog = (data) => {
           <div class="result-title">
             <span v-if="item.valid === true" class="valid-icon"><PhCheckCircle :size="16" weight="fill" style="color: var(--color-success)" /></span>
             <span v-else-if="item.valid === false" class="valid-icon invalid" :title="item.validMessage"><PhXCircle :size="16" weight="fill" style="color: var(--color-danger)" /></span>
+            <span v-else-if="item.valid === 'timeout'" class="valid-icon timeout" :title="item.validMessage"><PhWarningCircle :size="16" weight="fill" style="color: var(--text-muted)" /></span>
             <span v-else class="valid-icon pending"><PhSpinner :size="16" class="spin-icon" /></span>
             {{ item.title }}
           </div>

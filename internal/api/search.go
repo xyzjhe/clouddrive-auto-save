@@ -49,9 +49,14 @@ func (h *SearchHandler) Search(c *gin.Context) {
 	// 生成 search_id 用于关联 SSE 验证事件
 	searchID := "srch_" + generateHexID(8)
 
-	// 异步启动链接验证
-	if len(result.Items) > 0 {
-		go validateSearchResults(searchID, result.Items)
+	// 异步启动链接验证（仅验证分页范围内的结果，避免海量结果冲刷 SSE 通道）
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	validateItems := result.Items
+	if len(validateItems) > pageSize {
+		validateItems = validateItems[:pageSize]
+	}
+	if len(validateItems) > 0 {
+		go validateSearchResults(searchID, validateItems)
 	}
 
 	c.PureJSON(http.StatusOK, gin.H{

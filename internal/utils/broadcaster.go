@@ -70,7 +70,7 @@ func (b *Broadcaster) run() {
 
 // Subscribe 注册一个新客户端
 func (b *Broadcaster) Subscribe() chan string {
-	client := make(chan string, 100)
+	client := make(chan string, 500)
 	b.register <- client
 	return client
 }
