@@ -41,7 +41,7 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - **工作池** (`internal/core/worker/`) — 带缓冲的任务队列 (容量 100)，`Submit` 为非阻塞模式（队列满时返回 error）。每个 worker 执行完整流水线：解析分享链接 → 去重检查 → 正则过滤 → 保存链接 → 重命名文件 → Bark 通知。重试使用 `select + ctx.Done()` 支持优雅关闭。`isFatalError` 使用精确关键词匹配（如 `token无效`、`cookie过期`），宽泛词（如 `token`、`不存在`）已拆分为限定组合避免误判
 - **调度器** (`internal/core/scheduler/`) — 封装 robfig/cron，支持秒级精度。"global" 模式共享一个 cron 触发所有全局任务；"custom" 模式为每个任务独立 cron。带有 `[Fatal]` 消息的任务会被自动跳过
 - **重命名器** (`internal/core/renamer/`) — 支持魔法变量 `{TASKNAME}`、`{OLDNAME}`、`{CHINESE}`、`{DATE}`、`{YEAR}`、`{EXT}`，正则捕获组 `${1}`，以及 Go `text/template` 表达式
-- **SSE/事件系统** (`internal/utils/`) — `Broadcaster` 发布/订阅系统，向所有 SSE 客户端广播实时日志和 `[EVENT:task_update|task_delete|stats_update]` 结构化 JSON 事件。`DashboardLogger` 双写 slog 输出到控制台 + SSE
+- **SSE/事件系统** (`internal/utils/`) — `Broadcaster` 发布/订阅系统，向所有 SSE 客户端广播实时日志和 `[EVENT:task_update|task_delete|stats_update|search_validate]` 结构化 JSON 事件。`DashboardLogger` 双写 slog 输出到控制台 + SSE
 - **插件系统** (`internal/core/plugin/`) — 支持模块化扩展，插件有三个生命周期钩子：`task_before`、`task_after`、`run`
 - **Telegram 集成** (`internal/core/telegram/`) — 支持通过 Telegram 远程管理任务，包括命令处理和消息推送
 - **资源搜索** (`internal/core/search/`) — 集成 CloudSaver/PanSou 等资源搜索引擎，支持搜索后一键创建任务
@@ -49,7 +49,7 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 
 ### 前端 (Vue 3 + Vite)
 
-5 个页面位于 `web/src/views/`：Dashboard（左右三栏极客面板 + SSE 实时日志）、Accounts（139/Quark 卡片网格账号管理与空间进度环）、Tasks（抽屉式 CRUD 任务管理 + 智能提取解析）、Settings（Tab 式集中管理：系统调度、四通道推送及扩展插件）、Search（云盘资源搜索引擎对接与跨页面联动创建）
+5 个页面位于 `web/src/views/`：Dashboard（左右两栏面板 + SSE 实时日志）、Accounts（139/Quark 卡片网格账号管理与空间进度环）、Tasks（抽屉式 CRUD 任务管理 + 智能提取解析）、Settings（Tab 式集中管理：系统调度、四通道推送及扩展插件）、Search（云盘资源搜索引擎对接与跨页面联动创建）
 
 共享工具模块 `web/src/utils/`：
 - `format.js` — 统一的 `formatSize`（`parseFloat` 去尾零）、`formatTime`（相对时间）、`getStatusTagType`/`getStatusLabel` 状态映射
@@ -78,7 +78,7 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 ### 前端注意事项
 
 - Element Plus `el-input` 的 `#append` 插槽中放置多个按钮时，需要显式 CSS：`:deep(.el-input-group__append) { display: flex; align-items: center; }`，按钮需设置 `margin-left: 0`
-- lucide-vue-next 图标居中：按钮需设置 `display: inline-flex; align-items: center; justify-content: center`
+- `@phosphor-icons/vue` 图标使用 `Ph` 前缀导入（如 `PhPlay`、`PhTrash`），按钮中图标需设置 `display: inline-flex; align-items: center; justify-content: center`
 - 139 平台分享链接 URL 不包含目录信息（不像夸克可通过 URL 中的 pdirFID 区分），子目录需通过 `share_parent_id` 字段单独存储
 
 ## 核心约定
@@ -106,6 +106,6 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - 设置：调度配置 + 全局设置 + 测试 Bark
 - 插件管理：列表 + 详情 + 配置更新
 - Telegram 配置：获取配置 + 更新配置 + 测试连接
-- 资源搜索：搜索资源 + 搜索源列表 + 搜索配置（GET/PUT /api/search/config）+ 链接验证
+- 资源搜索：搜索资源 + 搜索源列表 + 搜索配置（GET/PUT /api/search/config）+ 链接验证 + 批量验证（POST /api/search/validate_batch）
 - 魔法匹配：预定义正则规则列表（GET /api/magic_patterns）
 - 通知配置：列表 + 详情 + 更新 + 测试
