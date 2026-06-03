@@ -1,9 +1,13 @@
 package db
 
 import (
+	"log"
+	"os"
+	"time"
+
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
-	"time"
+	"gorm.io/gorm/logger"
 )
 
 // Account 代表云盘账号 (139 或 Quark)
@@ -44,13 +48,17 @@ type Task struct {
 	Replacement string `gorm:"size:500" json:"replacement"` // 替换规则/魔法变量
 	Filter      string `gorm:"size:500" json:"filter"`      // 过滤规则
 
-	Cron          string     `gorm:"size:100" json:"cron"`                          // 任务独立 Cron (可选)
-	ScheduleMode  string     `gorm:"size:20;default:'global'" json:"schedule_mode"` // global, custom, off
-	StartDate     *time.Time `json:"start_date"`                                    // 起始日期过滤 (可选)
-	StartFileID   string     `gorm:"size:255" json:"start_file_id"`                 // 起始文件 ID (可选)
-	StartFileName string     `gorm:"size:255" json:"start_file_name"`               // 起始文件名称 (用于前端快速回显)
-	ShareParentID string     `gorm:"size:255" json:"share_parent_id"`               // 139 分享链接的目录 ID (可选)
-	LastRun       time.Time  `json:"last_run"`
+	Cron            string     `gorm:"size:100" json:"cron"`                          // 任务独立 Cron (可选)
+	ScheduleMode    string     `gorm:"size:20;default:'global'" json:"schedule_mode"` // global, custom, off
+	StartDate       *time.Time `json:"start_date"`                                    // 起始日期过滤 (可选)
+	StartFileID     string     `gorm:"size:255" json:"start_file_id"`                 // 起始文件 ID (可选)
+	StartFileName   string     `gorm:"size:255" json:"start_file_name"`               // 起始文件名称 (用于前端快速回显)
+	ShareParentID   string     `gorm:"size:255" json:"share_parent_id"`               // 139 分享链接的目录 ID (可选)
+	LastRun         time.Time  `json:"last_run"`
+	RetryCount      int        `gorm:"default:0" json:"retry_count"`          // 当前重试次数
+	MaxRetries      int        `gorm:"default:3" json:"max_retries"`          // 最大重试次数
+	RunDays         string     `gorm:"size:50" json:"run_days"`               // 运行星期，JSON 数组如 [1,2,3,4,5]，空表示每天
+	IgnoreExtension bool       `gorm:"default:false" json:"ignore_extension"` // 忽略后缀去重：01.mp4 和 01.mkv 视为同一文件
 
 	NextRun time.Time `json:"next_run"`
 	Status  string    `gorm:"size:20;default:'pending'" json:"status"` // pending, running, success, failed
@@ -77,9 +85,32 @@ var DB *gorm.DB
 
 func InitDB(path string) error {
 	var err error
-	DB, err = gorm.Open(sqlite.Open(path), &gorm.Config{})
+
+	// 配置自定义 GORM Logger，忽略 ErrRecordNotFound 错误，避免配置项不存在时产生红色日志干扰
+	newLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
+		logger.Config{
+			SlowThreshold:             200 * time.Millisecond, // 慢 SQL 阈值
+			LogLevel:                  logger.Warn,            // 日志级别
+			IgnoreRecordNotFoundError: true,                   // 忽略 ErrRecordNotFound 错误
+			Colorful:                  true,                   // 彩色打印
+		},
+	)
+
+	DB, err = gorm.Open(sqlite.Open(path), &gorm.Config{
+		SkipDefaultTransaction: true,
+		Logger:                 newLogger,
+	})
 	if err != nil {
 		return err
+	}
+
+	// 调优 SQLite 底层连接属性，启用 WAL 模式以获得更好的并发读写性能
+	sqlDB, err := DB.DB()
+	if err == nil {
+		sqlDB.Exec("PRAGMA journal_mode=WAL;")
+		sqlDB.Exec("PRAGMA synchronous=NORMAL;")
+		sqlDB.Exec("PRAGMA busy_timeout=5000;")
 	}
 
 	// 自动迁移模型

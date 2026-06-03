@@ -7,30 +7,43 @@ const router = createRouter({
     {
       path: '/',
       component: MainLayout,
+      redirect: '/console',
       children: [
         {
-          path: '',
-          name: 'dashboard',
+          path: 'console',
+          name: 'Console',
           component: () => import('../views/Dashboard.vue')
         },
         {
           path: 'accounts',
-          name: 'accounts',
+          name: 'Accounts',
           component: () => import('../views/Accounts.vue')
         },
         {
           path: 'tasks',
-          name: 'tasks',
+          name: 'Tasks',
           component: () => import('../views/Tasks.vue')
         },
         {
           path: 'settings',
-          name: 'settings',
+          name: 'Settings',
           component: () => import('../views/Settings.vue')
+        },
+        {
+          path: 'search',
+          name: 'Search',
+          component: () => import('../views/Search.vue')
         }
       ]
     }
   ]
+})
+
+// 捕获懒加载组件（chunk）加载失败的情况，自动刷新页面以获取最新的构建资源
+router.onError((error, to) => {
+  if (error.message.includes('Failed to fetch dynamically imported module') || error.message.includes('broken build')) {
+    window.location.replace(to.fullPath)
+  }
 })
 
 export default router

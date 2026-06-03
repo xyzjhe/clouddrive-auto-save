@@ -8,13 +8,13 @@
       <div class="header-actions">
         <el-radio-group v-model="viewMode" size="default" class="view-toggle" @change="toggleViewMode">
           <el-radio-button label="table">
-            <el-icon><List /></el-icon>
+            <PhList />
           </el-radio-button>
           <el-radio-button label="card">
-            <el-icon><LayoutGrid /></el-icon>
+            <PhGridFour />
           </el-radio-button>
         </el-radio-group>
-        <el-button type="primary" :icon="Plus" @click="openAddDialog">添加账号</el-button>
+        <el-button type="primary" :icon="PhPlus" @click="openAddDialog">添加账号</el-button>
       </div>
     </div>
 
@@ -25,7 +25,7 @@
           <template #default="{ row }">
             <div class="platform-cell">
               <el-icon :class="row.platform" class="platform-icon">
-                <HardDrive />
+                <PhHardDrives />
               </el-icon>
               <span class="platform-name">
                 {{ row.platform === 'quark' ? '夸克网盘' : '移动云盘' }}
@@ -65,7 +65,7 @@
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'danger'" effect="light" round class="status-tag">
+            <el-tag :type="row.status === 1 ? 'success' : 'danger'" round class="status-tag">
               {{ row.status === 1 ? '正常' : '失效' }}
             </el-tag>
           </template>
@@ -77,16 +77,37 @@
         </el-table-column>
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button-group>
-              <el-button link type="primary" :icon="RefreshCcw" @click="handleCheck(row)">校验</el-button>
-              <el-button link type="primary" :icon="Edit" @click="handleEdit(row)">编辑</el-button>
-              <el-button link type="danger" :icon="Trash2" @click="handleDelete(row)">删除</el-button>
-            </el-button-group>
+            <div class="action-buttons">
+              <button
+                class="btn-icon btn-icon--primary"
+                title="校验"
+                aria-label="校验"
+                @click="handleCheck(row)"
+              >
+                <PhArrowsCounterClockwise :size="14" />
+              </button>
+              <button
+                class="btn-icon btn-icon--primary"
+                title="编辑"
+                aria-label="编辑"
+                @click="handleEdit(row)"
+              >
+                <PhPencilSimple :size="14" />
+              </button>
+              <button
+                class="btn-icon btn-icon--danger"
+                title="删除"
+                aria-label="删除"
+                @click="handleDelete(row)"
+              >
+                <PhTrash :size="14" />
+              </button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
       <el-empty v-else description="您还没有绑定任何云盘账号">
-        <el-button type="primary" :icon="Plus" @click="openAddDialog">立即绑定账号</el-button>
+        <el-button type="primary" :icon="PhPlus" @click="openAddDialog">立即绑定账号</el-button>
       </el-empty>
     </el-card>
 
@@ -99,45 +120,59 @@
               <div class="card-header">
                 <div class="card-title">
                   <el-icon :class="row.platform" class="platform-icon mini">
-                    <HardDrive />
+                    <PhHardDrives />
                   </el-icon>
                   <div class="account-info">
                     <div class="nickname">{{ row.nickname }}</div>
                     <div class="platform-tag">{{ row.platform === 'quark' ? '夸克网盘' : '移动云盘' }}</div>
                   </div>
                 </div>
-                <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small" effect="light" round>
+                <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small" round>
                   {{ row.status === 1 ? '正常' : '失效' }}
                 </el-tag>
               </div>
 
               <div class="card-content">
-                <div v-if="row.capacity_total > 0" class="capacity-section">
-                  <div class="capacity-header">
-                    <span>{{ formatBytes(row.capacity_used) }} / {{ formatBytes(row.capacity_total) }}</span>
-                    <span v-if="row.capacity_total >= row.capacity_used" class="remaining">
-                      剩 {{ formatBytes(row.capacity_total - row.capacity_used) }}
-                    </span>
-                    <span v-else class="remaining is-over">
-                      已超额 {{ formatBytes(row.capacity_used - row.capacity_total) }}
-                    </span>
-                  </div>
+                <div v-if="row.capacity_total > 0" class="capacity-circle-wrapper">
                   <el-progress 
+                    type="circle"
                     :percentage="Math.min(100, calcPercentage(row.capacity_used, row.capacity_total))" 
-                    :show-text="false"
                     :stroke-width="8"
+                    :width="90"
                     :status="getCapacityStatus(row.capacity_used, row.capacity_total)"
-                    class="gradient-progress"
-                  />
+                    class="capacity-progress-circle"
+                  >
+                    <template #default="{ percentage }">
+                      <span class="circle-percentage">{{ percentage }}%</span>
+                      <span class="circle-label">已用</span>
+                    </template>
+                  </el-progress>
+                  <div class="capacity-detail">
+                    <div class="cap-item">
+                      <div class="label">已使用</div>
+                      <div class="value">{{ formatBytes(row.capacity_used) }}</div>
+                    </div>
+                    <div class="cap-item">
+                      <div class="label">总空间</div>
+                      <div class="value">{{ formatBytes(row.capacity_total) }}</div>
+                    </div>
+                    <div class="cap-item">
+                      <div class="label" v-if="row.capacity_total >= row.capacity_used">剩余空间</div>
+                      <div class="label" v-else>已超额</div>
+                      <div class="value" :class="{ 'is-over': row.capacity_used > row.capacity_total }">
+                        {{ row.capacity_total >= row.capacity_used ? formatBytes(row.capacity_total - row.capacity_used) : formatBytes(row.capacity_used - row.capacity_total) }}
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div v-else class="empty-capacity">
-                  <el-icon><Info /></el-icon> 未同步容量信息
+                  <el-icon><PhInfo /></el-icon> 未同步容量信息
                 </div>
                 
                 <div class="meta-info">
                   <div class="meta-item" v-if="row.vip_name">
                     <span class="label">会员状态</span>
-                    <el-tag size="small" type="warning" effect="plain">{{ row.vip_name }}</el-tag>
+                    <el-tag size="small" type="warning">{{ row.vip_name }}</el-tag>
                   </div>
                   <div class="meta-item">
                     <span class="label">最后校验</span>
@@ -147,21 +182,21 @@
               </div>
 
               <div class="card-footer">
-                <el-button type="primary" link :icon="RefreshCcw" @click="handleCheck(row)">校验</el-button>
-                <el-button type="primary" link :icon="Edit" @click="handleEdit(row)">编辑</el-button>
-                <el-button type="danger" link :icon="Trash2" @click="handleDelete(row)">删除</el-button>
+                <el-button type="primary" link :icon="PhArrowsCounterClockwise" @click="handleCheck(row)">校验</el-button>
+                <el-button type="primary" link :icon="PhPencilSimple" @click="handleEdit(row)">编辑</el-button>
+                <el-button type="danger" link :icon="PhTrash" @click="handleDelete(row)">删除</el-button>
               </div>
             </el-card>
           </el-col>
         </el-row>
       </template>
       <el-empty v-else description="您还没有绑定任何云盘账号">
-        <el-button type="primary" :icon="Plus" @click="openAddDialog">立即绑定账号</el-button>
+        <el-button type="primary" :icon="PhPlus" @click="openAddDialog">立即绑定账号</el-button>
       </el-empty>
     </div>
 
     <!-- 添加账号对话框 -->
-    <el-dialog v-model="dialogVisible" :title="accountForm.id ? '编辑账号' : '添加新账号'" width="520px" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="accountForm.id ? '编辑账号' : '添加新账号'" width="480px" destroy-on-close>
       <el-form :model="accountForm" label-position="top" ref="formRef" class="account-form">
         <el-form-item label="网盘平台" required>
           <el-radio-group v-model="accountForm.platform" @change="handlePlatformChange">
@@ -183,7 +218,7 @@
           >
             建议优先使用 <b>Authorization</b> (Basic 格式)，它能提供更长久的有效期且支持更多高级功能。
             <el-link type="primary" :underline="false" href="https://doc.oplist.org/guide/drivers/139#authorization-1" target="_blank" style="margin-left: 8px; font-weight: bold; vertical-align: baseline;">
-              查看教程 <el-icon><ExternalLink /></el-icon>
+              查看教程 <el-icon><PhArrowSquareOut /></el-icon>
             </el-link>
           </el-alert>
           <el-form-item label="Authorization">
@@ -203,7 +238,7 @@
         >
           夸克网盘仅支持 Cookie 认证。
           <el-link type="primary" :underline="false" href="https://doc.oplist.org/guide/drivers/quark#cookie-1" target="_blank" style="margin-left: 8px; font-weight: bold; vertical-align: baseline;">
-            如何获取？ <el-icon><ExternalLink /></el-icon>
+            如何获取？ <el-icon><PhArrowSquareOut /></el-icon>
           </el-link>
         </el-alert>
 
@@ -221,8 +256,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Plus, RefreshCcw, Trash2, Edit, HardDrive, Info, LayoutGrid, List, ExternalLink } from 'lucide-vue-next'
+import {
+  PhPlus, PhArrowsCounterClockwise, PhTrash, PhPencilSimple,
+  PhHardDrives, PhInfo, PhGridFour, PhList, PhArrowSquareOut
+} from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { formatSize as formatBytes, formatTime } from '../utils/format'
 import { getAccounts, createAccount, updateAccount, deleteAccount, checkAccount } from '../api/account'
 
 const accountList = ref([])
@@ -331,18 +370,7 @@ const handleDelete = (row) => {
   }).catch(() => {})
 }
 
-const formatTime = (timeStr) => {
-  if (!timeStr || timeStr.startsWith('0001')) return '从未检查'
-  return new Date(timeStr).toLocaleString()
-}
 
-const formatBytes = (bytes) => {
-  if (!bytes || bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
 
 const calcPercentage = (used, total) => {
   if (!total) return 0
@@ -375,7 +403,7 @@ onMounted(() => {
   margin: 0;
   font-size: 26px;
   font-weight: 800;
-  color: var(--neutral-800);
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
@@ -400,32 +428,23 @@ onMounted(() => {
 .account-card {
   border-radius: 16px;
   margin-bottom: 20px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid var(--neutral-200);
+  background: var(--surface-bg) !important;
+  border: 1px solid var(--border-color) !important;
   position: relative;
   overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex: 1;
 }
 
-.account-card::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--brand-500), var(--color-info));
-  opacity: 0;
-  transition: opacity 0.3s;
+/* 确保同一行内的卡片等高 */
+.card-view-container :deep(.el-row > .el-col) {
+  display: flex;
 }
 
 .account-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-xl);
-  border-color: var(--brand-200);
-}
-
-.account-card:hover::after {
-  opacity: 1;
+  transform: translateY(-1px);
+  border-color: var(--border-hover) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
 }
 
 .account-card .card-header {
@@ -449,7 +468,7 @@ onMounted(() => {
 .account-info .nickname {
   font-weight: 700;
   font-size: 16px;
-  color: var(--neutral-800);
+  color: var(--text-primary);
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -458,25 +477,65 @@ onMounted(() => {
 
 .account-info .platform-tag {
   font-size: 12px;
-  color: var(--neutral-400);
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
-.capacity-section {
-  margin-bottom: 20px;
-}
-
-.capacity-section .capacity-header {
+.capacity-circle-wrapper {
   display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  margin-bottom: 8px;
-  color: var(--neutral-500);
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 10px 0;
 }
 
-.capacity-section .remaining {
-  color: var(--color-success);
+.capacity-progress-circle {
+  flex-shrink: 0;
+}
+
+:deep(.el-progress-circle__track) {
+  stroke: rgba(255, 255, 255, 0.05) !important;
+}
+
+.circle-percentage {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.circle-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.capacity-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cap-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.cap-item .label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.cap-item .value {
+  font-size: 13px;
   font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.cap-item .value.is-over {
+  color: var(--color-danger);
 }
 
 .empty-capacity {
@@ -492,10 +551,6 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
-html.dark .empty-capacity {
-  background-color: rgba(255, 255, 255, 0.03);
-}
-
 .meta-info {
   background-color: var(--neutral-50);
   border-radius: 12px;
@@ -504,11 +559,6 @@ html.dark .empty-capacity {
   flex-direction: column;
   gap: 10px;
   border: 1px dashed var(--neutral-200);
-}
-
-html.dark .meta-info {
-  background-color: rgba(255, 255, 255, 0.02);
-  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .meta-item {
@@ -529,13 +579,9 @@ html.dark .meta-info {
 .card-footer {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid var(--neutral-200);
+  border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: space-around;
-}
-
-html.dark .card-footer {
-  border-top-color: rgba(255, 255, 255, 0.06);
 }
 
 .table-card {
@@ -595,15 +641,15 @@ html.dark .card-footer {
 }
 
 .gradient-progress.is-success :deep(.el-progress-bar__inner) {
-  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+  background: linear-gradient(90deg, var(--color-success) 0%, #34d399 100%);
 }
 
 .gradient-progress.is-warning :deep(.el-progress-bar__inner) {
-  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+  background: linear-gradient(90deg, var(--color-warning) 0%, #fbbf24 100%);
 }
 
 .gradient-progress.is-exception :deep(.el-progress-bar__inner) {
-  background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+  background: linear-gradient(90deg, var(--color-danger) 0%, #f87171 100%);
 }
 
 .capacity-remaining.is-over, .remaining.is-over {

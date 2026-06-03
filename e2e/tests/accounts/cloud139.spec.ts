@@ -4,7 +4,7 @@ import { add139Account } from '../../fixtures/account.fixture';
 test.describe('139 移动云盘账号管理', () => {
   test('成功绑定并展示 139 黄金会员账号', async ({ page }) => {
     await add139Account(page);
-    await expect(page.getByText('E2E移动云盘用户')).toBeVisible();
+    await expect(page.getByText('E2E移动云盘用户').first()).toBeVisible();
     await expect(page.getByText('黄金会员').last()).toBeVisible();
     await expect(page.getByText('512').last()).toBeVisible(); // 512GB (MB 转换 GB 显示由于页面逻辑)
   });

@@ -60,3 +60,6 @@ e2e/playwright/.auth/
 .env.local
 .env.*.local
 .superpowers/
+
+# 临时测试工具
+cmd/searchcmp/

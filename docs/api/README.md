@@ -14,9 +14,13 @@
 2. [账号管理 (Accounts)](./accounts.md) - 139/Quark 账号的增删改查与校验。
 3. [任务管理 (Tasks)](./tasks.md) - 转存任务的生命周期管理与手动触发。
 4. [系统设置 (Settings)](./settings.md) - 全局调度规则、通知推送与 OpenList 扫描配置。
-5. [数据库设计 (Database Schema)](./database.md) - 核心数据表结构与字段说明。
-6. [Bark 消息推送 (Bark API)](../bark_api.md) - 外部通知推送接口与参数说明。
-7. [OpenList 扫描 (OpenList API)](../openlist_api.md) - 文件扫描触发接口与配置说明。
+5. [插件管理 (Plugins)](./plugins.md) - 插件列表、详情、配置更新。
+6. [Telegram 配置 (Telegram)](./telegram.md) - Telegram 机器人配置与测试。
+7. [资源搜索 (Search)](./search.md) - 资源搜索、搜索源列表、链接验证、预定义魔法匹配规则。
+8. [通知配置 (Notify)](./notify.md) - 多渠道通知配置与测试。
+9. [数据库设计 (Database Schema)](./database.md) - 核心数据表结构与字段说明。
+10. [Bark 消息推送 (Bark API)](../bark_api.md) - 外部通知推送接口与参数说明。
+11. [OpenList 扫描 (OpenList API)](../openlist_api.md) - 文件扫描触发接口与配置说明。
 
 ## 全局响应格式
 

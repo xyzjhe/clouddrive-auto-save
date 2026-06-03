@@ -840,6 +840,9 @@ func (c *Cloud139) parseShareLink(input string) (string, string, string, error) 
 	if trimmed == "" {
 		return "", "", "", fmt.Errorf("empty share link")
 	}
+	// 剥离尾部非 URL 安全字符（搜索源数据常带 emoji、标签符号等）
+	reClean := regexp.MustCompile(`[^\w\-./?:@&=#]+$`)
+	trimmed = reClean.ReplaceAllString(trimmed, "")
 	linkID, passwd, pCaID := "", "", "root"
 	urlStr := trimmed
 	if !strings.HasPrefix(strings.ToLower(urlStr), "http") {
@@ -892,6 +895,17 @@ func (c *Cloud139) parseShareLink(input string) (string, string, string, error) 
 		}
 	}
 	if linkID == "" {
+		// caiyun.139.com/m/i?<裸ID> 格式：query 本身就是 linkID（无 key）
+		rawQ := u.RawQuery
+		// 去除可能的 key=value 对，只取裸 ID 部分
+		if rawQ != "" && !strings.Contains(rawQ, "=") {
+			reBare := regexp.MustCompile(`^[a-zA-Z0-9_-]{4,32}$`)
+			if reBare.MatchString(rawQ) {
+				linkID = rawQ
+			}
+		}
+	}
+	if linkID == "" {
 		parts := strings.Split(strings.Trim(u.Path, "/"), "/")
 		if len(parts) > 0 {
 			candidate := parts[len(parts)-1]
@@ -899,6 +913,13 @@ func (c *Cloud139) parseShareLink(input string) (string, string, string, error) 
 			if reBare.MatchString(candidate) {
 				linkID = candidate
 			}
+		}
+	}
+	if linkID == "" {
+		// 裸 ID 输入（如 "105CqFasD8oLm"）补 https:// 后 host 即为 ID
+		reBare := regexp.MustCompile(`^[a-zA-Z0-9_-]{4,32}$`)
+		if reBare.MatchString(u.Host) {
+			linkID = u.Host
 		}
 	}
 	if linkID == "" {

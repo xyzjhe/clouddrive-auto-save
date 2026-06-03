@@ -1,9 +1,11 @@
 package scheduler
 
 import (
+	"encoding/json"
 	"log/slog"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/robfig/cron/v3"
 	"github.com/zcq/clouddrive-auto-save/internal/core/worker"
@@ -81,9 +83,15 @@ func (s *Scheduler) UpdateGlobalSchedule(cronExpr string, enabled bool) {
 					slog.Info("全局调度：任务存在致命错误，跳过", "task_id", task.ID)
 					continue
 				}
+				if !isRunDayAllowed(task.RunDays) {
+					slog.Info("全局调度：今天不是任务运行日，跳过", "task_id", task.ID, "run_days", task.RunDays)
+					continue
+				}
 
 				slog.Info("全局调度：正在触发任务", "task_id", task.ID)
-				s.wm.Submit(worker.Job{Task: &task})
+				if err := s.wm.Submit(worker.Job{Task: &task}); err != nil {
+					slog.Warn("全局调度提交失败：队列已满", "task_id", task.ID, "error", err)
+				}
 			}
 		})
 
@@ -120,9 +128,15 @@ func (s *Scheduler) UpdateTask(taskID uint, mode string, customCron string) {
 				slog.Info("自定义调度：任务存在致命错误，跳过", "task_id", taskID)
 				return
 			}
+			if !isRunDayAllowed(task.RunDays) {
+				slog.Info("自定义调度：今天不是任务运行日，跳过", "task_id", taskID, "run_days", task.RunDays)
+				return
+			}
 
 			slog.Info("自定义调度：正在触发任务", "task_id", taskID)
-			s.wm.Submit(worker.Job{Task: &task})
+			if err := s.wm.Submit(worker.Job{Task: &task}); err != nil {
+				slog.Warn("自定义调度提交失败：队列已满", "task_id", task.ID, "error", err)
+			}
 		})
 
 		if err != nil {
@@ -137,4 +151,34 @@ func (s *Scheduler) UpdateTask(taskID uint, mode string, customCron string) {
 func ValidateCron(expr string) error {
 	_, err := cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow).Parse(expr)
 	return err
+}
+
+// isRunDayAllowed 检查今天是否是任务允许运行的日期
+// runDays 格式为 JSON 数组，如 "[1,2,3,4,5]" 表示周一到周五
+// 空字符串表示每天都可以运行
+// 1=周一, 7=周日
+func isRunDayAllowed(runDays string) bool {
+	if runDays == "" || runDays == "[]" {
+		return true
+	}
+
+	var days []int
+	if err := json.Unmarshal([]byte(runDays), &days); err != nil {
+		return true // 解析失败默认允许运行
+	}
+	if len(days) == 0 {
+		return true
+	}
+
+	today := int(time.Now().Weekday())
+	if today == 0 {
+		today = 7 // Go 的 Sunday=0 转换为 7
+	}
+
+	for _, d := range days {
+		if d == today {
+			return true
+		}
+	}
+	return false
 }

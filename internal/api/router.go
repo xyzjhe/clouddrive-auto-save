@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -17,8 +18,12 @@ import (
 	_ "github.com/zcq/clouddrive-auto-save/internal/core/cloud139"
 	"github.com/zcq/clouddrive-auto-save/internal/core/notify"
 	"github.com/zcq/clouddrive-auto-save/internal/core/openlist"
+	"github.com/zcq/clouddrive-auto-save/internal/core/plugin"
 	_ "github.com/zcq/clouddrive-auto-save/internal/core/quark"
+	"github.com/zcq/clouddrive-auto-save/internal/core/renamer"
 	"github.com/zcq/clouddrive-auto-save/internal/core/scheduler"
+	"github.com/zcq/clouddrive-auto-save/internal/core/search"
+	"github.com/zcq/clouddrive-auto-save/internal/core/telegram"
 	"github.com/zcq/clouddrive-auto-save/internal/core/worker"
 	"github.com/zcq/clouddrive-auto-save/internal/db"
 	"github.com/zcq/clouddrive-auto-save/internal/utils"
@@ -44,6 +49,7 @@ func InitRouter(wm *worker.Manager, version, commit, date string) *gin.Engine {
 	api := r.Group("/api")
 	{
 		api.GET("/version", getVersion)
+		api.GET("/magic_patterns", listMagicPatterns)
 
 		api.GET("/accounts", listAccounts)
 		api.POST("/accounts", createAccount)
@@ -75,6 +81,30 @@ func InitRouter(wm *worker.Manager, version, commit, date string) *gin.Engine {
 		api.POST("/settings/test_bark", testBarkNotification)
 
 		api.POST("/openlist/scan", triggerOpenListScan)
+
+		// 插件管理
+		api.GET("/plugins", listPlugins)
+		api.GET("/plugins/:name", getPlugin)
+		api.PUT("/plugins/:name/config", updatePluginConfig)
+
+		// Telegram 配置
+		api.GET("/telegram/config", getTelegramConfig)
+		api.PUT("/telegram/config", updateTelegramConfig)
+		api.POST("/telegram/test", testTelegramConnection)
+
+		// 资源搜索
+		api.GET("/search", searchResources)
+		api.GET("/search/sources", listSearchSources)
+		api.GET("/search/config", getSearchConfig)
+		api.PUT("/search/config", updateSearchConfig)
+		api.GET("/search/validate", validateSearchLink)
+		api.POST("/search/validate_batch", validateSearchBatch)
+
+		// 通知配置
+		api.GET("/notify", listNotifiers)
+		api.GET("/notify/:name", getNotifier)
+		api.PUT("/notify/:name", updateNotifier)
+		api.POST("/notify/:name/test", testNotifier)
 	}
 
 	// 静态资源处理
@@ -187,10 +217,35 @@ func checkAccount(c *gin.Context) {
 	c.PureJSON(http.StatusOK, account)
 }
 
+// accountDTO 账号安全返回对象（排除 Cookie 和 AuthToken）
+type accountDTO struct {
+	ID            uint      `json:"id"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	Platform      string    `json:"platform"`
+	Nickname      string    `json:"nickname"`
+	AccountName   string    `json:"account_name"`
+	Status        int       `json:"status"`
+	CapacityUsed  int64     `json:"capacity_used"`
+	CapacityTotal int64     `json:"capacity_total"`
+	VipName       string    `json:"vip_name"`
+	LastCheck     time.Time `json:"last_check"`
+}
+
 func listAccounts(c *gin.Context) {
 	var accounts []db.Account
 	db.DB.Find(&accounts)
-	c.PureJSON(http.StatusOK, accounts)
+
+	dtos := make([]accountDTO, len(accounts))
+	for i, a := range accounts {
+		dtos[i] = accountDTO{
+			ID: a.ID, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
+			Platform: a.Platform, Nickname: a.Nickname, AccountName: a.AccountName,
+			Status: a.Status, CapacityUsed: a.CapacityUsed, CapacityTotal: a.CapacityTotal,
+			VipName: a.VipName, LastCheck: a.LastCheck,
+		}
+	}
+	c.PureJSON(http.StatusOK, dtos)
 }
 
 func createAccount(c *gin.Context) {
@@ -373,7 +428,11 @@ func deleteTask(c *gin.Context) {
 	id := c.Param("id")
 	slog.Info("删除任务", "task_id", id)
 
-	idNum, _ := strconv.Atoi(id)
+	idNum, err := strconv.Atoi(id)
+	if err != nil {
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": "无效的任务 ID"})
+		return
+	}
 	scheduler.Global.RemoveTask(uint(idNum))
 
 	db.DB.Delete(&db.Task{}, id)
@@ -387,7 +446,11 @@ func deleteTask(c *gin.Context) {
 
 func runTask(c *gin.Context) {
 	idStr := c.Param("id")
-	id, _ := strconv.Atoi(idStr)
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": "无效的任务 ID"})
+		return
+	}
 	slog.Info("请求运行任务", "task_id", id)
 
 	var task db.Task
@@ -411,7 +474,13 @@ func runTask(c *gin.Context) {
 	utils.BroadcastTaskUpdate(&task)
 	utils.BroadcastStatsUpdate()
 
-	WorkerManager.Submit(worker.Job{Task: &task})
+	if err := WorkerManager.Submit(worker.Job{Task: &task}); err != nil {
+		// 队列满，回滚状态
+		db.DB.Model(&task).Updates(map[string]interface{}{"status": "pending", "stage": ""})
+		utils.BroadcastTaskUpdate(&task)
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		return
+	}
 	c.PureJSON(http.StatusOK, gin.H{"message": "task submitted to worker pool"})
 }
 
@@ -453,7 +522,13 @@ func runAllTasks(c *gin.Context) {
 		})
 		utils.BroadcastTaskUpdate(task)
 
-		WorkerManager.Submit(worker.Job{Task: task, BatchID: batchID})
+		if err := WorkerManager.Submit(worker.Job{Task: task, BatchID: batchID}); err != nil {
+			// 队列满，回滚该任务状态并跳过
+			db.DB.Model(task).Updates(map[string]interface{}{"status": "pending", "stage": ""})
+			utils.BroadcastTaskUpdate(task)
+			slog.Warn("批量提交跳过：队列已满", "task_id", task.ID)
+			continue
+		}
 		count++
 	}
 
@@ -515,6 +590,7 @@ func getDashboardStats(c *gin.Context) {
 		"active_accounts":    activeAccounts,
 		"recent_activities":  recentTasks,
 		"running_tasks_list": runningTasksList,
+		"sys_info":           utils.GetSysInfo(),
 	})
 }
 
@@ -604,6 +680,7 @@ func getGlobalSettings(c *gin.Context) {
 	var settings []db.Setting
 	db.DB.Find(&settings)
 
+	// 返回真实值，前端通过 type="password" + show-password 做视觉隐藏
 	res := make(map[string]string)
 	for _, s := range settings {
 		res[s.Key] = s.Value
@@ -616,6 +693,17 @@ func updateGlobalSettings(c *gin.Context) {
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	// 保护校验：禁止覆盖其他模块的配置前缀（通知、Telegram、搜索、插件等）
+	protectedPrefix := []string{"notify_config_", "telegram_config_", "search_config_", "plugin_config_"}
+	for k := range input {
+		for _, prefix := range protectedPrefix {
+			if strings.HasPrefix(k, prefix) {
+				c.PureJSON(http.StatusBadRequest, gin.H{"error": "不允许通过此接口修改: " + k})
+				return
+			}
+		}
 	}
 
 	// 提前检查 Cron 校验，避免在循环中重复或次序问题
@@ -654,6 +742,23 @@ func updateGlobalSettings(c *gin.Context) {
 	c.PureJSON(http.StatusOK, gin.H{"message": "settings updated"})
 }
 
+// isSafeBarkURL 校验 Bark 服务器 URL 是否安全（防止 SSRF）
+func isSafeBarkURL(serverURL string) bool {
+	if serverURL == "" {
+		return false
+	}
+	u, err := url.Parse(strings.TrimSpace(serverURL))
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	// 禁止内网地址
+	if host == "localhost" || host == "127.0.0.1" || host == "0.0.0.0" || strings.HasPrefix(host, "192.168.") || strings.HasPrefix(host, "10.") || strings.HasPrefix(host, "172.") {
+		return false
+	}
+	return u.Scheme == "http" || u.Scheme == "https"
+}
+
 func testBarkNotification(c *gin.Context) {
 	var input struct {
 		Server  string `json:"bark_server"`
@@ -667,6 +772,10 @@ func testBarkNotification(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if !isSafeBarkURL(input.Server) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Bark 服务器地址不合法或为内网地址"})
 		return
 	}
 
@@ -703,6 +812,10 @@ func getVersion(c *gin.Context) {
 	})
 }
 
+func listMagicPatterns(c *gin.Context) {
+	c.PureJSON(http.StatusOK, renamer.PredefinedPatterns)
+}
+
 func triggerOpenListScan(c *gin.Context) {
 	// 重新加载配置（手动扫描忽略全局开关）
 	if err := openlist.GlobalScanner.ReloadConfig(true); err != nil {
@@ -719,4 +832,160 @@ func triggerOpenListScan(c *gin.Context) {
 	}
 
 	c.PureJSON(http.StatusOK, gin.H{"message": "扫描已触发"})
+}
+
+// 插件管理处理函数
+var pluginHandler *PluginHandler
+
+func InitPluginHandler(manager *plugin.Manager) {
+	pluginHandler = NewPluginHandler(manager)
+}
+
+func listPlugins(c *gin.Context) {
+	if pluginHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "插件系统未初始化"})
+		return
+	}
+	pluginHandler.ListPlugins(c)
+}
+
+func getPlugin(c *gin.Context) {
+	if pluginHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "插件系统未初始化"})
+		return
+	}
+	pluginHandler.GetPlugin(c)
+}
+
+func updatePluginConfig(c *gin.Context) {
+	if pluginHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "插件系统未初始化"})
+		return
+	}
+	pluginHandler.UpdatePluginConfig(c)
+}
+
+// Telegram 处理函数
+var telegramHandler *TelegramHandler
+
+func InitTelegramHandler(bot *telegram.Bot) {
+	telegramHandler = NewTelegramHandler(bot)
+}
+
+func getTelegramConfig(c *gin.Context) {
+	if telegramHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "Telegram 未初始化"})
+		return
+	}
+	telegramHandler.GetConfig(c)
+}
+
+func updateTelegramConfig(c *gin.Context) {
+	if telegramHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "Telegram 未初始化"})
+		return
+	}
+	telegramHandler.UpdateConfig(c)
+}
+
+func testTelegramConnection(c *gin.Context) {
+	if telegramHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "Telegram 未初始化"})
+		return
+	}
+	telegramHandler.TestConnection(c)
+}
+
+// 搜索处理函数
+var searchHandler *SearchHandler
+
+func InitSearchHandler(client *search.Client) {
+	searchHandler = NewSearchHandler(client)
+}
+
+func searchResources(c *gin.Context) {
+	if searchHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "搜索服务未初始化"})
+		return
+	}
+	searchHandler.Search(c)
+}
+
+func listSearchSources(c *gin.Context) {
+	if searchHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "搜索服务未初始化"})
+		return
+	}
+	searchHandler.ListSources(c)
+}
+
+func getSearchConfig(c *gin.Context) {
+	if searchHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "搜索服务未初始化"})
+		return
+	}
+	searchHandler.GetConfig(c)
+}
+
+func updateSearchConfig(c *gin.Context) {
+	if searchHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "搜索服务未初始化"})
+		return
+	}
+	searchHandler.UpdateConfig(c)
+}
+
+func validateSearchLink(c *gin.Context) {
+	if searchHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "搜索服务未初始化"})
+		return
+	}
+	searchHandler.ValidateLink(c)
+}
+
+func validateSearchBatch(c *gin.Context) {
+	if searchHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "搜索服务未初始化"})
+		return
+	}
+	searchHandler.ValidateBatch(c)
+}
+
+// 通知处理函数
+var notifyHandler *NotifyHandler
+
+func InitNotifyHandler(manager *notify.Manager) {
+	notifyHandler = NewNotifyHandler(manager)
+}
+
+func listNotifiers(c *gin.Context) {
+	if notifyHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "通知服务未初始化"})
+		return
+	}
+	notifyHandler.ListNotifiers(c)
+}
+
+func getNotifier(c *gin.Context) {
+	if notifyHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "通知服务未初始化"})
+		return
+	}
+	notifyHandler.GetNotifier(c)
+}
+
+func updateNotifier(c *gin.Context) {
+	if notifyHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "通知服务未初始化"})
+		return
+	}
+	notifyHandler.UpdateNotifier(c)
+}
+
+func testNotifier(c *gin.Context) {
+	if notifyHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "通知服务未初始化"})
+		return
+	}
+	notifyHandler.TestNotifier(c)
 }

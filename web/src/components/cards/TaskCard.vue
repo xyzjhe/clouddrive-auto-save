@@ -1,0 +1,171 @@
+<script setup>
+import { computed } from 'vue'
+import { PhPlay, PhPencilSimple, PhTrash } from '@phosphor-icons/vue'
+
+const props = defineProps({
+  task: {
+    type: Object,
+    required: true
+  }
+})
+
+const emit = defineEmits(['run', 'edit', 'delete'])
+
+const statusConfig = {
+  'pending': { label: '等待中', color: '#909399' },
+  'running': { label: '运行中', color: '#409eff' },
+  'success': { label: '已完成', color: '#67c23a' },
+  'failed': { label: '失败', color: '#f56c6c' },
+  'fatal': { label: 'Fatal', color: '#f56c6c' }
+}
+
+const currentStatus = computed(() => {
+  return statusConfig[props.task.status] || statusConfig.pending
+})
+
+const scheduleText = computed(() => {
+  if (props.task.schedule_mode === 'global') return '跟随全局'
+  if (props.task.schedule_mode === 'custom') return props.task.cron
+  return '手动执行'
+})
+</script>
+
+<template>
+  <div class="task-card">
+    <div class="card-header">
+      <div class="task-name">{{ task.name }}</div>
+      <el-tag
+        :color="currentStatus.color"
+        size="small"
+      >
+        {{ currentStatus.label }}
+      </el-tag>
+    </div>
+
+    <div class="card-info">
+      <div class="info-item">
+        <span class="info-label">平台</span>
+        <span class="info-value">{{ task.account?.nickname || task.account?.platform || '-' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">保存路径</span>
+        <span class="info-value">{{ task.save_path }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">调度</span>
+        <span class="info-value">{{ scheduleText }}</span>
+      </div>
+    </div>
+
+    <div v-if="task.status === 'running'" class="progress-section">
+      <el-progress
+        :percentage="task.percent || 0"
+        :stroke-width="8"
+      />
+      <div class="progress-text">{{ task.message }}</div>
+    </div>
+
+    <div class="card-actions">
+      <div class="action-buttons">
+        <button
+          class="btn-icon btn-icon--success"
+          title="执行"
+          aria-label="执行"
+          :disabled="task.status === 'running'"
+          @click="emit('run', task.id)"
+        >
+          <PhPlay :size="16" weight="fill" />
+        </button>
+        <button
+          class="btn-icon btn-icon--primary"
+          title="编辑"
+          aria-label="编辑"
+          @click="emit('edit', task.id)"
+        >
+          <PhPencilSimple :size="16" />
+        </button>
+        <button
+          class="btn-icon btn-icon--danger"
+          title="删除"
+          aria-label="删除"
+          @click="emit('delete', task.id)"
+        >
+          <PhTrash :size="16" />
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.task-card {
+  background: var(--surface-bg);
+  border-radius: var(--radius-lg, 14px);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.task-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.task-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.card-info {
+  margin-bottom: 1rem;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.info-value {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.progress-section {
+  margin-bottom: 1rem;
+}
+
+.progress-text {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+</style>

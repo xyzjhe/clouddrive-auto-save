@@ -18,7 +18,7 @@ DOCKER_IMAGE = zcq98/clouddrive-auto-save
 DOCKER_TAG = $(VERSION)
 DOCKER_COMPOSE = $(shell command -v docker-compose 2>/dev/null || echo "docker compose")
 
-.PHONY: all help dev-web dev-server build-web build-server build test clean docker-build docker-up docker-down
+.PHONY: all help dev dev-web dev-server build-web build-server build test clean docker-build docker-up docker-down
 
 # 默认执行 help
 all: help
@@ -27,13 +27,51 @@ all: help
 # 开发环境 (Development)
 # ------------------------------------------
 
+## dev: 同时启动前端 (5173) 和后端 (8080) 开发服务器
+dev:
+	@echo "=> Checking if port 8080 is occupied..."
+	@PORT_PID=$$(lsof -t -i:8080 2>/dev/null || true); \
+	if [ -n "$$PORT_PID" ]; then \
+		echo "=> Port 8080 is occupied by PID $$PORT_PID. Cleaning up..."; \
+		kill -9 $$PORT_PID || true; \
+		sleep 1; \
+	fi
+	@echo "=> Checking if port 5173 is occupied..."
+	@PORT_PID=$$(lsof -t -i:5173 2>/dev/null || true); \
+	if [ -n "$$PORT_PID" ]; then \
+		echo "=> Port 5173 is occupied by PID $$PORT_PID. Cleaning up..."; \
+		kill -9 $$PORT_PID || true; \
+		sleep 1; \
+	fi
+	@echo "=> Starting Vue 3 dev server (DEBUG mode)..."
+	@cd $(WEB_DIR) && LOG_LEVEL=DEBUG npm run dev &
+	@echo "=> Starting Go backend server (DEBUG mode)..."
+	@go mod tidy && LOG_LEVEL=DEBUG go run cmd/server/main.go &
+	@echo "=> Dev servers started. Frontend: :5173, Backend: :8080"
+	@echo "=> Press Ctrl+C to stop both servers."
+	@wait
+
 ## dev-web: 启动 Vue 3 前端开发服务器 (运行在 5173 端口, 开启 DEBUG 模式)
 dev-web:
+	@echo "=> Checking if port 5173 is occupied..."
+	@PORT_PID=$$(lsof -t -i:5173 2>/dev/null || true); \
+	if [ -n "$$PORT_PID" ]; then \
+		echo "=> Port 5173 is occupied by PID $$PORT_PID. Cleaning up..."; \
+		kill -9 $$PORT_PID || true; \
+		sleep 1; \
+	fi
 	@echo "=> Starting Vue 3 dev server (DEBUG mode)..."
 	cd $(WEB_DIR) && LOG_LEVEL=DEBUG npm run dev
 
 ## dev-server: 启动 Go 后端开发服务器 (运行在 8080 端口, 开启 DEBUG 日志)
 dev-server:
+	@echo "=> Checking if port 8080 is occupied..."
+	@PORT_PID=$$(lsof -t -i:8080 2>/dev/null || true); \
+	if [ -n "$$PORT_PID" ]; then \
+		echo "=> Port 8080 is occupied by PID $$PORT_PID. Cleaning up..."; \
+		kill -9 $$PORT_PID || true; \
+		sleep 1; \
+	fi
 	@echo "=> Starting Go backend server (DEBUG mode)..."
 	go mod tidy
 	LOG_LEVEL=DEBUG go run cmd/server/main.go
@@ -147,7 +185,19 @@ e2e-setup:
 ## e2e-test: 编译并运行端到端测试 (自动处理后台服务起停)
 e2e-test: build
 	@echo "=> Running E2E tests..."
-	@# 检查 8080 端口是否被占用，如果占用则尝试清理（可选）
+	@echo "=> Checking if port 8080 is occupied..."
+	@PORT_PID=$$(lsof -t -i:8080 2>/dev/null || true); \
+	if [ -n "$$PORT_PID" ]; then \
+		echo "=> Port 8080 is occupied by PID $$PORT_PID. Cleaning up..."; \
+		kill $$PORT_PID || true; \
+		sleep 1; \
+		PORT_PID=$$(lsof -t -i:8080 2>/dev/null || true); \
+		if [ -n "$$PORT_PID" ]; then \
+			echo "=> Port 8080 still occupied. Force cleaning up..."; \
+			kill -9 $$PORT_PID || true; \
+			sleep 1; \
+		fi; \
+	fi
 	@E2E_TEST_MODE=true ./bin/ucas > e2e_server.log 2>&1 & \
 	PID=$$!; \
 	echo "=> Backend started with PID: $$PID"; \
@@ -157,6 +207,25 @@ e2e-test: build
 	echo "=> Cleaning up backend (PID: $$PID)..."; \
 	kill $$PID || true; \
 	exit $$EXIT_CODE
+
+## unit-test: 运行单元测试
+unit-test:
+	@echo "=> Running unit tests..."
+	go test -v -race -short ./...
+
+## integration-test: 运行集成测试
+integration-test:
+	@echo "=> Running integration tests..."
+	go test -v -race -run Integration ./...
+
+## api-test: 运行 API 测试
+api-test:
+	@echo "=> Running API tests..."
+	go test -v -race -run API ./internal/api/...
+
+## regression-test: 运行完整回归测试
+regression-test: unit-test api-test e2e-test
+	@echo "=> All regression tests passed!"
 
 ## clean: 清理构建产物 (二进制文件、覆盖率报告和前端 dist 目录)
 

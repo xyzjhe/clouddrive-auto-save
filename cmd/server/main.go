@@ -1,13 +1,18 @@
 package main
 
 import (
+	"encoding/json"
 	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/zcq/clouddrive-auto-save/internal/api"
 	"github.com/zcq/clouddrive-auto-save/internal/core"
+	"github.com/zcq/clouddrive-auto-save/internal/core/notify"
+	"github.com/zcq/clouddrive-auto-save/internal/core/plugin"
 	"github.com/zcq/clouddrive-auto-save/internal/core/scheduler"
+	"github.com/zcq/clouddrive-auto-save/internal/core/search"
+	"github.com/zcq/clouddrive-auto-save/internal/core/telegram"
 	"github.com/zcq/clouddrive-auto-save/internal/core/worker"
 	"github.com/zcq/clouddrive-auto-save/internal/db"
 	"github.com/zcq/clouddrive-auto-save/internal/utils"
@@ -93,7 +98,52 @@ func main() {
 		scheduler.Global.UpdateTask(t.ID, t.ScheduleMode, t.Cron)
 	}
 
-	// 3. 启动 API 服务
+	// 3. 初始化插件管理器
+	slog.Info("Initializing plugin manager...")
+	pluginManager := plugin.NewManager()
+	api.InitPluginHandler(pluginManager)
+
+	// 4. 初始化 Telegram 机器人
+	slog.Info("Initializing Telegram bot...")
+	telegramConfig := telegram.DefaultConfig()
+	var tgSetting db.Setting
+	if err := db.DB.Where("key = ?", "telegram_config").First(&tgSetting).Error; err == nil {
+		if err := json.Unmarshal([]byte(tgSetting.Value), telegramConfig); err != nil {
+			slog.Error("反序列化 Telegram 配置失败", "error", err)
+		}
+	}
+	telegramBot := telegram.NewBot(telegramConfig)
+	telegramHandler := telegram.NewHandler(telegramBot, db.DB, wm)
+	telegramBot.SetHandler(telegramHandler)
+	if telegramConfig.Enabled {
+		if err := telegramBot.Start(); err != nil {
+			slog.Error("启动 Telegram 机器人失败", "error", err)
+		}
+	}
+	api.InitTelegramHandler(telegramBot)
+
+	// 4.5 初始化全局通知管理器
+	slog.Info("Initializing notify manager...")
+	if err := notify.InitGlobal(db.DB); err != nil {
+		slog.Error("Failed to initialize global notify manager", "error", err)
+	}
+	api.InitNotifyHandler(notify.Global)
+
+	// 5. 初始化搜索客户端
+	slog.Info("Initializing search client...")
+	searchConfig, err := search.LoadConfig(db.DB)
+	if err != nil {
+		slog.Warn("加载搜索配置失败，使用空配置", "error", err)
+		searchConfig = &search.SearchConfig{}
+	}
+	searchClient := search.NewClient(searchConfig, db.DB)
+	searchClient.WarmupToken() // 后台预热 token，避免首次搜索延迟
+	api.InitSearchHandler(searchClient)
+
+	// 5.5 启动系统遥测采集（后台周期采样 CPU）
+	utils.StartCPUCollector()
+
+	// 6. 启动 API 服务
 	listenAddr := os.Getenv("LISTEN_ADDR")
 	if listenAddr == "" {
 		listenAddr = "0.0.0.0:8080"

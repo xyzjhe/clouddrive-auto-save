@@ -28,7 +28,7 @@ test.describe('分享链接子目录浏览测试', () => {
 
     // 保存任务
     await page.getByRole('button', { name: '确认并保存' }).click();
-    await expect(page.getByText('E2E_139_浏览测试')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('E2E_139_浏览测试').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('夸克平台：浏览分享内容弹窗展示根目录内容', async ({ page }) => {

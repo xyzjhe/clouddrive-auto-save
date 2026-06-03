@@ -3,7 +3,8 @@ import { test, expect } from '@playwright/test';
 test.describe('任务管理：分享浏览高级交互测试', () => {
   test('面包屑导航：可点击返回上级目录', async ({ page }) => {
     await page.goto('/tasks');
-    await page.getByRole('button', { name: '创建任务' }).last().click();
+    await expect(page.locator('.header-actions button:has-text("创建任务")')).toBeVisible({ timeout: 20000 });
+    await page.locator('.header-actions button:has-text("创建任务")').click();
 
     await page.locator('.el-select').first().click();
     await page.getByRole('option', { name: 'E2E夸克用户' }).first().click();
@@ -35,7 +36,8 @@ test.describe('任务管理：分享浏览高级交互测试', () => {
 
   test('起始文件选择：选择文件后确认', async ({ page }) => {
     await page.goto('/tasks');
-    await page.getByRole('button', { name: '创建任务' }).last().click();
+    await expect(page.locator('.header-actions button:has-text("创建任务")')).toBeVisible({ timeout: 20000 });
+    await page.locator('.header-actions button:has-text("创建任务")').click();
 
     await page.locator('.el-select').first().click();
     await page.getByRole('option', { name: 'E2E移动云盘用户' }).first().click();

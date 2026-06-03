@@ -3,7 +3,21 @@ import { ElMessage } from 'element-plus'
 
 const service = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 10000
+  timeout: 10000,
+  paramsSerializer: params => {
+    const parts = []
+    for (const key in params) {
+      const value = params[key]
+      if (Array.isArray(value)) {
+        value.forEach(v => {
+          parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(v)}`)
+        })
+      } else if (value !== undefined && value !== null) {
+        parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+      }
+    }
+    return parts.join('&')
+  }
 })
 
 // 请求拦截器
@@ -23,11 +37,15 @@ service.interceptors.response.use(
     return res
   },
   error => {
+    // 调用方可通过 config.skipErrorHandler 自行处理错误（如链接校验场景）
+    if (error.config?.skipErrorHandler) {
+      return Promise.reject(error)
+    }
     let msg
     if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
       msg = '请求超时，请稍后重试'
     } else {
-      msg = error.response?.data?.error || error.message || '请求失败'
+      msg = error.response?.data?.error || error.response?.data?.message || error.message || '请求失败'
     }
     ElMessage({
       message: msg,

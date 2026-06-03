@@ -45,9 +45,13 @@
 | `cron` | string | 当模式为 custom 时的标准 6 位 Cron 表达式 |
 | `status` | string | `pending`, `running`, `success`, `failed` |
 | `percent` | int | **[持久化]** 当前执行进度百分比 (0-100) |
-| `stage` | string | **[持久化]** 阶段标识: `Parsing`, `Checking`, `Saving`, `Renaming`, `Success`, `Failed` |
+| `stage` | string | **[持久化]** 阶段标识: `Parsing`, `Checking`, `Saving`, `Renaming`, `Success`, `Failed`, `Retry` |
 | `last_run` | datetime | 最后一次开始运行的时间 |
 | `message` | text | 最后运行的结果摘要或 `[Fatal]` 错误信息 |
+| `retry_count` | int | 当前重试次数（默认 0） |
+| `max_retries` | int | 最大重试次数（默认 3） |
+| `run_days` | string | 运行星期，JSON 数组如 `[1,2,3,4,5]`（1=周一, 7=周日），空表示每天 |
+| `ignore_extension` | bool | 忽略后缀去重：01.mp4 和 01.mkv 视为同一文件 |
 
 ---
 

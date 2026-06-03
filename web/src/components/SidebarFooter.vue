@@ -6,9 +6,9 @@
       target="_blank"
       rel="noopener noreferrer"
     >
-      <Github :size="16" />
+      <PhGithubLogo :size="16" />
       <span>GitHub 仓库</span>
-      <ExternalLink :size="12" />
+      <PhArrowSquareOut :size="12" />
     </a>
     <div
       class="version-info"
@@ -23,7 +23,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Github, ExternalLink } from 'lucide-vue-next'
+import { PhGithubLogo, PhArrowSquareOut } from '@phosphor-icons/vue'
 import { getVersion } from '../api/version'
 
 const currentVersion = ref('...')
@@ -79,11 +79,7 @@ onMounted(async () => {
 .sidebar-footer {
   margin-top: auto;
   padding: 12px 16px;
-  border-top: 1px solid var(--neutral-200);
-}
-
-html.dark .sidebar-footer {
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-top: 1px solid var(--border-color);
 }
 
 .github-link {
@@ -102,15 +98,6 @@ html.dark .sidebar-footer {
 .github-link:hover {
   background: var(--neutral-100);
   color: var(--neutral-700);
-}
-
-html.dark .github-link {
-  color: var(--neutral-400);
-}
-
-html.dark .github-link:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--neutral-200);
 }
 
 .version-info {
@@ -135,10 +122,6 @@ html.dark .github-link:hover {
 
 .version-info.has-update:hover {
   background: var(--neutral-100);
-}
-
-html.dark .version-info.has-update:hover {
-  background: rgba(255, 255, 255, 0.04);
 }
 
 .update-badge {

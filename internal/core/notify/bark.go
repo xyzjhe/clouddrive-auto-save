@@ -2,6 +2,7 @@ package notify
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -180,6 +181,27 @@ func SendTaskNotification(taskName string, status string, message string, files 
 	go func() {
 		if err := SendBarkDirect(server, key, title, body, level, sound, icon, archive); err != nil {
 			slog.Error("发送 Bark 通知失败", "err", err)
+		}
+	}()
+
+	// 触发全局通知渠道发送 (WeChat, Telegram, WxPusher)
+	go func() {
+		msgLevel := LevelSuccess
+		if status == "failed" {
+			msgLevel = LevelError
+		}
+
+		notifyMsg := &Message{
+			Title:   title,
+			Content: body,
+			Level:   msgLevel,
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		if err := Global.Send(ctx, notifyMsg); err != nil {
+			slog.Error("发送全局渠道通知失败", "error", err)
 		}
 	}()
 }

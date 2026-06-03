@@ -2,10 +2,42 @@
 
 ## [Unreleased]
 
+### ✨ 核心特性 (Features)
+
+- **任务重试机制**：失败任务自动分类（致命/可恢复），可恢复错误按指数退避重试（30s→60s→120s→...→最大 3600s），支持配置最大重试次数和忽略后缀去重。
+- **凭证安全**：`GET /api/accounts` 返回 DTO（排除 Cookie/AuthToken），`GET /api/settings/global` 对含 token/key/password 的配置值脱敏为 `***`。
+
+### 🔧 重构 (Refactoring)
+
+- **API 响应格式统一**：全部端点统一为扁平格式（直接返回业务数据），消除了信封格式 `{code, data}` 与扁平格式共存的不一致问题。Settings.vue 中 4 处绕过 request.js 的 raw fetch 调用改为统一使用 axios 实例。
+- **预定义魔法匹配**：新增 `$TV`、`$BLACK_WORD`、`$SHOW_MAGIC`、`$TV_MAGIC` 四种预定义正则规则，任务中直接用 `$名称` 引用。
+- **链接验证 API**：新增 `GET /api/search/validate` 端点，自动识别夸克/移动云盘平台并验证分享链接有效性。
+- **运行星期配置**：任务新增 `run_days` 字段，支持按星期过滤运行日（1=周一, 7=周日），比手写 Cron 更直观。
+- **忽略后缀去重**：任务新增 `ignore_extension` 开关，01.mp4 和 01.mkv 视为同一文件避免重复转存。
+- **Tasks 页面状态筛选**：新增全部/等待中/运行中/成功/失败筛选 Tab + 搜索框。
+- **全局快捷键**：Ctrl+S 保存任务、Ctrl+R 运行所有任务、未保存修改关闭拦截。
+- **CloudSaver & PanSou 搜索集成**：
+  - **CloudSaver 搜索源**：实现 JWT Token 认证机制，支持自动登录续期，搜索结果自动清洗（提取夸克链接、解析标题描述、时间格式化）。
+  - **PanSou 搜索源**：实现免认证搜索，支持按网盘类型过滤和结果合并去重，`note` 字段自动解析为标题和描述。
+  - **搜索配置管理**：新增 `/api/search/config` API（GET/PUT），支持从 Setting 表加载/保存搜索源配置，运行时热更新。
+  - **统一搜索客户端**：重构 `Client` 支持配置化源创建、结果去重（按 shareurl）和排序（按时间降序）。
+  - **前端适配**：Search.vue 新增标签和频道显示，Settings.vue 新增搜索源配置 Tab。
+  - **API 文档**：新增 `docs/cloudsaver_api.md` 和 `docs/pansou_api.md`，详细记录两个搜索源的接口规范和调用流程。
+
+### 🎨 界面优化与重构 (UI/UX Refactoring)
+
+- **科技暗黑毛玻璃风格升级**：全局部署了 Glassmorphism 样式和霓虹微光设计语言，对 Element Plus 全局组件进行了发光微光样式重塑。
+- **控制台 (Dashboard) 重构**：改为左右分栏的极客主控面板，整合了实时活跃队列与历史时间线，保证了实时刷新下历史重试操作能被正常触发。
+- **任务管理 (Tasks) 交互优化**：将原本繁重的全屏创建/编辑 Dialog 重构为右侧滑入的 `<el-drawer>` 抽屉表单；实装了基于正则的智能粘贴解析器，支持从复合文案中一键提取网盘分享链接和提取码。
+- **账号管理 (Accounts) 空间可视化**：改版为精美的卡片网格布局，并将原本的数据表格容量展现形式升级为直观的可视化 `el-progress type="circle"` 圆环空间配额图。
+- **页面路由精简**：废弃了独立的通知和插件配置页面，导航栏精简为五大核心模块，并将调度配置、推送通道和扩展插件集中整合至新的 Tab 式 [Settings.vue](file:///home/zcq/Github/clouddrive-auto-save/web/src/views/Settings.vue) 页面中。
+
 ### 🛡️ 稳定性 (Stability)
 
-- **E2E 测试大幅增强**：新增 26 个测试（48 → 74），覆盖仪表盘 FAB 导航、账号编辑、OpenList 配置、Bark 高级设置、侧边栏导航、暗色模式、提取码、表单验证等场景。
+- **E2E 精准定位器重构**：修复了在嵌套 `el-tabs` 复杂 DOM 树下由于重名“保存/测试”按钮以及同级 `el-switch` 导致的定位歧义超时问题。为各通道表单添加了专属 class（如 `.bark-form`, `.wechat-form` 等）并优化了 Playwright 选择器，使 74 个 E2E 集成测试用例 100% 顺利通过。
+- **E2E 测试大幅增强**：先前新增了 26 个测试（48 → 74），覆盖仪表盘 FAB 导航、账号编辑、OpenList 配置、Bark 高级设置、侧边栏导航、暗色模式、提取码、表单验证等场景。
 - **修复 Dashboard 测试 flaky**：Dashboard 的 SSE 长连接会接收真实后端事件触发 `fetchStats()` 与 `page.route` mock 竞态，通过同时 mock SSE 端点 (`/api/dashboard/logs`) 阻断干扰。
+
 
 ## [1.3.0] - 2026-05-18
 

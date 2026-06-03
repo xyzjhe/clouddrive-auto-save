@@ -6,6 +6,14 @@
         <p>监控并自动转存移动云盘和夸克网盘的分享资源</p>
       </div>
       <div class="header-actions">
+        <el-radio-group v-model="viewMode" size="default" class="view-toggle" @change="toggleViewMode">
+          <el-radio-button label="table">
+            <el-icon><PhList /></el-icon>
+          </el-radio-button>
+          <el-radio-button label="card">
+            <el-icon><PhGridFour /></el-icon>
+          </el-radio-button>
+        </el-radio-group>
         <el-popconfirm
           title="确定要一键启动所有可运行的任务吗？"
           confirm-button-text="确认"
@@ -14,15 +22,26 @@
           @confirm="handleRunAll"
         >
           <template #reference>
-            <el-button :icon="Play" :loading="runningAll">全部运行</el-button>
+            <el-button type="primary" plain :icon="PhPlay" :loading="runningAll">全部运行</el-button>
           </template>
         </el-popconfirm>
-        <el-button type="primary" :icon="Plus" @click="openAddDialog">创建任务</el-button>
+        <el-button type="primary" :icon="PhPlus" @click="openAddDialog">创建任务</el-button>
       </div>
     </div>
 
-    <el-card class="table-card">
-      <el-table v-if="taskList.length > 0 || loading" :data="taskList" v-loading="loading" style="width: 100%">
+    <div class="task-filter-bar">
+      <el-radio-group v-model="statusFilter" size="default">
+        <el-radio-button label="all">全部</el-radio-button>
+        <el-radio-button label="pending">等待中</el-radio-button>
+        <el-radio-button label="running">运行中</el-radio-button>
+        <el-radio-button label="success">成功</el-radio-button>
+        <el-radio-button label="failed">失败</el-radio-button>
+      </el-radio-group>
+      <el-input v-model="searchQuery" placeholder="搜索任务名称..." clearable style="width: 200px" :prefix-icon="PhMagnifyingGlass" />
+    </div>
+
+    <el-card v-if="viewMode === 'table'" class="table-card">
+      <el-table v-if="filteredTaskList.length > 0 || loading" :data="filteredTaskList" v-loading="loading" style="width: 100%">
         <el-table-column label="任务名称" min-width="180">
           <template #default="{ row }">
             <div class="task-name-cell">
@@ -44,15 +63,15 @@
         <el-table-column prop="schedule_mode" label="调度规则" width="140">
           <template #default="{ row }">
             <div v-if="row.schedule_mode === 'global'" class="schedule-tag">
-              <el-tag size="small" type="primary" effect="plain">跟随全局</el-tag>
+              <el-tag size="small" type="primary">跟随全局</el-tag>
               <div class="schedule-sub" v-if="globalSchedule.enabled">{{ globalSchedule.cron }}</div>
               <div class="schedule-sub disabled" v-else>全局已关闭</div>
             </div>
             <div v-else-if="row.schedule_mode === 'custom'" class="schedule-tag">
-              <el-tag size="small" type="warning" effect="plain">自定义</el-tag>
+              <el-tag size="small" type="warning">自定义</el-tag>
               <div class="schedule-sub">{{ row.cron }}</div>
             </div>
-            <el-tag v-else size="small" type="info" effect="plain">手动执行</el-tag>
+            <el-tag v-else size="small" type="info">手动执行</el-tag>
           </template>
         </el-table-column>
 
@@ -60,10 +79,13 @@
           <template #default="{ row }">
             <div class="status-wrapper">
               <el-tooltip v-if="row.message && row.message.includes('[Fatal]')" :content="row.message" placement="top" effect="dark">
-                <el-tag type="danger" style="cursor:help"><div class="status-inner"><el-icon><AlertTriangle /></el-icon>LINK ERROR</div></el-tag>
+                <el-tag type="danger" style="cursor:help"><div class="status-inner"><el-icon><PhWarning weight="fill" /></el-icon>LINK ERROR</div></el-tag>
+              </el-tooltip>
+              <el-tooltip v-else-if="row.retry_count > 0 && row.status === 'pending'" :content="`重试 ${row.retry_count}/${row.max_retries} 次`" placement="top" effect="dark">
+                <el-tag type="warning"><div class="status-inner"><el-icon class="icon-spin"><PhArrowsClockwise /></el-icon>RETRY {{ row.retry_count }}/{{ row.max_retries }}</div></el-tag>
               </el-tooltip>
               <el-tag v-else :type="getStatusType(row.status)">
-                <div class="status-inner"><el-icon v-if="row.status === 'running'" class="icon-spin"><RefreshCw /></el-icon>{{ row.status.toUpperCase() }}</div>
+                <div class="status-inner"><el-icon v-if="row.status === 'running'" class="icon-spin"><PhArrowsClockwise /></el-icon>{{ row.status.toUpperCase() }}</div>
               </el-tag>
             </div>
           </template>
@@ -75,32 +97,74 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
-            <el-button-group>
-              <el-button 
-                link 
-                type="success" 
-                :icon="Play" 
-                :disabled="row.status === 'running' || !!(row.message && row.message.includes('[Fatal]'))" 
+            <div class="action-buttons">
+              <button
+                class="btn-icon btn-icon--success"
+                title="运行"
+                aria-label="运行"
+                :disabled="row.status === 'running' || !!(row.message && row.message.includes('[Fatal]'))"
                 @click="handleRun(row)"
               >
-                运行
-              </el-button>
-              <el-button link type="primary" :icon="Edit" @click="handleEdit(row)">编辑</el-button>
-              <el-button link type="danger" :icon="Trash2" @click="handleDelete(row)">删除</el-button>
-            </el-button-group>
+                <PhPlay :size="14" />
+              </button>
+              <button
+                class="btn-icon btn-icon--primary"
+                title="编辑"
+                aria-label="编辑"
+                @click="handleEdit(row)"
+              >
+                <PhPencilSimple :size="14" />
+              </button>
+              <button
+                class="btn-icon btn-icon--danger"
+                title="删除"
+                aria-label="删除"
+                @click="handleDelete(row)"
+              >
+                <PhTrash :size="14" />
+              </button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
       <el-empty v-else description="当前没有任何转存任务">
-        <el-button type="primary" :icon="Plus" @click="openAddDialog">创建新任务</el-button>
+        <el-button type="primary" :icon="PhPlus" @click="openAddDialog">创建新任务</el-button>
       </el-empty>
     </el-card>
 
-    <!-- 创建/编辑任务对话框 -->
-    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑任务' : '创建新任务'" width="600px">
+    <!-- 卡片视图 -->
+    <div v-else-if="viewMode === 'card'" class="card-view-container" v-loading="loading">
+      <template v-if="filteredTaskList.length > 0 || loading">
+        <el-row :gutter="20">
+          <el-col v-for="row in filteredTaskList" :key="row.id" :xs="24" :sm="12" :md="8" :lg="6">
+            <TaskCard
+              :task="row"
+              @run="handleRun"
+              @edit="handleEdit"
+              @delete="handleDelete"
+            />
+          </el-col>
+        </el-row>
+      </template>
+      <el-empty v-else description="当前没有任何转存任务">
+        <el-button type="primary" :icon="PhPlus" @click="openAddDialog">创建新任务</el-button>
+      </el-empty>
+    </div>
+
+    <!-- 创建/编辑任务抽屉 -->
+    <el-drawer v-model="dialogVisible" :title="form.id ? '编辑任务' : '创建新任务'" direction="rtl" size="560px" destroy-on-close>
       <el-form :model="form" label-position="top" ref="formRef">
+        <el-form-item label="智能粘贴解析" v-if="!form.id">
+          <el-input
+            v-model="smartInput"
+            type="textarea"
+            :rows="3"
+            placeholder="请在此粘贴包含分享链接和提取码的文字，系统将自动尝试解析并填充下方表单"
+            @input="handleSmartInput"
+          />
+        </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="任务名称" required>
@@ -124,8 +188,8 @@
                   >
                     <div class="account-option-item">
                       <div class="acc-info">
-                        <el-icon class="acc-icon" :color="acc.platform === 'quark' ? '#10b981' : '#f59e0b'">
-                          <Cloud />
+                        <el-icon class="acc-icon" :color="acc.platform === 'quark' ? 'var(--color-quark)' : 'var(--color-139)'">
+                          <PhCloud weight="duotone" />
                         </el-icon>
                         <span class="acc-name">{{ acc.nickname }}</span>
                       </div>
@@ -133,7 +197,7 @@
                         <span class="acc-cap" v-if="acc.capacity_total > 0">
                           剩余 {{ formatSize(acc.capacity_total - acc.capacity_used) }}
                         </span>
-                        <el-tag v-if="acc.status === 0" size="small" type="danger" effect="dark">已失效</el-tag>
+                        <el-tag v-if="acc.status === 0" size="small" type="danger">已失效</el-tag>
                       </div>
                     </div>
                   </el-option>
@@ -148,24 +212,31 @@
             <el-input v-model="form.share_url" placeholder="请输入 139 或 Quark 分享链接" @change="handleUrlChange" />
             <el-button-group class="share-url-actions">
               <el-button
-                :icon="FolderOpen"
+                :icon="PhFolderOpen"
                 title="浏览分享内容并选择目录"
                 :disabled="!form.share_url || !form.account_id"
                 @click="openBrowseShareDialog"
               />
               <el-button
-                :icon="ExternalLink"
+                :icon="PhArrowSquareOut"
                 title="在新标签页中打开链接"
                 :disabled="!form.share_url"
                 @click="openExternalLink(form.share_url, form.extract_code)"
               />
+              <el-button
+                type="primary"
+                title="搜索替换资源"
+                @click="handleSearchReplace"
+              >
+                搜索替换
+              </el-button>
             </el-button-group>
           </div>
         </el-form-item>
 
         <div v-if="isSubDirMode" class="subdir-hint">
-          <el-tag type="warning" effect="light" closable @close="resetToShareRoot">
-            <el-icon style="margin-right: 4px; vertical-align: middle;"><FolderOpen /></el-icon>
+          <el-tag type="warning" closable @close="resetToShareRoot">
+            <el-icon style="margin-right: 4px; vertical-align: middle;"><PhFolderOpen /></el-icon>
             当前目录：{{ selectedDirName || '子目录' }}
           </el-tag>
         </div>
@@ -192,7 +263,7 @@
             </el-input>
           </div>
           <div class="start-id-tip" v-if="form.start_file_id">
-            <el-icon><Info /></el-icon>
+            <el-icon><PhInfo /></el-icon>
             <span>当前已锁定 ID: <code class="id-code" :title="form.start_file_id">{{ form.start_file_id }}</code></span>
           </div>
         </el-form-item>
@@ -248,7 +319,7 @@
                         格式：秒 分 时 日 月 周 (6位)<br/>
                         例如: */5 * * * * * (每5秒执行一次)
                       </template>
-                      <el-icon style="cursor: help"><Info /></el-icon>
+                      <el-icon style="cursor: help"><PhInfo /></el-icon>
                     </el-tooltip>
                   </template>
                 </el-input>
@@ -270,16 +341,32 @@
           </el-col>
         </el-row>
 
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="最大重试次数">
+              <el-input-number v-model="form.max_retries" :min="0" :max="10" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="忽略后缀去重">
+              <el-switch v-model="form.ignore_extension" active-text="开启" inactive-text="关闭" />
+              <div class="form-tip">开启后 01.mp4 和 01.mkv 视为同一文件</div>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
         <div class="preview-action">
-          <el-button type="success" :icon="RefreshCw" @click="handlePreview" :loading="previewLoading">全量重命名预览</el-button>
+          <el-button type="success" :icon="PhArrowsClockwise" @click="handlePreview" :loading="previewLoading">全量重命名预览</el-button>
         </div>
       </el-form>
       
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="submitForm">确认并保存</el-button>
+        <div style="flex: auto">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="submitting" @click="submitForm">确认并保存</el-button>
+        </div>
       </template>
-    </el-dialog>
+    </el-drawer>
 
     <!-- 目录选择独立弹窗 -->
     <el-dialog 
@@ -305,7 +392,7 @@
         >
           <template #default="{ node, data }">
             <span class="custom-tree-node">
-              <el-icon><Folder /></el-icon>
+              <el-icon><PhFolder /></el-icon>
               <span>{{ node.label }}</span>
             </span>
           </template>
@@ -389,8 +476,8 @@
             <template #default="{ row }">
               <div class="name-main" :class="{ 'folder-clickable': row.is_folder }" @click="row.is_folder && enterFolder(row)" @dblclick="!row.is_folder && handleRowDblClick(row)">
                 <el-icon size="16">
-                  <Folder v-if="row.is_folder" color="#eab308" />
-                  <File v-else color="#64748b" />
+                  <PhFolder v-if="row.is_folder" color="var(--color-warning)" />
+                  <PhFile v-else color="var(--text-muted)" />
                 </el-icon>
                 <span>{{ row.name }}</span>
               </div>
@@ -410,7 +497,7 @@
 
           <el-table-column label="类型" width="80" align="center">
             <template #default="{ row }">
-              <el-tag size="small" :type="row.is_folder ? 'warning' : 'info'" effect="plain">
+              <el-tag size="small" :type="row.is_folder ? 'warning' : 'info'">
                 {{ row.is_folder ? '目录' : '文件' }}
               </el-tag>
             </template>
@@ -418,8 +505,8 @@
 
           <el-table-column label="状态" width="100" align="center">
             <template #default="{ row }">
-              <el-tag v-if="row.is_existed" size="small" type="success" effect="light">已在网盘</el-tag>
-              <el-tag v-else size="small" type="info" effect="plain">待转存</el-tag>
+              <el-tag v-if="row.is_existed" size="small" type="success">已在网盘</el-tag>
+              <el-tag v-else size="small" type="info">待转存</el-tag>
             </template>
           </el-table-column>
 
@@ -473,22 +560,165 @@
         <p>* 过滤规则：如果设置了起始文件，则该文件之后（更旧）的文件将不执行转存。</p>
       </div>
     </el-dialog>
+
+    <!-- 搜索替换弹窗 -->
+    <el-dialog
+      v-model="searchReplaceVisible"
+      title="搜索替换资源"
+      width="600px"
+    >
+      <div class="search-replace-bar">
+        <el-input
+          v-model="searchReplaceQuery"
+          placeholder="输入搜索关键词"
+          @keyup.enter="doSearchReplace"
+        >
+          <template #append>
+            <el-button @click="doSearchReplace">搜索</el-button>
+          </template>
+        </el-input>
+      </div>
+      <div v-loading="searchReplaceLoading" class="search-replace-results">
+        <div v-for="item in searchReplaceResults" :key="item.url" class="search-result-item">
+          <div class="result-info">
+            <span class="result-title">{{ item.title }}</span>
+            <span class="result-source">{{ item.source }} - {{ item.platform }}</span>
+          </div>
+          <div class="result-actions">
+            <el-button size="small" @click="handleViewShareContent(item)">查看内容</el-button>
+            <el-button size="small" type="primary" @click="handleReplaceFromSearch(item)">替换</el-button>
+          </div>
+        </div>
+        <el-empty v-if="!searchReplaceLoading && searchReplaceResults.length === 0" description="暂无搜索结果" />
+      </div>
+    </el-dialog>
+
+    <ShareContentDialog
+      v-model:visible="shareDialogVisible"
+      :url="shareDialogUrl"
+      :extract-code="shareDialogExtractCode"
+      :title="shareDialogTitle"
+      :show-replace="true"
+      @replace-link="handleReplaceFromDialog"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { Plus, Play, Edit, Trash2, RefreshCw, Folder, File, Info, Cloud, ExternalLink, AlertTriangle, Clock, FolderOpen } from 'lucide-vue-next'
+import { useRoute } from 'vue-router'
+import {
+  PhPlus, PhPlay, PhPencilSimple, PhTrash, PhArrowsClockwise,
+  PhFolder, PhFile, PhInfo, PhCloud, PhArrowSquareOut,
+  PhWarning, PhClock, PhFolderOpen, PhList, PhGridFour,
+  PhMagnifyingGlass
+} from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTasks, createTask, updateTask, deleteTask, runTask, runAllTasks, previewTask, parseShareLink, getScheduleSettings } from '../api/task'
 import { getAccounts, getFolders, createFolder } from '../api/account'
+import { searchResources } from '../api/search'
+import TaskCard from '../components/cards/TaskCard.vue'
+import ShareContentDialog from '../components/ShareContentDialog.vue'
+import { formatSize, formatTime, getStatusTagType as getStatusType } from '../utils/format'
 
+const route = useRoute()
 const taskList = ref([])
 const accounts = ref([])
 const loading = ref(false)
 const runningAll = ref(false)
 const dialogVisible = ref(false)
 const submitting = ref(false)
+const viewMode = ref(localStorage.getItem('taskViewMode') || 'table')
+const statusFilter = ref('all')
+const searchQuery = ref('')
+
+const smartInput = ref('')
+
+// 搜索替换相关
+const searchReplaceVisible = ref(false)
+const searchReplaceQuery = ref('')
+const searchReplaceResults = ref([])
+const searchReplaceLoading = ref(false)
+
+// 分享内容弹窗
+const shareDialogVisible = ref(false)
+const shareDialogUrl = ref('')
+const shareDialogExtractCode = ref('')
+const shareDialogTitle = ref('')
+
+const handleSmartInput = (val) => {
+  if (!val) return
+  
+  // 1. 提取链接
+  const urlMatch = val.match(/https?:\/\/[a-zA-Z0-9.\-_/]+/)
+  if (urlMatch) {
+    form.value.share_url = urlMatch[0]
+    handleUrlChange()
+  }
+
+  // 2. 提取密码/提取码
+  let remainText = val
+  if (urlMatch) {
+    remainText = val.replace(urlMatch[0], '')
+  }
+  
+  const pwdKeywordMatch = remainText.match(/(?:提取码|提取|密码|pw|码|pwd)[:：\s]*([a-zA-Z0-9]+)/i)
+  if (pwdKeywordMatch) {
+    form.value.extract_code = pwdKeywordMatch[1]
+  } else {
+    const purePwdMatch = remainText.match(/\b([a-zA-Z0-9]{4})\b/)
+    if (purePwdMatch) {
+      form.value.extract_code = purePwdMatch[1]
+    }
+  }
+}
+
+const handleSearchReplace = () => {
+  searchReplaceQuery.value = form.value.name
+  searchReplaceResults.value = []
+  searchReplaceVisible.value = true
+  if (searchReplaceQuery.value) {
+    doSearchReplace()
+  }
+}
+
+const doSearchReplace = async () => {
+  if (!searchReplaceQuery.value.trim()) return
+  searchReplaceLoading.value = true
+  try {
+    const data = await searchResources({ q: searchReplaceQuery.value })
+    searchReplaceResults.value = data.items || []
+  } catch (e) {
+    ElMessage.error('搜索失败')
+  } finally {
+    searchReplaceLoading.value = false
+  }
+}
+
+const handleReplaceFromSearch = (item) => {
+  form.value.share_url = item.url
+  searchReplaceVisible.value = false
+  ElMessage.success('链接已替换，请保存任务')
+}
+
+const handleViewShareContent = (item) => {
+  shareDialogUrl.value = item.url
+  shareDialogExtractCode.value = ''
+  shareDialogTitle.value = item.title
+  shareDialogVisible.value = true
+}
+
+const handleReplaceFromDialog = (data) => {
+  form.value.share_url = data.url
+  form.value.extract_code = data.extractCode || ''
+  shareDialogVisible.value = false
+  ElMessage.success('链接已替换，请保存任务')
+}
+
+const toggleViewMode = (mode) => {
+  viewMode.value = mode
+  localStorage.setItem('taskViewMode', mode)
+}
 
 // 全局调度设置
 const globalSchedule = ref({
@@ -502,15 +732,6 @@ const fetchGlobalSettings = async () => {
     globalSchedule.value = data
   } catch (err) {
     console.error('获取全局设置失败:', err)
-  }
-}
-
-const saveGlobalSettings = async () => {
-  try {
-    await updateScheduleSettings(globalSchedule.value)
-    ElMessage.success('全局调度设置已更新')
-  } catch (err) {
-    console.error('更新全局设置失败:', err)
   }
 }
 
@@ -592,13 +813,7 @@ const selectedTreeId = ref('')
 const newFolderName = ref('')
 const creatingFolder = ref(false)
 
-const formatSize = (bytes) => {
-  const b = Number(bytes)
-  if (isNaN(b) || b <= 0) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(b) / Math.log(1024))
-  return `${(b / Math.pow(1024, i)).toFixed(2)} ${units[i]}`
-}
+
 
 const groupedAccounts = computed(() => {
   if (!accounts.value) return []
@@ -625,6 +840,18 @@ const selectedAccountPlatform = computed(() => {
     return account.platform === '139' ? '移动云盘' : 'Quark'
   }
   return ''
+})
+
+const filteredTaskList = computed(() => {
+  let list = taskList.value
+  if (statusFilter.value !== 'all') {
+    list = list.filter(t => t.status === statusFilter.value)
+  }
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.trim().toLowerCase()
+    list = list.filter(t => t.name.toLowerCase().includes(q))
+  }
+  return list
 })
 
 const form = ref({
@@ -1071,6 +1298,7 @@ const confirmFolderSelection = () => {
 }
 
 const openAddDialog = () => {
+  smartInput.value = ''
   form.value = {
     id: null,
     name: '',
@@ -1084,7 +1312,9 @@ const openAddDialog = () => {
     start_file_name: '',
     share_parent_id: '',
     cron: '',
-    schedule_mode: 'global'
+    schedule_mode: 'global',
+    max_retries: 3,
+    ignore_extension: false
   }
   shareFiles.value = []
   selectedStartFileName.value = ''
@@ -1094,6 +1324,7 @@ const openAddDialog = () => {
 }
 
 const handleEdit = async (row) => {
+  smartInput.value = ''
   shareFiles.value = []
   
   form.value = {
@@ -1211,15 +1442,7 @@ const handleDelete = (row) => {
   })
 }
 
-const getStatusType = (status) => {
-  const map = { pending: 'info', running: 'primary', success: 'success', failed: 'danger' }
-  return map[status] || 'info'
-}
 
-const formatTime = (timeStr) => {
-  if (!timeStr || timeStr.startsWith('0001')) return '从不'
-  return new Date(timeStr).toLocaleString()
-}
 
 let eventSource = null
 
@@ -1265,15 +1488,64 @@ const initSSE = () => {
   }
 }
 
-onMounted(() => {
-  fetchList()
+onMounted(async () => {
+  await fetchList()
   fetchGlobalSettings()
   initSSE()
+
+  if (route.query.share_url) {
+    openAddDialog()
+    form.value.share_url = route.query.share_url
+    if (route.query.title) {
+      form.value.name = `转存-${route.query.title}`
+    }
+    if (route.query.platform) {
+      const match = accounts.value.find(a => a.platform === route.query.platform)
+      if (match) {
+        form.value.account_id = match.id
+        handleAccountChange()
+      }
+    }
+    // 从搜索页带来的子目录 ID（139 平台）
+    if (route.query.share_parent_id) {
+      form.value.share_parent_id = route.query.share_parent_id
+    }
+  }
+
+  // 全局快捷键
+  document.addEventListener('keydown', handleKeydown)
+  window.addEventListener('beforeunload', handleBeforeUnload)
 })
 
 onUnmounted(() => {
   if (eventSource) eventSource.close()
+  document.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
+
+const handleKeydown = (e) => {
+  // Ctrl+S: 保存任务（弹窗打开时）
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault()
+    if (dialogVisible.value) {
+      submitForm()
+    }
+  }
+  // Ctrl+R: 运行所有任务
+  if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+    e.preventDefault()
+    if (!dialogVisible.value) {
+      handleRunAll()
+    }
+  }
+}
+
+const handleBeforeUnload = (e) => {
+  if (dialogVisible.value) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
 </script>
 
 <style scoped>
@@ -1281,7 +1553,20 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+}
+
+.task-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
 }
 
 .header-actions {
@@ -1292,9 +1577,9 @@ onUnmounted(() => {
 
 .title-section h2 {
   margin: 0;
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--neutral-800);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
@@ -1341,7 +1626,7 @@ onUnmounted(() => {
 .setting-title {
   font-weight: 700;
   font-size: 16px;
-  color: var(--neutral-800);
+  color: var(--text-primary);
 }
 
 .setting-desc {
@@ -1396,7 +1681,7 @@ onUnmounted(() => {
 
 .task-name-cell .name {
   font-weight: 700;
-  color: var(--neutral-800);
+  color: var(--text-primary);
 }
 
 .status-inner {
@@ -1443,10 +1728,6 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-html.dark .id-code {
-  background-color: rgba(255, 255, 255, 0.06);
-}
-
 .share-files-dialog-content {
   padding: 10px 0;
 }
@@ -1467,20 +1748,12 @@ html.dark .id-code {
   font-weight: 700;
 }
 
-html.dark .save-path-input :deep(.el-input-group__prepend) {
-  background-color: rgba(255, 255, 255, 0.04);
-}
-
 .folder-tree-container {
   height: 400px;
   overflow-y: auto;
   border: 1px solid var(--neutral-200);
   border-radius: 8px;
   padding: 8px;
-}
-
-html.dark .folder-tree-container {
-  border-color: rgba(255, 255, 255, 0.06);
 }
 
 .folder-dialog-footer {
@@ -1533,10 +1806,6 @@ html.dark .folder-tree-container {
 .existed-row {
   background-color: var(--neutral-100) !important;
   color: var(--neutral-400);
-}
-
-html.dark .existed-row {
-  background-color: rgba(255, 255, 255, 0.03) !important;
 }
 
 .existed-row span {
@@ -1659,5 +1928,57 @@ html.dark .existed-row {
 
 .subdir-hint .el-tag {
   cursor: default;
+}
+
+.card-view-container {
+  min-height: 300px;
+}
+
+.view-toggle :deep(.el-radio-button__inner) {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+}
+
+.search-replace-bar {
+  margin-bottom: 16px;
+}
+
+.search-replace-results {
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.search-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.result-info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.result-title {
+  display: block;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-source {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.result-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 16px;
 }
 </style>

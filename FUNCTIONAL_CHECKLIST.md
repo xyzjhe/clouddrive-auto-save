@@ -42,12 +42,12 @@
 
 - [ ] **STRM 生成**：自动生成 `.strm` 文件。
 - [ ] **Emby/Plex 联动**：转存完成后触发媒体库刷新。
-- [ ] **资源搜索集成**：接入 CloudSaver 接口。
+- [x] **资源搜索集成**：接入 CloudSaver / PanSou 搜索引擎，支持跨源并发搜索、URL 归一化去重与一键创建任务。
 
 ## 6. 通知与交互模块 (Communication)
 
-- [ ] **Telegram 机器人**：远程任务控制与搜索。
-- [ ] **多渠道消息推送**：集成 Bark、企业微信等。
+- [x] **Telegram 机器人**：远程任务控制与搜索。
+- [x] **多渠道消息推送**：集成 Bark、企业微信、WxPusher、Telegram 四种推送渠道。
 
 ## 7. Web 管理界面 (User Interface)
 

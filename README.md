@@ -14,17 +14,21 @@
 
 * **⚡ 高性能引擎**：基于 Go Goroutine 实现的并发 Worker 池，支持多任务同时转存。
 * **🛠️ 跨平台兼容**：采用 **CGO-free** 的纯 Go SQLite 驱动，支持 Windows/Linux/macOS 零依赖部署。支持通过 GitHub Releases 下载预编译好的二进制程序。
-* **🎨 现代化 UI**：采用 Vue 3 + Element Plus 构建的响应式后台，支持暗黑模式与等宽日志视图。
+* **🎨 现代化 UI**：采用 Vue 3 + Element Plus 构建的 Apple/Linear 极简风格管理后台，Sky Blue 单色调设计，Inter 字体 + Phosphor Icons，双栏仪表盘配合 SSE 实时日志流。
 * **📊 实时指挥中心**：集成实时数据仪表盘，通过 **Server-Sent Events (SSE)** 实现任务状态与日志的实时同步，并支持任务执行耗时统计。
 * **🤖 智能整理与去重**：
   * **正则重命名**：支持强大的正则匹配与替换（含 `{TASKNAME}`, `{DATE}` 等魔法变量）。
   * **智能去重**：转存前自动预检目标目录，智能跳过同名文件，防止产生冗余副本。
   * **可视化解析**：支持解析分享链接，允许手动选择起始转存点。跳转外链时支持自动拼接并复制提取码至剪贴板。
-  * **双重过滤机制**：系统仅转存 **“在起始文件之后（含）更新”** 且 **“符合正则匹配”** 的文件。
+  * **双重过滤机制**：系统仅转存 **”在起始文件之后（含）更新”** 且 **”符合正则匹配”** 的文件。
   * **消息通知**：集成 Bark 推送，支持分级提醒、自定义铃声及**智能批量汇总通知**（避免执行所有任务时产生过量推送）。
 * **🛡️ 健壮的错误处理**：针对网盘接口错误码实现人性化清洗（如提取码错误、链接失效等），支持 `[Fatal]` 致命错误自动阻断与 UI 警示。
-* **⏰ 灵活调度**：支持“全局默认”与“任务自定义”双层 Cron 调度逻辑，全局调度提供“简易/高级”双模式配置。
+* **⏰ 灵活调度**：支持”全局默认”与”任务自定义”双层 Cron 调度逻辑，全局调度提供”简易/高级”双模式配置。
 * **📦 容器化优先**：提供官方 Docker 镜像，支持 **多架构 / 异构镜像 (amd64 / arm64)**，适配树莓派、Mac M系列等 ARM 设备。
+* **🧩 插件系统**：支持模块化扩展，插件有三个生命周期钩子（`task_before`、`task_after`、`run`），可轻松集成 Emby、Alist 等第三方服务。
+* **📱 Telegram 集成**：支持通过 Telegram 远程管理任务，包括命令处理和消息推送，方便移动端操作。
+* **🔍 资源搜索**：集成 CloudSaver/PanSou 等资源搜索引擎，支持搜索后一键创建转存任务。
+* **📢 多渠道通知**：统一的通知管理器，支持企业微信、Telegram、WxPusher、Bark 四种推送渠道，满足不同用户需求。
 
 ---
 
@@ -117,7 +121,11 @@ services:
 ## 🏗️ 技术架构 (Architecture)
 
 * **Backend**: Go 1.25, Gin, GORM, **Glebarez SQLite (CGO-free)**.
-* **Frontend**: Vue 3, Vite, Element Plus.
+* **Frontend**: Vue 3, Vite, Element Plus, ECharts.
+* **插件系统**: 支持模块化扩展，插件有三个生命周期钩子（`task_before`、`task_after`、`run`）。
+* **Telegram 集成**: 支持通过 Telegram 远程管理任务，包括命令处理和消息推送。
+* **资源搜索**: 集成 CloudSaver/PanSou 等资源搜索引擎，支持搜索后一键创建任务。
+* **多渠道通知**: 统一的通知管理器，支持企业微信、Telegram、WxPusher、Bark 四种推送渠道。
 * **CI/CD**: GitHub Actions (使用 Docker Buildx 构建多架构镜像，并使用 **GoReleaser** 自动发布多平台产物)。
 
 ---
@@ -129,7 +137,10 @@ services:
 * [API 接口文档](docs/api/README.md)
 * [移动云盘 (139) API 手册](docs/cloud139_apis.md)
 * [夸克网盘 (Quark) API 手册](docs/quark_apis.md)
+* [CloudSaver 搜索源 API](docs/cloudsaver_api.md)
+* [PanSou 搜索源 API](docs/pansou_api.md)
 * [数据库设计](docs/api/database.md)
+* [平台扩展指南](docs/platform-extension-guide.md)
 
 ---
 
