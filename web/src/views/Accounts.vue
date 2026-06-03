@@ -8,13 +8,13 @@
       <div class="header-actions">
         <el-radio-group v-model="viewMode" size="default" class="view-toggle" @change="toggleViewMode">
           <el-radio-button label="table">
-            <el-icon><List /></el-icon>
+            <PhList />
           </el-radio-button>
           <el-radio-button label="card">
-            <el-icon><LayoutGrid /></el-icon>
+            <PhGridFour />
           </el-radio-button>
         </el-radio-group>
-        <el-button type="primary" :icon="Plus" @click="openAddDialog">添加账号</el-button>
+        <el-button type="primary" :icon="PhPlus" @click="openAddDialog">添加账号</el-button>
       </div>
     </div>
 
@@ -25,7 +25,7 @@
           <template #default="{ row }">
             <div class="platform-cell">
               <el-icon :class="row.platform" class="platform-icon">
-                <HardDrive />
+                <PhHardDrives />
               </el-icon>
               <span class="platform-name">
                 {{ row.platform === 'quark' ? '夸克网盘' : '移动云盘' }}
@@ -65,7 +65,7 @@
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'danger'" effect="light" round class="status-tag">
+            <el-tag :type="row.status === 1 ? 'success' : 'danger'" round class="status-tag">
               {{ row.status === 1 ? '正常' : '失效' }}
             </el-tag>
           </template>
@@ -84,7 +84,7 @@
                 aria-label="校验"
                 @click="handleCheck(row)"
               >
-                <RefreshCcw :size="14" />
+                <PhArrowsCounterClockwise :size="14" />
               </button>
               <button
                 class="btn-icon btn-icon--primary"
@@ -92,7 +92,7 @@
                 aria-label="编辑"
                 @click="handleEdit(row)"
               >
-                <Edit :size="14" />
+                <PhPencilSimple :size="14" />
               </button>
               <button
                 class="btn-icon btn-icon--danger"
@@ -100,14 +100,14 @@
                 aria-label="删除"
                 @click="handleDelete(row)"
               >
-                <Trash2 :size="14" />
+                <PhTrash :size="14" />
               </button>
             </div>
           </template>
         </el-table-column>
       </el-table>
       <el-empty v-else description="您还没有绑定任何云盘账号">
-        <el-button type="primary" :icon="Plus" @click="openAddDialog">立即绑定账号</el-button>
+        <el-button type="primary" :icon="PhPlus" @click="openAddDialog">立即绑定账号</el-button>
       </el-empty>
     </el-card>
 
@@ -120,14 +120,14 @@
               <div class="card-header">
                 <div class="card-title">
                   <el-icon :class="row.platform" class="platform-icon mini">
-                    <HardDrive />
+                    <PhHardDrives />
                   </el-icon>
                   <div class="account-info">
                     <div class="nickname">{{ row.nickname }}</div>
                     <div class="platform-tag">{{ row.platform === 'quark' ? '夸克网盘' : '移动云盘' }}</div>
                   </div>
                 </div>
-                <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small" effect="light" round>
+                <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small" round>
                   {{ row.status === 1 ? '正常' : '失效' }}
                 </el-tag>
               </div>
@@ -166,13 +166,13 @@
                   </div>
                 </div>
                 <div v-else class="empty-capacity">
-                  <el-icon><Info /></el-icon> 未同步容量信息
+                  <el-icon><PhInfo /></el-icon> 未同步容量信息
                 </div>
                 
                 <div class="meta-info">
                   <div class="meta-item" v-if="row.vip_name">
                     <span class="label">会员状态</span>
-                    <el-tag size="small" type="warning" effect="plain">{{ row.vip_name }}</el-tag>
+                    <el-tag size="small" type="warning">{{ row.vip_name }}</el-tag>
                   </div>
                   <div class="meta-item">
                     <span class="label">最后校验</span>
@@ -182,21 +182,21 @@
               </div>
 
               <div class="card-footer">
-                <el-button type="primary" link :icon="RefreshCcw" @click="handleCheck(row)">校验</el-button>
-                <el-button type="primary" link :icon="Edit" @click="handleEdit(row)">编辑</el-button>
-                <el-button type="danger" link :icon="Trash2" @click="handleDelete(row)">删除</el-button>
+                <el-button type="primary" link :icon="PhArrowsCounterClockwise" @click="handleCheck(row)">校验</el-button>
+                <el-button type="primary" link :icon="PhPencilSimple" @click="handleEdit(row)">编辑</el-button>
+                <el-button type="danger" link :icon="PhTrash" @click="handleDelete(row)">删除</el-button>
               </div>
             </el-card>
           </el-col>
         </el-row>
       </template>
       <el-empty v-else description="您还没有绑定任何云盘账号">
-        <el-button type="primary" :icon="Plus" @click="openAddDialog">立即绑定账号</el-button>
+        <el-button type="primary" :icon="PhPlus" @click="openAddDialog">立即绑定账号</el-button>
       </el-empty>
     </div>
 
     <!-- 添加账号对话框 -->
-    <el-dialog v-model="dialogVisible" :title="accountForm.id ? '编辑账号' : '添加新账号'" width="520px" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="accountForm.id ? '编辑账号' : '添加新账号'" width="480px" destroy-on-close>
       <el-form :model="accountForm" label-position="top" ref="formRef" class="account-form">
         <el-form-item label="网盘平台" required>
           <el-radio-group v-model="accountForm.platform" @change="handlePlatformChange">
@@ -218,7 +218,7 @@
           >
             建议优先使用 <b>Authorization</b> (Basic 格式)，它能提供更长久的有效期且支持更多高级功能。
             <el-link type="primary" :underline="false" href="https://doc.oplist.org/guide/drivers/139#authorization-1" target="_blank" style="margin-left: 8px; font-weight: bold; vertical-align: baseline;">
-              查看教程 <el-icon><ExternalLink /></el-icon>
+              查看教程 <el-icon><PhArrowSquareOut /></el-icon>
             </el-link>
           </el-alert>
           <el-form-item label="Authorization">
@@ -238,7 +238,7 @@
         >
           夸克网盘仅支持 Cookie 认证。
           <el-link type="primary" :underline="false" href="https://doc.oplist.org/guide/drivers/quark#cookie-1" target="_blank" style="margin-left: 8px; font-weight: bold; vertical-align: baseline;">
-            如何获取？ <el-icon><ExternalLink /></el-icon>
+            如何获取？ <el-icon><PhArrowSquareOut /></el-icon>
           </el-link>
         </el-alert>
 
@@ -256,7 +256,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Plus, RefreshCcw, Trash2, Edit, HardDrive, Info, LayoutGrid, List, ExternalLink } from 'lucide-vue-next'
+import {
+  PhPlus, PhArrowsCounterClockwise, PhTrash, PhPencilSimple,
+  PhHardDrives, PhInfo, PhGridFour, PhList, PhArrowSquareOut
+} from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { formatSize as formatBytes, formatTime } from '../utils/format'
 import { getAccounts, createAccount, updateAccount, deleteAccount, checkAccount } from '../api/account'
@@ -433,26 +436,10 @@ onMounted(() => {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.account-card::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--neon-teal), var(--neon-blue));
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
 .account-card:hover {
-  transform: translateY(-5px) scale(1.02);
-  border-color: rgba(0, 242, 254, 0.35) !important;
-  box-shadow: 0 8px 30px rgba(0, 242, 254, 0.15), var(--neon-glow-teal) !important;
-}
-
-.account-card:hover::after {
-  opacity: 1;
+  transform: translateY(-1px);
+  border-color: var(--border-hover) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
 }
 
 .account-card .card-header {
@@ -559,10 +546,6 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
-html.dark .empty-capacity {
-  background-color: rgba(255, 255, 255, 0.03);
-}
-
 .meta-info {
   background-color: var(--neutral-50);
   border-radius: 12px;
@@ -571,11 +554,6 @@ html.dark .empty-capacity {
   flex-direction: column;
   gap: 10px;
   border: 1px dashed var(--neutral-200);
-}
-
-html.dark .meta-info {
-  background-color: rgba(255, 255, 255, 0.02);
-  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .meta-item {
@@ -596,13 +574,9 @@ html.dark .meta-info {
 .card-footer {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid var(--neutral-200);
+  border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: space-around;
-}
-
-html.dark .card-footer {
-  border-top-color: rgba(255, 255, 255, 0.06);
 }
 
 .table-card {
