@@ -49,22 +49,13 @@ func (h *SearchHandler) Search(c *gin.Context) {
 	// 生成 search_id 用于关联 SSE 验证事件
 	searchID := "srch_" + generateHexID(8)
 
-	// 异步启动链接验证（仅验证分页范围内的结果，避免海量结果冲刷 SSE 通道）
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	validateItems := result.Items
-	if len(validateItems) > pageSize {
-		validateItems = validateItems[:pageSize]
-	}
-	if len(validateItems) > 0 {
-		go validateSearchResults(searchID, validateItems)
-	}
+	// 不再自动验证，由前端按分页触发 POST /api/search/validate_batch
 
 	c.PureJSON(http.StatusOK, gin.H{
-		"total":          result.Total,
-		"page":           result.Page,
-		"items":          result.Items,
-		"search_id":      searchID,
-		"validate_count": len(validateItems),
+		"total":     result.Total,
+		"page":      result.Page,
+		"items":     result.Items,
+		"search_id": searchID,
 	})
 }
 
@@ -119,6 +110,57 @@ func isSafeURL(rawURL string) bool {
 	return true
 }
 
+// validateItemRequest 批量验证请求中的单条记录
+type validateItemRequest struct {
+	Index int    `json:"index"`
+	URL   string `json:"url"`
+}
+
+// ValidateBatch 批量验证搜索结果中的链接有效性
+// 由前端按分页触发，仅验证当前页可见的链接
+func (h *SearchHandler) ValidateBatch(c *gin.Context) {
+	var req struct {
+		SearchID string                `json:"search_id"`
+		Items    []validateItemRequest `json:"items"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.SearchID == "" || len(req.Items) == 0 {
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
+		return
+	}
+
+	// 限制单次最多验证 100 条，防止滥用
+	if len(req.Items) > 100 {
+		req.Items = req.Items[:100]
+	}
+
+	go validateBatchItems(req.SearchID, req.Items)
+	c.PureJSON(http.StatusOK, gin.H{"message": "验证已启动", "count": len(req.Items)})
+}
+
+// validateBatchItems 并发验证一批链接
+func validateBatchItems(searchID string, items []validateItemRequest) {
+	sem := make(chan struct{}, 15)
+	var wg sync.WaitGroup
+
+	for _, item := range items {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(idx int, rawURL string) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			valid, message := validateSingleLink(rawURL)
+			utils.BroadcastSearchValidate(utils.SearchValidateEvent{
+				SearchID: searchID,
+				Index:    idx,
+				Valid:    valid,
+				Message:  message,
+			})
+		}(item.Index, item.URL)
+	}
+	wg.Wait()
+}
+
 // ValidateLink 验证分享链接有效性
 func (h *SearchHandler) ValidateLink(c *gin.Context) {
 	rawURL := c.Query("url")
@@ -151,31 +193,6 @@ func generateHexID(n int) string {
 	b := make([]byte, n)
 	rand.Read(b)
 	return hex.EncodeToString(b)[:n]
-}
-
-// validateSearchResults 并发验证搜索结果中的链接有效性
-// 通过 SSE 推送每条结果的验证状态
-func validateSearchResults(searchID string, items []search.SearchItem) {
-	sem := make(chan struct{}, 15) // 15 并发
-	var wg sync.WaitGroup
-
-	for i, item := range items {
-		wg.Add(1)
-		sem <- struct{}{} // 获取信号量
-		go func(idx int, url string) {
-			defer wg.Done()
-			defer func() { <-sem }() // 释放信号量
-
-			valid, message := validateSingleLink(url)
-			utils.BroadcastSearchValidate(utils.SearchValidateEvent{
-				SearchID: searchID,
-				Index:    idx,
-				Valid:    valid,
-				Message:  message,
-			})
-		}(i, item.URL)
-	}
-	wg.Wait()
 }
 
 // validateSingleLink 验证单个分享链接有效性

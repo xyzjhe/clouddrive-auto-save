@@ -27,10 +27,60 @@ const paginatedResults = computed(() => {
 })
 const handlePageChange = (newPage) => {
   currentPage.value = newPage
+  triggerPageValidation()
 }
 const handleSizeChange = (newSize) => {
   pageSize.value = newSize
   currentPage.value = 1
+  triggerPageValidation()
+}
+
+// 按当前分页触发验证：收集当前页中未验证的链接，批量请求后端验证
+const triggerPageValidation = async () => {
+  if (!currentSearchId.value || results.value.length === 0) return
+
+  const start = (currentPage.value - 1) * pageSize.value
+  const pageItems = results.value.slice(start, start + pageSize.value)
+
+  // 过滤出未验证的项（valid === null）
+  const toValidate = []
+  pageItems.forEach((item, i) => {
+    if (item.valid === null) {
+      toValidate.push({ index: start + i, url: item.url })
+    }
+  })
+
+  if (toValidate.length === 0) return
+
+  // 重置进度
+  validateProgress.value = { total: toValidate.length, valid: 0, invalid: 0, done: 0 }
+
+  // 30 秒超时兜底
+  if (validateTimeoutTimer) clearTimeout(validateTimeoutTimer)
+  validateTimeoutTimer = setTimeout(() => {
+    let timeoutCount = 0
+    toValidate.forEach(({ index }) => {
+      if (results.value[index]?.valid === null) {
+        results.value[index].valid = 'timeout'
+        results.value[index].validMessage = '验证超时'
+        timeoutCount++
+      }
+    })
+    if (timeoutCount > 0) {
+      validateProgress.value.invalid += timeoutCount
+      validateProgress.value.done += timeoutCount
+    }
+  }, 30000)
+
+  try {
+    await fetch('/api/search/validate_batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ search_id: currentSearchId.value, items: toValidate })
+    })
+  } catch (e) {
+    console.error('批量验证请求失败:', e)
+  }
 }
 
 // 网盘类型筛选
@@ -136,32 +186,12 @@ const handleSearch = async () => {
       params.platform = selectedPlatforms.value
     }
     const data = await searchResources(params)
-    const validateCount = data.validate_count || data.items?.length || 0
-    results.value = (data.items || []).map((item, idx) => ({
-      ...item,
-      // 超出验证范围的结果直接标记为"跳过"，不显示转圈
-      valid: idx < validateCount ? null : 'skipped',
-      validMessage: idx < validateCount ? '' : '未验证'
-    }))
+    results.value = (data.items || []).map(item => ({ ...item, valid: null, validMessage: '' }))
     currentSearchId.value = data.search_id || ''
-    validateProgress.value = { total: validateCount, valid: 0, invalid: 0, done: 0 }
+    validateProgress.value = { total: 0, valid: 0, invalid: 0, done: 0 }
 
-    // 30 秒超时兜底：将未收到验证事件的结果标记为超时
-    if (validateTimeoutTimer) clearTimeout(validateTimeoutTimer)
-    validateTimeoutTimer = setTimeout(() => {
-      let timeoutCount = 0
-      results.value.forEach(item => {
-        if (item.valid === null) {
-          item.valid = 'timeout'
-          item.validMessage = '验证超时'
-          timeoutCount++
-        }
-      })
-      if (timeoutCount > 0) {
-        validateProgress.value.invalid += timeoutCount
-        validateProgress.value.done += timeoutCount
-      }
-    }, 30000)
+    // 搜索完成后，自动触发第一页的验证
+    triggerPageValidation()
   } catch (error) {
     console.error('搜索失败:', error)
   } finally {
@@ -287,7 +317,6 @@ const handleCreateTaskFromDialog = (data) => {
             <span v-if="item.valid === true" class="valid-icon"><PhCheckCircle :size="16" weight="fill" style="color: var(--color-success)" /></span>
             <span v-else-if="item.valid === false" class="valid-icon invalid" :title="item.validMessage"><PhXCircle :size="16" weight="fill" style="color: var(--color-danger)" /></span>
             <span v-else-if="item.valid === 'timeout'" class="valid-icon timeout" :title="item.validMessage"><PhWarningCircle :size="16" weight="fill" style="color: var(--text-muted)" /></span>
-            <span v-else-if="item.valid === 'skipped'" class="valid-icon skipped">—</span>
             <span v-else class="valid-icon pending"><PhSpinner :size="16" class="spin-icon" /></span>
             {{ item.title }}
           </div>

@@ -98,6 +98,7 @@ func InitRouter(wm *worker.Manager, version, commit, date string) *gin.Engine {
 		api.GET("/search/config", getSearchConfig)
 		api.PUT("/search/config", updateSearchConfig)
 		api.GET("/search/validate", validateSearchLink)
+		api.POST("/search/validate_batch", validateSearchBatch)
 
 		// 通知配置
 		api.GET("/notify", listNotifiers)
@@ -940,6 +941,14 @@ func validateSearchLink(c *gin.Context) {
 		return
 	}
 	searchHandler.ValidateLink(c)
+}
+
+func validateSearchBatch(c *gin.Context) {
+	if searchHandler == nil {
+		c.PureJSON(http.StatusServiceUnavailable, gin.H{"error": "搜索服务未初始化"})
+		return
+	}
+	searchHandler.ValidateBatch(c)
 }
 
 // 通知处理函数
