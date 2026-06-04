@@ -169,7 +169,7 @@ services:
 | [CloudSaver](https://github.com/jiangrui1994/CloudSaver) | 云盘资源搜索与转存 |
 | [QuarkPan](https://github.com/lich0821/QuarkPan) | 夸克网盘 API 研究 |
 | [TgtoDrive](https://github.com/walkingddd/TgtoDrive) | Telegram 机器人对接网盘 |
-| [t3mt](https://github.com/qq85423296/t3mt) | 移动云盘 API 研究 |
+| [t3mt](https://github.com/qq85423296/t3mt) | 界面设计参考 |
 
 ---
 
