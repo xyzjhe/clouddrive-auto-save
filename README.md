@@ -158,6 +158,21 @@ services:
 
 ---
 
+## 💐 致谢
+
+本项目参考了以下优秀开源项目，在此表示衷心感谢：
+
+| 项目 | 说明 |
+|------|------|
+| [pansou](https://github.com/fish2018/pansou) | 网盘资源搜索引擎聚合 |
+| [quark-auto-save](https://github.com/Cp0204/quark-auto-save) | 夸克网盘自动转存 |
+| [CloudSaver](https://github.com/jiangrui1994/CloudSaver) | 云盘资源搜索与转存 |
+| [QuarkPan](https://github.com/lich0821/QuarkPan) | 夸克网盘 API 研究 |
+| [TgtoDrive](https://github.com/walkingddd/TgtoDrive) | Telegram 机器人对接网盘 |
+| [t3mt](https://github.com/qq85423296/t3mt) | 移动云盘 API 研究 |
+
+---
+
 ## 📄 开源协议
 
 基于 [MIT License](LICENSE) 协议。
