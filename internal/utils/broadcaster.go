@@ -5,15 +5,60 @@ import (
 	"sync"
 )
 
+// ringBuffer 环形缓冲区，固定容量，写入自动覆盖最旧条目，无切片重组开销
+type ringBuffer struct {
+	buf  []string
+	cap  int
+	head int // 下一个写入位置
+	len  int // 当前有效长度
+}
+
+func newRingBuffer(cap int) *ringBuffer {
+	return &ringBuffer{
+		buf: make([]string, cap),
+		cap: cap,
+	}
+}
+
+// Push 写入一条记录，满时自动覆盖最旧的
+func (r *ringBuffer) Push(s string) {
+	r.buf[r.head] = s
+	r.head = (r.head + 1) % r.cap
+	if r.len < r.cap {
+		r.len++
+	}
+}
+
+// Snapshot 返回按时间顺序的完整快照（从旧到新）
+func (r *ringBuffer) Snapshot() []string {
+	if r.len == 0 {
+		return nil
+	}
+	out := make([]string, r.len)
+	start := (r.head - r.len + r.cap) % r.cap
+	for i := 0; i < r.len; i++ {
+		out[i] = r.buf[(start+i)%r.cap]
+	}
+	return out
+}
+
+// Reset 清空缓冲区
+func (r *ringBuffer) Reset() {
+	r.head = 0
+	r.len = 0
+}
+
 // Broadcaster 实现了一个简单的字符串消息广播器，支持历史记录和 SSE 同步
 type Broadcaster struct {
 	clients    map[chan string]bool
 	register   chan chan string
 	unregister chan chan string
 	messages   chan string
-	history    []string // 存储最近的 50 条日志
+	history    *ringBuffer // 环形缓冲区存储最近的 50 条日志
 	mu         sync.Mutex
 }
+
+const historyCapacity = 50
 
 var GlobalBroadcaster *Broadcaster
 
@@ -28,7 +73,7 @@ func NewBroadcaster() *Broadcaster {
 		register:   make(chan chan string),
 		unregister: make(chan chan string),
 		messages:   make(chan string, 1000),
-		history:    make([]string, 0, 50),
+		history:    newRingBuffer(historyCapacity),
 	}
 }
 
@@ -49,12 +94,9 @@ func (b *Broadcaster) run() {
 		case message := <-b.messages:
 			// 锁内仅做快照操作（更新历史 + 复制客户端列表），缩短持锁时间
 			b.mu.Lock()
-			// 更新历史记录 (过滤掉纯数据事件，只保留文本日志)
+			// 更新历史记录（过滤掉纯数据事件，只保留文本日志）
 			if !strings.HasPrefix(message, "[EVENT:") {
-				b.history = append(b.history, message)
-				if len(b.history) > 50 {
-					b.history = b.history[1:]
-				}
+				b.history.Push(message)
 			}
 			// 快照当前客户端列表
 			snapshot := make([]chan string, 0, len(b.clients))
@@ -91,16 +133,14 @@ func (b *Broadcaster) Unsubscribe(client chan string) {
 func (b *Broadcaster) GetRecent() []string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	res := make([]string, len(b.history))
-	copy(res, b.history)
-	return res
+	return b.history.Snapshot()
 }
 
 // ClearRecent 清空最近的历史日志
 func (b *Broadcaster) ClearRecent() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.history = make([]string, 0, 50)
+	b.history.Reset()
 }
 
 // Broadcast 发送广播消息（所有模块通过此方法输出实时日志）

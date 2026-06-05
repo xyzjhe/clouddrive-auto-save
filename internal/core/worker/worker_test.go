@@ -218,3 +218,86 @@ func TestManager_Execute_Deduplication_With_Renamer(t *testing.T) {
 		t.Errorf("expected file to be skipped due to deduplication, but SaveLink was called with %v", spy.SavedFileIDs)
 	}
 }
+
+func TestIsFatalError_FatalPatterns(t *testing.T) {
+	cases := []string{
+		"链接失效",
+		"该链接失效，请重新获取",
+		"链接过期",
+		"分享链接过期了",
+		"提取码错误",
+		"您输入的提取码错误",
+		"提取码无效",
+		"提取码无效，请检查",
+		"分享已删除",
+		"该分享已删除",
+		"分享已过期",
+		"该分享已过期，无法访问",
+		"权限不足",
+		"当前账号权限不足",
+	}
+	for _, msg := range cases {
+		if !isFatalError(msg) {
+			t.Errorf("isFatalError(%q) = false, 期望 true", msg)
+		}
+	}
+}
+
+func TestIsFatalError_ExactChecks(t *testing.T) {
+	cases := []string{
+		"不存在",
+		"目标目录不存在",
+		"cookie过期",
+		"用户cookie过期请重新登录",
+		"Cookie过期",
+		"检测到Cookie过期",
+		"token无效",
+		"返回token无效",
+		"token过期",
+		"accesstoken过期",
+		"Token无效",
+		"返回Token无效",
+		"Token过期",
+		"AccessToken过期",
+	}
+	for _, msg := range cases {
+		if !isFatalError(msg) {
+			t.Errorf("isFatalError(%q) = false, 期望 true", msg)
+		}
+	}
+}
+
+func TestIsFatalError_NonFatal(t *testing.T) {
+	cases := []string{
+		"timeout",
+		"网络超时",
+		"connection refused",
+		"普通错误信息",
+		" dial tcp: lookup example.com: no such host",
+		"重试后仍然失败",
+		"解析分享失败: unexpected EOF",
+		"",
+	}
+	for _, msg := range cases {
+		if isFatalError(msg) {
+			t.Errorf("isFatalError(%q) = true, 期望 false", msg)
+		}
+	}
+}
+
+func TestIsFatalError_BroadWordsNotFatal(t *testing.T) {
+	// 宽泛词不带限定后缀，不应被判定为致命错误
+	cases := []string{
+		"token",
+		"invalid token",
+		"Token",
+		"cookie",
+		"Cookie",
+		"expired",
+	}
+	for _, msg := range cases {
+		if isFatalError(msg) {
+			t.Errorf("isFatalError(%q) = true, 期望 false (宽泛词不应误判)", msg)
+		}
+	}
+}
