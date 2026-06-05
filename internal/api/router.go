@@ -12,6 +12,10 @@ import (
 	"github.com/zcq/clouddrive-auto-save/internal/core/search"
 	"github.com/zcq/clouddrive-auto-save/internal/core/telegram"
 	"github.com/zcq/clouddrive-auto-save/internal/core/worker"
+
+	// 副作用导入：注册 139 和夸克云盘驱动
+	_ "github.com/zcq/clouddrive-auto-save/internal/core/cloud139"
+	_ "github.com/zcq/clouddrive-auto-save/internal/core/quark"
 )
 
 var WorkerManager *worker.Manager

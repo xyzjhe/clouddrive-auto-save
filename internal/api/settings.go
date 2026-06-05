@@ -18,16 +18,27 @@ import (
 
 // allowedSettingKeys 允许通过全局设置接口修改的 key 白名单
 var allowedSettingKeys = map[string]bool{
+	// 全局调度
 	"global_schedule_enabled": true,
 	"global_schedule_cron":    true,
-	"openlist_enabled":        true,
-	"openlist_api_url":        true,
-	"openlist_api_token":      true,
-	"bark_url":                true,
-	"bark_device_key":         true,
-	"bark_enabled":            true,
-	"bark_notify_on_success":  true,
-	"bark_notify_on_failure":  true,
+	"global_schedule_ui_mode": true,
+	// OpenList 扫描
+	"openlist_enabled":   true,
+	"openlist_api_url":   true,
+	"openlist_api_token": true,
+	// Bark 通知（兼容新旧字段名）
+	"bark_enabled":           true,
+	"bark_server":            true,
+	"bark_device_key":        true,
+	"bark_url":               true,
+	"bark_notify_on_success": true,
+	"bark_notify_on_failure": true,
+	"bark_icon":              true,
+	"bark_archive":           true,
+	"bark_success_level":     true,
+	"bark_success_sound":     true,
+	"bark_failure_level":     true,
+	"bark_failure_sound":     true,
 }
 
 func getScheduleSettings(c *gin.Context) {
