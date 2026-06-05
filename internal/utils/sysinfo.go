@@ -3,8 +3,10 @@ package utils
 
 import (
 	"log/slog"
+	"math"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
@@ -21,10 +23,19 @@ type SysInfo struct {
 }
 
 var (
-	cachedCPU float64
-	cpuOnce   sync.Once
-	cpuStop   chan struct{}
+	cachedCPUBits atomic.Uint64 // IEEE 754 bit-pattern，原子读写避免 data race
+	cpuOnce       sync.Once
+	cpuStop       chan struct{}
 )
+
+// cpuStore/cachedCPULoad 使用 atomic.Uint64 安全存取 float64
+func cpuStore(v float64) {
+	cachedCPUBits.Store(math.Float64bits(v))
+}
+
+func cpuLoad() float64 {
+	return math.Float64frombits(cachedCPUBits.Load())
+}
 
 // StartCPUCollector 启动后台 CPU 采样（每 5 秒采样一次）
 // 首次调用时自动启动，后续调用为空操作
@@ -34,9 +45,9 @@ func StartCPUCollector() {
 		go func() {
 			// 首次采样：阻塞等待 1 秒获取初始值
 			if percents, err := cpu.Percent(1, false); err == nil && len(percents) > 0 {
-				cachedCPU = roundOneDecimal(percents[0])
+				cpuStore(roundOneDecimal(percents[0]))
 			}
-			slog.Info("CPU 采样器已启动", "initial_cpu", cachedCPU)
+			slog.Info("CPU 采样器已启动", "initial_cpu", cpuLoad())
 
 			ticker := time.NewTicker(5 * time.Second)
 			defer ticker.Stop()
@@ -44,7 +55,7 @@ func StartCPUCollector() {
 				select {
 				case <-ticker.C:
 					if percents, err := cpu.Percent(0, false); err == nil && len(percents) > 0 {
-						cachedCPU = roundOneDecimal(percents[0])
+						cpuStore(roundOneDecimal(percents[0]))
 					}
 				case <-cpuStop:
 					return
@@ -58,7 +69,7 @@ func StartCPUCollector() {
 func GetSysInfo() SysInfo {
 	info := SysInfo{
 		NumCPU:     runtime.NumCPU(),
-		CPUPercent: cachedCPU,
+		CPUPercent: cpuLoad(),
 	}
 
 	// 内存使用率（实时读取，无阻塞）

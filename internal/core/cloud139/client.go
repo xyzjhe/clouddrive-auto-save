@@ -117,7 +117,11 @@ func (c *Cloud139) getPhone() string {
 func getNewSignHash(body interface{}, datetime, randomStr string) string {
 	s := ""
 	if body != nil {
-		jsonBytes, _ := json.Marshal(body)
+		jsonBytes, err := json.Marshal(body)
+		if err != nil {
+			slog.Error("签名序列化 body 失败", "error", err)
+			return ""
+		}
 		s = jsEncodeURIComponent(string(jsonBytes))
 		chars := strings.Split(s, "")
 		sort.Strings(chars)
@@ -155,7 +159,10 @@ func (c *Cloud139) computeMcloudSign(catalogID string) string {
 func (c *Cloud139) doRequest(ctx context.Context, method, apiURL string, body interface{}, headers map[string]string) ([]byte, error) {
 	var bodyReader io.Reader
 	if body != nil {
-		jsonBytes, _ := json.Marshal(body)
+		jsonBytes, err := json.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("序列化请求体失败: %w", err)
+		}
 		bodyReader = bytes.NewReader(jsonBytes)
 	}
 
@@ -945,67 +952,125 @@ func (c *Cloud139) getShareInfo(ctx context.Context, linkID, passwd, pCaID strin
 		"caller": "web", "x-m4c-caller": "PC", "mcloud-client": "10701",
 		"mcloud-version": "7.17.2", "mcloud-channel": "1000101",
 	}
-	body := map[string]interface{}{
-		"getOutLinkInfoReq": map[string]interface{}{
-			"account": c.getPhone(), "linkID": linkID, "passwd": passwd, "pCaID": pCaID,
-			"caSrt": 0, "coSrt": 0, "srtDr": 1, "bNum": 1, "eNum": 200,
-		},
-	}
-	resp, err := c.doRequest(ctx, "POST", ShareKdNjsURL+"/yun-share/richlifeApp/devapp/IOutLink/getOutLinkInfoV6", body, headers)
-	if err != nil {
-		slog.Error("请求139分享接口失败", "error", err)
-		return nil, err
-	}
 
-	var res map[string]interface{}
-	if err := json.Unmarshal(resp, &res); err != nil {
-		return nil, err
-	}
+	// 分页获取所有文件，每页 200 条，最多 50 页（10000 条上限）
+	pageSize := 200
+	var mergedData map[string]interface{}
 
-	if code, ok := res["code"]; ok {
-		var codeStr string
-		switch v := code.(type) {
-		case float64:
-			codeStr = strconv.FormatFloat(v, 'f', -1, 64)
-		case string:
-			codeStr = v
-		default:
-			codeStr = fmt.Sprintf("%v", code)
+	for page := 0; page < 50; page++ {
+		bNum := page*pageSize + 1
+		eNum := (page + 1) * pageSize
+		body := map[string]interface{}{
+			"getOutLinkInfoReq": map[string]interface{}{
+				"account": c.getPhone(), "linkID": linkID, "passwd": passwd, "pCaID": pCaID,
+				"caSrt": 0, "coSrt": 0, "srtDr": 1, "bNum": bNum, "eNum": eNum,
+			},
+		}
+		resp, err := c.doRequest(ctx, "POST", ShareKdNjsURL+"/yun-share/richlifeApp/devapp/IOutLink/getOutLinkInfoV6", body, headers)
+		if err != nil {
+			slog.Error("请求139分享接口失败", "error", err)
+			return nil, err
 		}
 
-		if codeStr != "0" && codeStr != "0000" && codeStr != "" {
-			slog.Error("139 分享接口返回错误码", "code", codeStr, "message", res["message"])
+		var res map[string]interface{}
+		if err := json.Unmarshal(resp, &res); err != nil {
+			return nil, err
+		}
 
-			// 139 错误码映射表
-			errorMap := map[string]string{
-				"200000727": "分享链接不存在或已被取消。",
-				"200000728": "提取码错误，请检查后再试。",
-				"200000732": "该分享链接已超过有效期。",
-				"9188":      "提取码错误或未提供提取码，请检查后再试。",
+		if code, ok := res["code"]; ok {
+			var codeStr string
+			switch v := code.(type) {
+			case float64:
+				codeStr = strconv.FormatFloat(v, 'f', -1, 64)
+			case string:
+				codeStr = v
+			default:
+				codeStr = fmt.Sprintf("%v", code)
 			}
 
-			if friendlyMsg, ok := errorMap[codeStr]; ok {
-				return nil, fmt.Errorf("[Fatal] %s", friendlyMsg)
+			if codeStr != "0" && codeStr != "0000" && codeStr != "" {
+				slog.Error("139 分享接口返回错误码", "code", codeStr, "message", res["message"])
+
+				// 139 错误码映射表
+				errorMap := map[string]string{
+					"200000727": "分享链接不存在或已被取消。",
+					"200000728": "提取码错误，请检查后再试。",
+					"200000732": "该分享链接已超过有效期。",
+					"9188":      "提取码错误或未提供提取码，请检查后再试。",
+				}
+
+				if friendlyMsg, ok := errorMap[codeStr]; ok {
+					return nil, fmt.Errorf("[Fatal] %s", friendlyMsg)
+				}
+				// 其余错误降级为普通 error，防止 res["message"] 为 nil 导致报错为 <nil>
+				msg, _ := res["message"].(string)
+				if msg == "" {
+					msg = fmt.Sprintf("未知业务错误 (错误码: %s)", codeStr)
+				}
+				return nil, fmt.Errorf("%s", msg)
 			}
-			// 其余错误降级为普通 error，防止 res["message"] 为 nil 导致报错为 <nil>
-			msg, _ := res["message"].(string)
-			if msg == "" {
-				msg = fmt.Sprintf("未知业务错误 (错误码: %s)", codeStr)
+		}
+
+		// 提取数据节点
+		var data map[string]interface{}
+		if d, ok := res["data"].(map[string]interface{}); ok {
+			data = d
+		} else if r, ok := res["result"].(map[string]interface{}); ok {
+			data = r
+		} else {
+			data = res
+		}
+
+		// 首页直接返回（合并场景的初始化）
+		if mergedData == nil {
+			mergedData = data
+			// 检查本页数据量是否不足一页，无需继续翻页
+			caCount, _ := data["caLst"].([]interface{})
+			coCount, _ := data["coLst"].([]interface{})
+			if len(caCount)+len(coCount) < pageSize {
+				break
 			}
-			return nil, fmt.Errorf("%s", msg)
+			continue
+		}
+
+		// 后续页合并 caLst 和 coLst
+		merged := false
+		if caLst, ok := data["caLst"].([]interface{}); ok && len(caLst) > 0 {
+			existing, _ := mergedData["caLst"].([]interface{})
+			if existing == nil {
+				existing = []interface{}{}
+			}
+			mergedData["caLst"] = append(existing, caLst...)
+			merged = true
+		}
+		if coLst, ok := data["coLst"].([]interface{}); ok && len(coLst) > 0 {
+			existing, _ := mergedData["coLst"].([]interface{})
+			if existing == nil {
+				existing = []interface{}{}
+			}
+			mergedData["coLst"] = append(existing, coLst...)
+			merged = true
+		}
+
+		// 本页无新数据，终止翻页
+		if !merged {
+			break
+		}
+
+		// 本页数据不足一页，说明已是最后一页
+		caCount, _ := data["caLst"].([]interface{})
+		coCount, _ := data["coLst"].([]interface{})
+		if len(caCount)+len(coCount) < pageSize {
+			break
 		}
 	}
 
-	// 多节点探测逻辑
-	if data, ok := res["data"].(map[string]interface{}); ok {
-		return data, nil
+	if mergedData == nil {
+		return nil, fmt.Errorf("139 分享接口返回数据为空")
 	}
-	if result, ok := res["result"].(map[string]interface{}); ok {
-		return result, nil
-	}
-
-	return res, nil
+	return mergedData, nil
 }
+
 
 func (c *Cloud139) PrepareTargetPath(ctx context.Context, path string) (string, error) {
 	if path == "" || path == "/" {

@@ -105,13 +105,19 @@ func (s *Scheduler) UpdateGlobalSchedule(cronExpr string, enabled bool) {
 	slog.Info("全局调度配置已更新", "cron", cronExpr, "enabled", enabled)
 }
 
+// UpdateTask 更新任务的调度配置，单次加锁完成移除+添加，避免锁释放后竞争窗口
 func (s *Scheduler) UpdateTask(taskID uint, mode string, customCron string) {
-	s.RemoveTask(taskID)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// 先移除旧的调度（锁内操作，避免调用 RemoveTask 导致二次加锁）
+	if entryID, ok := s.CustomEntryIDs[taskID]; ok {
+		s.cron.Remove(entryID)
+		delete(s.CustomEntryIDs, taskID)
+		slog.Info("已移除任务旧调度", "task_id", taskID)
+	}
 
 	if mode == "custom" && customCron != "" {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-
 		entryID, err := s.cron.AddFunc(customCron, func() {
 			var task db.Task
 			if err := db.DB.Preload("Account").First(&task, taskID).Error; err != nil {
@@ -149,7 +155,7 @@ func (s *Scheduler) UpdateTask(taskID uint, mode string, customCron string) {
 }
 
 func ValidateCron(expr string) error {
-	_, err := cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow).Parse(expr)
+	_, err := cron.NewParser(cron.Second|cron.Minute|cron.Hour|cron.Dom|cron.Month|cron.Dow).Parse(expr)
 	return err
 }
 

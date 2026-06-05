@@ -570,54 +570,66 @@ func (q *Quark) ParseShare(ctx context.Context, shareURL, extractCode, parentID 
 	}
 
 	detailURL := BaseURL + "/1/clouddrive/share/sharepage/detail"
-	detailQuery := url.Values{}
-	detailQuery.Set("pwd_id", pwdID)
-	detailQuery.Set("stoken", stoken)
-	detailQuery.Set("pdir_fid", pdirFID)
-	detailQuery.Set("pr", "ucpro")
-	detailQuery.Set("fr", "pc")
-	detailQuery.Set("force", "0")
-	detailQuery.Set("_page", "1")
-	detailQuery.Set("_size", "100")
-	detailQuery.Set("_fetch_total", "1")
-	detailQuery.Set("_sort", "file_type:asc,updated_at:desc")
-	resp, err := q.doRequest(ctx, "GET", detailURL, detailQuery, nil, true)
-	if err != nil {
-		slog.Error("解析夸克分享链接失败 (详情请求失败)", "error", err)
-		return nil, err
-	}
-
-	var detailRes struct {
-		Data struct {
-			List []struct {
-				Fid           string `json:"fid"`
-				FileName      string `json:"file_name"`
-				Dir           bool   `json:"dir"`
-				Size          int64  `json:"size"`
-				UpdateAt      int64  `json:"updated_at"`
-				ShareFidToken string `json:"share_fid_token"`
-			} `json:"list"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &detailRes); err != nil {
-		return nil, err
-	}
-
-	if len(detailRes.Data.List) == 0 {
-		return nil, fmt.Errorf("[Fatal] 夸克分享链接无效、已取消或包含的文件为空")
-	}
-
+	pageSize := 200
+	page := 1
 	var files []core.FileInfo
-	for _, item := range detailRes.Data.List {
-		updateTime := time.Unix(item.UpdateAt/1000, 0)
-		files = append(files, core.FileInfo{
-			ID:         item.Fid,
-			Name:       item.FileName,
-			IsFolder:   item.Dir,
-			Size:       item.Size,
-			UpdatedAt:  updateTime.Format("2006-01-02 15:04:05"),
-			UpdateTime: updateTime,
-		})
+
+	for {
+		detailQuery := url.Values{}
+		detailQuery.Set("pwd_id", pwdID)
+		detailQuery.Set("stoken", stoken)
+		detailQuery.Set("pdir_fid", pdirFID)
+		detailQuery.Set("pr", "ucpro")
+		detailQuery.Set("fr", "pc")
+		detailQuery.Set("force", "0")
+		detailQuery.Set("_page", strconv.Itoa(page))
+		detailQuery.Set("_size", strconv.Itoa(pageSize))
+		detailQuery.Set("_fetch_total", "1")
+		detailQuery.Set("_sort", "file_type:asc,updated_at:desc")
+		resp, err := q.doRequest(ctx, "GET", detailURL, detailQuery, nil, true)
+		if err != nil {
+			slog.Error("解析夸克分享链接失败 (详情请求失败)", "error", err)
+			return nil, err
+		}
+
+		var detailRes struct {
+			Data struct {
+				List []struct {
+					Fid           string `json:"fid"`
+					FileName      string `json:"file_name"`
+					Dir           bool   `json:"dir"`
+					Size          int64  `json:"size"`
+					UpdateAt      int64  `json:"updated_at"`
+					ShareFidToken string `json:"share_fid_token"`
+				} `json:"list"`
+				Total int `json:"total"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(resp, &detailRes); err != nil {
+			return nil, err
+		}
+
+		if page == 1 && len(detailRes.Data.List) == 0 {
+			return nil, fmt.Errorf("[Fatal] 夸克分享链接无效、已取消或包含的文件为空")
+		}
+
+		for _, item := range detailRes.Data.List {
+			updateTime := time.Unix(item.UpdateAt/1000, 0)
+			files = append(files, core.FileInfo{
+				ID:         item.Fid,
+				Name:       item.FileName,
+				IsFolder:   item.Dir,
+				Size:       item.Size,
+				UpdatedAt:  updateTime.Format("2006-01-02 15:04:05"),
+				UpdateTime: updateTime,
+			})
+		}
+
+		// 分页终止条件：已获取全部数据或本页未满
+		if len(files) >= detailRes.Data.Total || len(detailRes.Data.List) < pageSize || page >= 50 {
+			break
+		}
+		page++
 	}
 	slog.Info("夸克解析分享完成", "count", len(files))
 	return files, nil

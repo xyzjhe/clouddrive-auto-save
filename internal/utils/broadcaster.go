@@ -47,6 +47,7 @@ func (b *Broadcaster) run() {
 			}
 			b.mu.Unlock()
 		case message := <-b.messages:
+			// 锁内仅做快照操作（更新历史 + 复制客户端列表），缩短持锁时间
 			b.mu.Lock()
 			// 更新历史记录 (过滤掉纯数据事件，只保留文本日志)
 			if !strings.HasPrefix(message, "[EVENT:") {
@@ -55,15 +56,21 @@ func (b *Broadcaster) run() {
 					b.history = b.history[1:]
 				}
 			}
-			// 广播给所有在线客户端 (无论是否是事件都要发，保证实时性)
+			// 快照当前客户端列表
+			snapshot := make([]chan string, 0, len(b.clients))
 			for client := range b.clients {
+				snapshot = append(snapshot, client)
+			}
+			b.mu.Unlock()
+
+			// 锁外遍历发送，避免阻塞 register/unregister
+			for _, client := range snapshot {
 				select {
 				case client <- message:
 				default:
 					// 客户端读取太慢则跳过，防止阻塞整个系统
 				}
 			}
-			b.mu.Unlock()
 		}
 	}
 }

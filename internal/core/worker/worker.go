@@ -30,6 +30,7 @@ type Manager struct {
 	workers  int
 	jobQueue chan Job
 	wg       sync.WaitGroup
+	retryWg  sync.WaitGroup // 跟踪重试 goroutine，确保 Stop() 能优雅等待
 	ctx      context.Context
 	cancel   context.CancelFunc
 	db       *gorm.DB
@@ -60,6 +61,7 @@ func (m *Manager) Start() {
 func (m *Manager) Stop() {
 	m.cancel()
 	m.wg.Wait()
+	m.retryWg.Wait() // 等待所有重试 goroutine 退出
 }
 
 // Submit 提交一个任务，队列满时返回错误而非阻塞
@@ -277,7 +279,11 @@ func (m *Manager) execute(job Job) {
 	if len(renameMap) > 0 {
 		m.updateProgress(task, 85, "Renaming", "转存成功，正在执行重命名...")
 		// 再次列出文件，找到刚才存入的文件进行重命名
-		newFiles, _ := driver.ListFiles(m.ctx, targetID)
+		newFiles, listErr := driver.ListFiles(m.ctx, targetID)
+		if listErr != nil {
+			slog.Error("重命名阶段列出文件失败，跳过重命名", "task_id", task.ID, "error", listErr)
+			m.updateProgress(task, 90, "Renaming", fmt.Sprintf("重命名失败：无法列出目录 (%v)", listErr))
+		}
 		for _, tf := range newFiles {
 			// 如果当前文件名在待命名的映射表中，直接执行重命名
 			if expectedNewName, ok := renameMap[tf.Name]; ok {
@@ -357,7 +363,9 @@ func (m *Manager) finishTask(job Job, status, message string, files []string, st
 			utils.BroadcastStatsUpdate()
 
 			// 延迟后重新入队（使用 select 等待，支持 context 取消）
+			m.retryWg.Add(1)
 			go func() {
+				defer m.retryWg.Done()
 				timer := time.NewTimer(time.Duration(delay) * time.Second)
 				defer timer.Stop()
 				select {
