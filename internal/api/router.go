@@ -248,18 +248,35 @@ func listAccounts(c *gin.Context) {
 	c.PureJSON(http.StatusOK, dtos)
 }
 
+// accountInputDTO 账号输入数据传输对象，限制前端可写入的字段白名单
+type accountInputDTO struct {
+	Platform    string `json:"platform" binding:"required"`
+	AccountName string `json:"account_name"`
+	Cookie      string `json:"cookie"`
+	AuthToken   string `json:"auth_token"`
+}
+
+// sanitizeCredentials 清理凭据中的空白字符和换行符
+func sanitizeCredentials(dto *accountInputDTO) {
+	dto.Cookie = strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(dto.Cookie, "\n", ""), "\r", ""))
+	dto.AuthToken = strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(dto.AuthToken, "\n", ""), "\r", ""))
+}
+
 func createAccount(c *gin.Context) {
-	var account db.Account
-	if err := c.ShouldBindJSON(&account); err != nil {
+	var dto accountInputDTO
+	if err := c.ShouldBindJSON(&dto); err != nil {
 		c.PureJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 清理凭据中的空白字符和所有换行符（防止 HTTP Header 报错）
-	account.Cookie = strings.ReplaceAll(strings.ReplaceAll(account.Cookie, "\n", ""), "\r", "")
-	account.Cookie = strings.TrimSpace(account.Cookie)
-	account.AuthToken = strings.ReplaceAll(strings.ReplaceAll(account.AuthToken, "\n", ""), "\r", "")
-	account.AuthToken = strings.TrimSpace(account.AuthToken)
+	sanitizeCredentials(&dto)
+
+	account := db.Account{
+		Platform:    dto.Platform,
+		AccountName: dto.AccountName,
+		Cookie:      dto.Cookie,
+		AuthToken:   dto.AuthToken,
+	}
 
 	slog.Info("添加账号", "name", account.AccountName, "platform", account.Platform)
 	if err := db.DB.Create(&account).Error; err != nil {
@@ -282,16 +299,20 @@ func updateAccount(c *gin.Context) {
 		c.PureJSON(http.StatusNotFound, gin.H{"error": "account not found"})
 		return
 	}
-	if err := c.ShouldBindJSON(&account); err != nil {
+
+	var dto accountInputDTO
+	if err := c.ShouldBindJSON(&dto); err != nil {
 		c.PureJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 清理凭据中的空白字符和所有换行符（防止 HTTP Header 报错）
-	account.Cookie = strings.ReplaceAll(strings.ReplaceAll(account.Cookie, "\n", ""), "\r", "")
-	account.Cookie = strings.TrimSpace(account.Cookie)
-	account.AuthToken = strings.ReplaceAll(strings.ReplaceAll(account.AuthToken, "\n", ""), "\r", "")
-	account.AuthToken = strings.TrimSpace(account.AuthToken)
+	sanitizeCredentials(&dto)
+
+	// 仅更新白名单字段，防止通过 JSON 注入覆盖 ID/Status 等敏感字段
+	account.Platform = dto.Platform
+	account.AccountName = dto.AccountName
+	account.Cookie = dto.Cookie
+	account.AuthToken = dto.AuthToken
 
 	slog.Info("更新账号", "name", account.AccountName)
 	if err := db.DB.Save(&account).Error; err != nil {
@@ -688,6 +709,20 @@ func getGlobalSettings(c *gin.Context) {
 	c.PureJSON(http.StatusOK, res)
 }
 
+// allowedSettingKeys 允许通过全局设置接口修改的 key 白名单
+var allowedSettingKeys = map[string]bool{
+	"global_schedule_enabled": true,
+	"global_schedule_cron":    true,
+	"openlist_enabled":        true,
+	"openlist_api_url":        true,
+	"openlist_api_token":      true,
+	"bark_url":                true,
+	"bark_device_key":         true,
+	"bark_enabled":            true,
+	"bark_notify_on_success":  true,
+	"bark_notify_on_failure":  true,
+}
+
 func updateGlobalSettings(c *gin.Context) {
 	var input map[string]string
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -695,14 +730,11 @@ func updateGlobalSettings(c *gin.Context) {
 		return
 	}
 
-	// 保护校验：禁止覆盖其他模块的配置前缀（通知、Telegram、搜索、插件等）
-	protectedPrefix := []string{"notify_config_", "telegram_config_", "search_config_", "plugin_config_"}
+	// 白名单校验：仅允许已知的 key
 	for k := range input {
-		for _, prefix := range protectedPrefix {
-			if strings.HasPrefix(k, prefix) {
-				c.PureJSON(http.StatusBadRequest, gin.H{"error": "不允许通过此接口修改: " + k})
-				return
-			}
+		if !allowedSettingKeys[k] {
+			c.PureJSON(http.StatusBadRequest, gin.H{"error": "不允许修改未知的配置项: " + k})
+			return
 		}
 	}
 

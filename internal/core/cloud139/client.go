@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	cryptorand "crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
-	"math/rand"
+	"math/big"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -49,6 +50,24 @@ func NewCloud139(account *db.Account) *Cloud139 {
 }
 
 // ─── 辅助工具 ─────────────────────────────────────────────────────────────────
+
+// cryptoRandomStr 使用 crypto/rand 生成指定长度的随机字符串（字符集：字母+数字）
+// 替代 math/rand 确保签名的随机串不可预测
+func cryptoRandomStr(n int) string {
+	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+	result := make([]byte, n)
+	max := big.NewInt(int64(len(charset)))
+	for i := range result {
+		r, err := cryptorand.Int(cryptorand.Reader, max)
+		if err != nil {
+			// crypto/rand 不应失败，但作为兜底回退到时间戳混淆
+			result[i] = charset[time.Now().UnixNano()%int64(len(charset))]
+			continue
+		}
+		result[i] = charset[r.Int64()]
+	}
+	return string(result)
+}
 
 func md5Hash(str string) string {
 	h := md5.New()
@@ -112,11 +131,7 @@ func getNewSignHash(body interface{}, datetime, randomStr string) string {
 func (c *Cloud139) computeMcloudSign(catalogID string) string {
 	now := time.Now().In(time.FixedZone("CST", 8*3600))
 	datetime := now.Format("2006-01-02 15:04:05")
-	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-	randomStr := ""
-	for i := 0; i < 16; i++ {
-		randomStr += string(chars[rand.Intn(len(chars))])
-	}
+	randomStr := cryptoRandomStr(16)
 
 	getDiskBody := map[string]interface{}{
 		"catalogID":       catalogID,
@@ -226,11 +241,7 @@ func (c *Cloud139) doRequest(ctx context.Context, method, apiURL string, body in
 func (c *Cloud139) computeAnySign(body interface{}) string {
 	now := time.Now().In(time.FixedZone("CST", 8*3600))
 	datetime := now.Format("2006-01-02 15:04:05")
-	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-	randomStr := ""
-	for i := 0; i < 16; i++ {
-		randomStr += string(chars[rand.Intn(len(chars))])
-	}
+	randomStr := cryptoRandomStr(16)
 	hash := getNewSignHash(body, datetime, randomStr)
 	return fmt.Sprintf("%s,%s,%s", datetime, randomStr, hash)
 }

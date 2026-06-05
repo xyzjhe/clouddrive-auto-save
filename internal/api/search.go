@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -96,17 +97,42 @@ func isSafeURL(rawURL string) bool {
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return false
 	}
-	host := strings.ToLower(u.Hostname())
-	// 阻止内网地址
-	internal := []string{"localhost", "127.0.0.1", "0.0.0.0"}
-	for _, h := range internal {
-		if host == h {
-			return false
-		}
-	}
-	if strings.HasPrefix(host, "192.168.") || strings.HasPrefix(host, "10.") || strings.HasPrefix(host, "172.") {
+	return isPublicHost(u.Hostname())
+}
+
+// isPublicHost 检查主机名是否为公网可达地址，拦截 RFC 1918 私有网段、回环、链路本地等
+func isPublicHost(hostname string) bool {
+	host := strings.ToLower(hostname)
+	// 域名黑名单（非 IP 的内网主机名）
+	switch host {
+	case "localhost", "0.0.0.0":
 		return false
 	}
+
+	// 尝试解析为 IP（含 IPv6）
+	ip := net.ParseIP(host)
+	if ip == nil {
+		// 不是 IP 格式（域名），放行，由 DNS 解析后的实际连接层面防护
+		return true
+	}
+
+	// IPv4 / IPv6 回环
+	if ip.IsLoopback() {
+		return false
+	}
+	// 链路本地（169.254.x.x / fe80::）
+	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return false
+	}
+	// IPv4 私有网段：10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+	if ip.IsPrivate() {
+		return false
+	}
+	// 未指定地址 0.0.0.0 / ::
+	if ip.IsUnspecified() {
+		return false
+	}
+
 	return true
 }
 
