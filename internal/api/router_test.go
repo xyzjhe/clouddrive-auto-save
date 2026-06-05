@@ -25,7 +25,7 @@ func setupTestRouter(t *testing.T) (*gin.Engine, *gorm.DB) {
 	testDB.AutoMigrate(&db.Account{}, &db.Task{}, &db.Setting{})
 	db.DB = testDB // 设置全局 DB 供 handler 使用
 
-	wm := worker.NewManager(1, testDB)
+	wm := worker.NewManager(1, 10, testDB)
 	scheduler.Init(wm)
 	r := InitRouter(wm, "test", "test", "test")
 	return r, testDB

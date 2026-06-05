@@ -872,7 +872,7 @@ func (c *Cloud139) parseShareLink(input string) (string, string, string, error) 
 		if reBare.MatchString(trimmed) {
 			return trimmed, "", "root", nil
 		}
-		return "", "", "", fmt.Errorf("failed to parse url: %v", err)
+		return "", "", "", fmt.Errorf("解析 URL 失败: %w", err)
 	}
 	q := u.Query()
 	linkID = q.Get("linkID")

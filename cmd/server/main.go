@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/zcq/clouddrive-auto-save/internal/api"
@@ -64,9 +65,21 @@ func main() {
 		"message": "服务重启，已重置执行状态",
 	})
 
-	// 2. 启动任务管理器 (并发数为 3)
-	slog.Info("Starting worker manager...", "workers", 3)
-	wm := worker.NewManager(3, db.DB)
+	// 2. 启动任务管理器（可通过环境变量配置并发数和队列容量）
+	numWorkers := 3
+	if v := os.Getenv("WORKER_COUNT"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 32 {
+			numWorkers = n
+		}
+	}
+	queueSize := 100
+	if v := os.Getenv("WORKER_QUEUE_SIZE"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 10000 {
+			queueSize = n
+		}
+	}
+	slog.Info("Starting worker manager...", "workers", numWorkers, "queue_size", queueSize)
+	wm := worker.NewManager(numWorkers, queueSize, db.DB)
 	wm.Start()
 	defer wm.Stop()
 

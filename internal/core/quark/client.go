@@ -405,7 +405,7 @@ func (q *Quark) ListFiles(ctx context.Context, parentID string) ([]core.FileInfo
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(resp, &res); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal quark response: %v", err)
+			return nil, fmt.Errorf("解析夸克响应失败: %w", err)
 		}
 
 		codeStr := fmt.Sprintf("%v", res.Code)

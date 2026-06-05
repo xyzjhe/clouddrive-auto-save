@@ -23,7 +23,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 func TestManager_Execute(t *testing.T) {
 	testDB := setupTestDB(t)
-	m := NewManager(1, testDB)
+	m := NewManager(1, 10, testDB)
 
 	// 注册 Mock 驱动
 	core.RegisterDriver("mock", func(account *db.Account) core.CloudDrive {
@@ -64,7 +64,7 @@ func TestManager_Execute(t *testing.T) {
 
 func TestManager_Execute_SkipExisting(t *testing.T) {
 	testDB := setupTestDB(t)
-	m := NewManager(1, testDB)
+	m := NewManager(1, 10, testDB)
 
 	core.RegisterDriver("mock_skip", func(account *db.Account) core.CloudDrive {
 		return &MockDriver{
@@ -98,7 +98,7 @@ func TestManager_Execute_SkipExisting(t *testing.T) {
 
 func TestManager_Execute_StartFileFilter(t *testing.T) {
 	testDB := setupTestDB(t)
-	m := NewManager(1, testDB)
+	m := NewManager(1, 10, testDB)
 
 	now := time.Now()
 	files := []core.FileInfo{
@@ -148,7 +148,7 @@ func TestManager_Execute_StartFileFilter(t *testing.T) {
 
 func TestManager_Execute_RegexFilter(t *testing.T) {
 	testDB := setupTestDB(t)
-	m := NewManager(1, testDB)
+	m := NewManager(1, 10, testDB)
 
 	files := []core.FileInfo{
 		{ID: "f1", Name: "movie.mp4", UpdateTime: time.Now()},
@@ -183,7 +183,7 @@ func TestManager_Execute_RegexFilter(t *testing.T) {
 
 func TestManager_Execute_Deduplication_With_Renamer(t *testing.T) {
 	testDB := setupTestDB(t)
-	m := NewManager(1, testDB)
+	m := NewManager(1, 10, testDB)
 
 	var spy *MockDriver
 	core.RegisterDriver("mock_dedup", func(account *db.Account) core.CloudDrive {
