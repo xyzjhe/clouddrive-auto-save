@@ -55,16 +55,8 @@ async function mockSearchAPIs(page, options: { sources?: any; searchResults?: an
     });
   });
 
-  // Mock 搜索源列表
-  await page.route('**/api/search/sources', async route => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(options.sources || MOCK_SOURCES),
-    });
-  });
-
-  // Mock 搜索接口（仅拦截 GET /api/search?...）
+  // Mock 搜索接口（宽泛模式，注册在前 = 优先级最低）
+  // Playwright 按注册逆序匹配路由，宽泛路由必须先注册，具体路由后注册
   if (options.searchResults !== null) {
     await page.route('**/api/search**', async route => {
       const url = route.request().url();
@@ -84,7 +76,16 @@ async function mockSearchAPIs(page, options: { sources?: any; searchResults?: an
     });
   }
 
-  // Mock 批量验证接口（静默接受，不返回 SSE 事件）
+  // Mock 搜索源列表（注册在后 = 优先级最高，避免被宽泛搜索路由拦截）
+  await page.route('**/api/search/sources', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(options.sources || MOCK_SOURCES),
+    });
+  });
+
+  // Mock 批量验证接口（注册在后 = 优先级最高）
   await page.route('**/api/search/validate_batch', async route => {
     await route.fulfill({
       status: 200,
@@ -273,8 +274,8 @@ test.describe('资源搜索：分页功能', () => {
     await page.getByRole('button', { name: '搜索' }).click();
 
     await expect(page.locator('.pagination-wrapper')).toBeVisible({ timeout: 10000 });
-    // Element Plus 分页器显示总数 "共 3 条"
-    await expect(page.locator('.el-pagination').getByText(/共 3 条/)).toBeVisible();
+    // Element Plus 分页器显示总数（格式可能含空格差异）
+    await expect(page.locator('.el-pagination__total')).toContainText('3');
     // 默认每页 20 条，3 条结果在第一页
     await expect(page.locator('.result-item')).toHaveCount(3);
   });
@@ -302,10 +303,10 @@ test.describe('资源搜索：分页功能', () => {
     // 默认每页 20 条
     await expect(page.locator('.result-item')).toHaveCount(20);
 
-    // 修改每页条数为 10
+    // 修改每页条数为 10（el-select 下拉 teleport 到 body，选项格式为 "10/page"）
     const pageSizeSelect = page.locator('.el-pagination .el-pagination__sizes');
     await pageSizeSelect.click();
-    await page.getByRole('listitem').filter({ hasText: '10 条/页' }).click();
+    await page.getByRole('option', { name: '10/page' }).click();
 
     // 切换后应只显示 10 条
     await expect(page.locator('.result-item')).toHaveCount(10);
@@ -317,18 +318,11 @@ test.describe('资源搜索：筛选功能', () => {
     let capturedParams: string | null = null;
 
     await mockSearchAPIs(page);
-    // 拦截搜索请求以验证参数
-    await page.route('**/api/search**', async route => {
-      const url = route.request().url();
-      if (route.request().method() === 'GET' && (url.match(/\/api\/search\?/) || url.endsWith('/api/search'))) {
-        capturedParams = route.request().url();
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(MOCK_SEARCH_RESULTS),
-        });
-      } else {
-        await route.continue();
+    // 监听搜索请求参数（不注册额外路由，避免覆盖 sources mock）
+    page.on('request', request => {
+      const url = request.url();
+      if (request.method() === 'GET' && url.match(/\/api\/search\?/)) {
+        capturedParams = url;
       }
     });
 
@@ -350,11 +344,14 @@ test.describe('资源搜索：筛选功能', () => {
     await mockSearchAPIs(page);
     await page.goto('/search');
 
+    // "全部"默认已勾选，具体平台被禁用，需先取消"全部"
+    const allCheckbox = page.locator('.platform-filter').getByText('全部');
+    await allCheckbox.click();
+
     // 勾选夸克网盘
     await page.locator('.platform-filter').getByText('夸克网盘').click();
 
-    // "全部"应自动取消
-    const allCheckbox = page.locator('.platform-filter').getByText('全部');
+    // "全部"应保持未选中
     await expect(allCheckbox).not.toBeChecked();
   });
 
@@ -362,12 +359,15 @@ test.describe('资源搜索：筛选功能', () => {
     await mockSearchAPIs(page);
     await page.goto('/search');
 
+    // 先取消"全部"以启用具体平台复选框
+    const allCheckbox = page.locator('.platform-filter').getByText('全部');
+    await allCheckbox.click();
+
     // 逐个勾选夸克和移动云盘
     await page.locator('.platform-filter').getByText('夸克网盘').click();
     await page.locator('.platform-filter').getByText('移动云盘').click();
 
     // 两个平台都勾选后，等效于"全部"，allPlatforms 为 true
-    const allCheckbox = page.locator('.platform-filter').getByText('全部');
     await expect(allCheckbox).toBeChecked();
   });
 
@@ -391,7 +391,7 @@ test.describe('资源搜索：分享内容弹窗', () => {
   test('点击搜索结果项打开分享内容弹窗', async ({ page }) => {
     await mockSearchAPIs(page);
     // Mock 分享链接解析接口（ShareContentDialog 组件调用 parseShareLink）
-    await page.route('**/api/tasks/parse-share**', async route => {
+    await page.route('**/api/tasks/parse_share**', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -423,7 +423,7 @@ test.describe('资源搜索：分享内容弹窗', () => {
 
   test('弹窗中点击"创建任务"跳转到任务页面', async ({ page }) => {
     await mockSearchAPIs(page);
-    await page.route('**/api/tasks/parse-share**', async route => {
+    await page.route('**/api/tasks/parse_share**', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -453,7 +453,7 @@ test.describe('资源搜索：分享内容弹窗', () => {
 
   test('弹窗中点击"关闭"按钮关闭弹窗', async ({ page }) => {
     await mockSearchAPIs(page);
-    await page.route('**/api/tasks/parse-share**', async route => {
+    await page.route('**/api/tasks/parse_share**', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

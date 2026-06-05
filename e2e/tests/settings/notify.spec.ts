@@ -171,7 +171,7 @@ test.describe('消息推送通道：Telegram 通知配置', () => {
 
     // 填写 Bot Token 和 Chat ID
     await form.getByPlaceholder(/123456789:ABCdef/).fill('123456789:E2E_TEST_TOKEN');
-    await form.getByPlaceholder('123456789').fill('987654321');
+    await form.getByPlaceholder('123456789', { exact: true }).fill('987654321');
 
     // 保存
     await form.locator('.save-telegram-btn').click();

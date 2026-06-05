@@ -22,11 +22,12 @@ test.describe('搜索源配置：Settings 中的搜索源 Tab', () => {
     // 切换到搜索源 Tab
     await page.getByRole('tab', { name: /搜索源/ }).click();
 
-    // 验证 CloudSaver 配置卡片
-    await expect(page.getByText('CloudSaver 配置')).toBeVisible();
-    await expect(page.getByText('服务地址')).toBeVisible();
-    await expect(page.getByText('用户名')).toBeVisible();
-    await expect(page.getByText('密码')).toBeVisible();
+    // 验证 CloudSaver 配置卡片（等待 tab 内容渲染完成）
+    await expect(page.getByText('CloudSaver 配置')).toBeVisible({ timeout: 10000 });
+    // CloudSaver 和 PanSou 都有"服务地址"字段，用 .first() 限定
+    await expect(page.locator('.el-form-item__label').filter({ hasText: '服务地址' }).first()).toBeVisible();
+    await expect(page.locator('.el-form-item__label').filter({ hasText: '用户名' })).toBeVisible();
+    await expect(page.locator('.el-form-item__label').filter({ hasText: '密码' })).toBeVisible();
 
     // 验证 PanSou 配置卡片
     await expect(page.getByText('PanSou 配置')).toBeVisible();

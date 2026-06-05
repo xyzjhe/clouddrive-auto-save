@@ -58,7 +58,7 @@ test.describe('Telegram 远程管理：配置保存', () => {
 
     // 填写凭证
     await form.getByPlaceholder(/123456789:ABCdef/).fill('123456789:AAH_test_token_e2e');
-    await form.getByPlaceholder('123456789').fill('123456789');
+    await form.getByPlaceholder('123456789', { exact: true }).fill('123456789');
 
     // 设置通知偏好
     const successCheckbox = form.getByRole('checkbox', { name: '成功通知' });
