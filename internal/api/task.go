@@ -59,6 +59,7 @@ func updateTask(c *gin.Context) {
 	}
 
 	// 记录更新前的关键参数，用于判断是否需要重置状态
+	originalID := task.ID // 保存正确的 ID（来自 URL 路径的 DB 查询）
 	oldURL := task.ShareURL
 	oldCode := task.ExtractCode
 
@@ -66,6 +67,9 @@ func updateTask(c *gin.Context) {
 		c.PureJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// 防御性：恢复 task.ID，防止 JSON body 中的 id 字段覆盖 URL 路径参数
+	task.ID = originalID
 
 	// 校验 Cron 表达式
 	if task.ScheduleMode == "custom" {
@@ -78,18 +82,20 @@ func updateTask(c *gin.Context) {
 	slog.Info("更新任务", "name", task.Name)
 
 	updateData := map[string]interface{}{
-		"name":            task.Name,
-		"account_id":      task.AccountID,
-		"share_url":       task.ShareURL,
-		"extract_code":    task.ExtractCode,
-		"save_path":       task.SavePath,
-		"pattern":         task.Pattern,
-		"replacement":     task.Replacement,
-		"start_file_id":   task.StartFileID,
-		"start_file_name": task.StartFileName,
-		"share_parent_id": task.ShareParentID,
-		"cron":            task.Cron,
-		"schedule_mode":   task.ScheduleMode,
+		"name":             task.Name,
+		"account_id":       task.AccountID,
+		"share_url":        task.ShareURL,
+		"extract_code":     task.ExtractCode,
+		"save_path":        task.SavePath,
+		"pattern":          task.Pattern,
+		"replacement":      task.Replacement,
+		"start_file_id":    task.StartFileID,
+		"start_file_name":  task.StartFileName,
+		"share_parent_id":  task.ShareParentID,
+		"cron":             task.Cron,
+		"schedule_mode":    task.ScheduleMode,
+		"max_retries":      task.MaxRetries,
+		"ignore_extension": task.IgnoreExtension,
 	}
 
 	// 仅当分享链接或提取码发生变动时，才重置状态以解除 [Fatal] 封锁

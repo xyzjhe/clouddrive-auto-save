@@ -344,7 +344,7 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="最大重试次数">
-              <el-input-number v-model="form.max_retries" :min="0" :max="10" style="width: 100%" />
+              <el-input-number v-model="form.max_retries" :min="1" :max="10" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -865,8 +865,11 @@ const form = ref({
   replacement: '',
   start_file_id: '',
   start_file_name: '',
+  share_parent_id: '',
   cron: '',
-  schedule_mode: 'global'
+  schedule_mode: 'global',
+  max_retries: 3,
+  ignore_extension: false
 })
 
 // 链接变更处理
@@ -1340,7 +1343,9 @@ const handleEdit = async (row) => {
     start_file_name: row.start_file_name,
     share_parent_id: row.share_parent_id || '',
     cron: row.cron,
-    schedule_mode: row.schedule_mode || 'global'
+    schedule_mode: row.schedule_mode || 'global',
+    max_retries: row.max_retries ?? 3,
+    ignore_extension: row.ignore_extension ?? false
   }
 
   // 初始化定时配置状态
@@ -1393,6 +1398,7 @@ const submitForm = async () => {
     dialogVisible.value = false
   } catch (err) {
     console.error(err)
+    ElMessage.error('保存失败: ' + (err.response?.data?.error || err.message || '未知错误'))
   } finally {
     submitting.value = false
   }
@@ -1465,6 +1471,9 @@ const initSSE = () => {
               row.last_run = ev.task.last_run
               row.percent = ev.task.percent
               row.stage = ev.task.stage
+              // 同步配置字段，避免多标签页下看到过期值
+              if (ev.task.max_retries !== undefined) row.max_retries = ev.task.max_retries
+              if (ev.task.ignore_extension !== undefined) row.ignore_extension = ev.task.ignore_extension
 
               // 如果任务完成或失败，额外执行一次列表同步以确保最终一致性
               if (ev.task.status === 'success' || ev.task.status === 'failed') {
