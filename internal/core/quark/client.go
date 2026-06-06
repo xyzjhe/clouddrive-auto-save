@@ -23,6 +23,18 @@ const (
 	UserAgent  = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) quark-cloud-drive/3.14.2 Chrome/112.0.5615.165 Electron/24.1.3.8 Safari/537.36 Channel/pckk_other_ch"
 )
 
+// quarkErrorCodeMap 夸克业务错误码 → 用户友好提示（命中即 [Fatal]，不可重试）
+var quarkErrorCodeMap = map[string]string{
+	"41010": "文件涉及违规内容",
+	"41012": "好友已取消了分享",
+	"41008": "当前分享链接需要提取码，请填写提取码。",
+	"41007": "提取码错误，请检查后再试。",
+	"41009": "提取码错误，请检查后再试。",
+	"24000": "提取码不正确，请重新输入。",
+	"24001": "该分享已失效，可能已被取消或删除。",
+	"20002": "账号登录已失效，请更新 Cookie。",
+}
+
 type Quark struct {
 	account *db.Account
 	client  *http.Client
@@ -147,22 +159,16 @@ func (q *Quark) doRequest(ctx context.Context, method, apiURL string, query url.
 			codeVal := errResp["code"]
 			codeStr := fmt.Sprintf("%v", codeVal)
 
-			// 夸克错误码映射表
-			errorMap := map[string]string{
-				"41010": "该分享文件涉及违规内容，已被官方屏蔽。",
-				"24000": "提取码不正确，请重新输入。",
-				"24001": "该分享已失效，可能已被取消或删除。",
-				"20002": "账号登录已失效，请更新 Cookie。",
+			// 已知致命错误码：直接 [Fatal]，与 139 平台处理路径对齐
+			if mappedMsg, ok := quarkErrorCodeMap[codeStr]; ok {
+				return nil, fmt.Errorf("[Fatal] %s", mappedMsg)
 			}
-
-			if mappedMsg, ok := errorMap[codeStr]; ok {
-				errMsg = mappedMsg
-			} else if msg, ok := errResp["message"].(string); ok && msg != "" {
+			if msg, ok := errResp["message"].(string); ok && msg != "" {
 				errMsg = msg
 			}
 		}
 
-		// 针对 400/403/404 或特定错误码，打上 [Fatal] 标记以供上层阻断
+		// 未命中错误码映射的 HTTP 错误，按状态码决定是否 [Fatal]
 		if resp.StatusCode == 404 || resp.StatusCode == 400 || resp.StatusCode == 403 {
 			return nil, fmt.Errorf("[Fatal] %s", errMsg)
 		}
@@ -524,11 +530,8 @@ func (q *Quark) getStoken(ctx context.Context, pwdID, extractCode string) (strin
 	codeStr := fmt.Sprintf("%v", tokenRes.Code)
 	if codeStr != "0" && codeStr != "0.0" {
 		slog.Error("获取夸克 Stoken 失败", "code", tokenRes.Code)
-		if codeStr == "41008" {
-			return "", fmt.Errorf("[Fatal] 当前分享链接需要提取码，请填写提取码 (code: 41008)")
-		}
-		if codeStr == "41007" || codeStr == "24000" || codeStr == "41009" {
-			return "", fmt.Errorf("[Fatal] 提取码错误，请检查后再试 (code: %s)", codeStr)
+		if mappedMsg, ok := quarkErrorCodeMap[codeStr]; ok {
+			return "", fmt.Errorf("[Fatal] %s", mappedMsg)
 		}
 		return "", fmt.Errorf("Quark token error: %v", tokenRes.Code)
 	}

@@ -170,8 +170,8 @@ func (m *Manager) execute(job Job) {
 
 	// 3. 列出目标目录文件，进行去重检查
 	m.updateProgress(task, 35, "Checking", "正在检查目标目录是否存在同名文件...")
-		checkCtx, checkCancel := context.WithTimeout(m.ctx, 30*time.Second)
-		defer checkCancel()
+	checkCtx, checkCancel := context.WithTimeout(m.ctx, 30*time.Second)
+	defer checkCancel()
 	targetID, err := driver.PrepareTargetPath(checkCtx, task.SavePath)
 	if err != nil {
 		m.finishTask(job, "failed", "准备目标路径失败: "+err.Error(), nil, startTime)
@@ -276,8 +276,8 @@ func (m *Manager) execute(job Job) {
 	}
 
 	m.updateProgress(task, 60, "Saving", fmt.Sprintf("正在转存 %d 个文件...", len(filteredIDs)))
-		saveCtx, saveCancel := context.WithTimeout(m.ctx, 120*time.Second)
-		defer saveCancel()
+	saveCtx, saveCancel := context.WithTimeout(m.ctx, 120*time.Second)
+	defer saveCancel()
 	err = driver.SaveLink(saveCtx, task.ShareURL, task.ExtractCode, task.SavePath, filteredIDs, task.ShareParentID)
 	if err != nil {
 		m.finishTask(job, "failed", "转存失败: "+err.Error(), nil, startTime)
@@ -322,18 +322,19 @@ func isFatalError(message string) bool {
 	fatalPatterns := []string{
 		"链接失效", "链接过期", "提取码错误", "提取码无效",
 		"分享已删除", "分享已过期", "权限不足",
+		"涉及违规", "取消了分享",
 	}
 	for _, p := range fatalPatterns {
 		if strings.Contains(message, p) {
 			return true
 		}
 	}
-	// 精确匹配容易误判的模式，避免 "timeout" / "target directory does not exist" 等被误判
-	exactChecks := []string{
+	// 限定子串匹配：这些词单独出现时可能是致命的，但需避免宽泛误判
+	containsChecks := []string{
 		"不存在", "cookie过期", "Cookie过期",
 		"token无效", "token过期", "Token无效", "Token过期",
 	}
-	for _, p := range exactChecks {
+	for _, p := range containsChecks {
 		if strings.Contains(message, p) {
 			return true
 		}

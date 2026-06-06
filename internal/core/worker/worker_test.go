@@ -235,6 +235,10 @@ func TestIsFatalError_FatalPatterns(t *testing.T) {
 		"该分享已过期，无法访问",
 		"权限不足",
 		"当前账号权限不足",
+		"文件涉及违规内容",
+		"该分享涉及违规",
+		"好友已取消了分享",
+		"该分享已取消了分享",
 	}
 	for _, msg := range cases {
 		if !isFatalError(msg) {

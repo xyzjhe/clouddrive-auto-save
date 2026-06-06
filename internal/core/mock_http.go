@@ -88,8 +88,11 @@ func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	} else if strings.Contains(url, "drive-pc.quark.cn/1/clouddrive/share/sharepage/detail") {
 		if strings.Contains(url, "mock_violation") {
-			statusCode = 403
-			respBody = `{"code": 41010, "message": "该分享文件涉及违规内容，已被官方屏蔽。"}`
+			statusCode = 404
+			respBody = `{"status": 404, "code": 41010, "message": "文件涉及违规内容"}`
+		} else if strings.Contains(url, "mock_cancelled") {
+			statusCode = 404
+			respBody = `{"status": 404, "code": 41012, "message": "好友已取消了分享"}`
 		} else if strings.Contains(url, "mock_invalid") {
 			statusCode = 404
 			respBody = `{"code": 24001, "message": "该分享已失效，可能已被取消或删除。"}`
@@ -112,8 +115,11 @@ func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		bodyStr := string(bodyBytes)
 
 		if strings.Contains(bodyStr, "mock_violation") {
-			statusCode = 403
-			respBody = `{"code": 41010, "message": "该分享文件涉及违规内容，已被官方屏蔽。"}`
+			statusCode = 404
+			respBody = `{"status": 404, "code": 41010, "message": "文件涉及违规内容"}`
+		} else if strings.Contains(bodyStr, "mock_cancelled") {
+			statusCode = 404
+			respBody = `{"status": 404, "code": 41012, "message": "好友已取消了分享"}`
 		} else if strings.Contains(bodyStr, "mock_invalid") {
 			statusCode = 404
 			respBody = `{"code": 24001, "message": "该分享已失效，可能已被取消或删除。"}`
