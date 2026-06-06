@@ -155,7 +155,7 @@ func (s *Scheduler) UpdateTask(taskID uint, mode string, customCron string) {
 }
 
 func ValidateCron(expr string) error {
-	_, err := cron.NewParser(cron.Second|cron.Minute|cron.Hour|cron.Dom|cron.Month|cron.Dow).Parse(expr)
+	_, err := cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow).Parse(expr)
 	return err
 }
 

@@ -13,23 +13,23 @@ type mockDriver struct {
 	account *db.Account
 }
 
-func (m *mockDriver) GetInfo(_ context.Context) (*db.Account, error)         { return m.account, nil }
-func (m *mockDriver) Login(_ context.Context) error                           { return nil }
+func (m *mockDriver) GetInfo(_ context.Context) (*db.Account, error) { return m.account, nil }
+func (m *mockDriver) Login(_ context.Context) error                  { return nil }
 func (m *mockDriver) ListFiles(_ context.Context, _ string) ([]FileInfo, error) {
 	return nil, nil
 }
 func (m *mockDriver) CreateFolder(_ context.Context, _, _ string) (*FileInfo, error) {
 	return nil, nil
 }
-func (m *mockDriver) DeleteFile(_ context.Context, _ string) error            { return nil }
+func (m *mockDriver) DeleteFile(_ context.Context, _ string) error { return nil }
 func (m *mockDriver) ParseShare(_ context.Context, _, _, _ string) ([]FileInfo, error) {
 	return nil, nil
 }
 func (m *mockDriver) PrepareTargetPath(_ context.Context, _ string) (string, error) {
 	return "", nil
 }
-func (m *mockDriver) RenameFile(_ context.Context, _, _ string) error         { return nil }
-func (m *mockDriver) SaveFileTo(_ context.Context, _, _ string) error         { return nil }
+func (m *mockDriver) RenameFile(_ context.Context, _, _ string) error { return nil }
+func (m *mockDriver) SaveFileTo(_ context.Context, _, _ string) error { return nil }
 func (m *mockDriver) SaveLink(_ context.Context, _, _, _ string, _ []string, _ string) error {
 	return nil
 }

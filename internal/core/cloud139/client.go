@@ -1071,7 +1071,6 @@ func (c *Cloud139) getShareInfo(ctx context.Context, linkID, passwd, pCaID strin
 	return mergedData, nil
 }
 
-
 func (c *Cloud139) PrepareTargetPath(ctx context.Context, path string) (string, error) {
 	if path == "" || path == "/" {
 		return "root", nil
