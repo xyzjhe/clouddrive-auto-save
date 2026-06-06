@@ -38,7 +38,15 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - **驱动注册**：通过 `init()` 副作用导入在 `internal/api/router.go` 中注册：
   - `internal/core/cloud139/client.go` — 移动云盘
   - `internal/core/quark/client.go` — 夸克网盘
-- **工作池** (`internal/core/worker/`) — 带缓冲的任务队列 (容量 100)，`Submit` 为非阻塞模式（队列满时返回 error）。每个 worker 执行完整流水线：解析分享链接 → 去重检查 → 正则过滤 → 保存链接 → 重命名文件 → Bark 通知。重试使用 `select + ctx.Done()` 支持优雅关闭。`isFatalError` 使用精确关键词匹配（如 `token无效`、`cookie过期`），宽泛词（如 `token`、`不存在`）已拆分为限定组合避免误判
+- **工作池** (`internal/core/worker/`) — 带缓冲的任务队列 (容量 100)，`Submit` 为非阻塞模式（队列满时返回 error）。每个 worker 执行完整流水线：解析分享链接 → 去重检查 → 正则过滤 → 保存链接 → 重命名文件 → Bark 通知。重试使用 `select + ctx.Done()` 支持优雅关闭。致命错误分两层：驱动层 `quarkErrorCodeMap` 命中直接 `[Fatal]`；`isFatalError` 作为兜底安全网，通过子串匹配（如 `token无效`、`cookie过期`）拦截漏网的不可恢复错误
+- **夸克网盘错误码**（`internal/core/quark/client.go`）— `quarkErrorCodeMap` 包级变量，命中即返回 `[Fatal]`（与 139 对齐），不可重试：
+  - `41010`：文件涉及违规内容
+  - `41012`：好友已取消了分享
+  - `41008`：需要提取码
+  - `41007` / `41009`：提取码错误
+  - `24000`：提取码不正确
+  - `24001`：该分享已失效
+  - `20002`：账号登录已失效
 - **调度器** (`internal/core/scheduler/`) — 封装 robfig/cron，支持秒级精度。"global" 模式共享一个 cron 触发所有全局任务；"custom" 模式为每个任务独立 cron。带有 `[Fatal]` 消息的任务会被自动跳过
 - **重命名器** (`internal/core/renamer/`) — 支持魔法变量 `{TASKNAME}`、`{OLDNAME}`、`{CHINESE}`、`{DATE}`、`{YEAR}`、`{EXT}`，正则捕获组 `${1}`，以及 Go `text/template` 表达式
 - **SSE/事件系统** (`internal/utils/`) — `Broadcaster` 发布/订阅系统，向所有 SSE 客户端广播实时日志和 `[EVENT:task_update|task_delete|stats_update|search_validate]` 结构化 JSON 事件。`DashboardLogger` 双写 slog 输出到控制台 + SSE
