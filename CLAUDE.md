@@ -101,9 +101,14 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 ## 数据库模型 (`internal/db/db.go`)
 
 - **Account**：平台 (139/quark)、昵称、凭证、状态、容量
-- **Task**：关联账号、分享链接、提取码、保存路径、正则表达式、Cron、状态/进度、重试计数、运行星期、忽略后缀去重
+- **Task**：关联账号、分享链接、提取码、保存路径、正则表达式、Cron、状态/进度、重试计数、最大重试次数、运行星期、忽略后缀去重
 - **CommonFolder**：每个账号的收藏文件夹路径
 - **Setting**：全局配置的键值存储（调度、Bark 通知）
+
+**⚠️ Task 字段三处同步规则**：Task 模型新增可编辑字段时，必须同步更新以下三处，否则编辑任务时字段不生效：
+1. `internal/api/task.go` 的 `updateData` map（后端持久化）
+2. `web/src/views/Tasks.vue` 的 `handleEdit` 函数（编辑表单填充）
+3. `web/src/views/Tasks.vue` 的 `openAddDialog` 和初始 `form` ref（新建表单默认值）
 
 ## API 路由
 
