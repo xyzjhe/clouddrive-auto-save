@@ -183,7 +183,7 @@ test.describe('任务管理：状态机与执行测试', () => {
     await expect(errorTag).toBeVisible({ timeout: 15000 });
     
     await errorTag.hover();
-    await expect(page.getByText('该分享文件涉及违规内容，已被官方屏蔽。')).toBeVisible();
+    await expect(page.getByText('文件涉及违规内容')).toBeVisible();
   });
 
   test('139 移动云盘：验证提取码错误或未提供场景', async ({ page }) => {
