@@ -24,13 +24,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { PhGithubLogo, PhArrowSquareOut } from '@phosphor-icons/vue'
-import { getVersion } from '../api/version'
+import { getVersion, getLatestRelease } from '../api/version'
 
 const currentVersion = ref('...')
 const hasUpdate = ref(false)
 
 const GITHUB_RELEASES_URL = 'https://github.com/zhaocongqi/clouddrive-auto-save/releases'
-const GITHUB_API_URL = 'https://api.github.com/repos/zhaocongqi/clouddrive-auto-save/releases/latest'
 
 function parseVersion(v) {
   const cleaned = v.replace(/^v/, '')
@@ -64,10 +63,8 @@ onMounted(async () => {
   if (currentVersion.value === 'dev') return
 
   try {
-    const resp = await fetch(GITHUB_API_URL)
-    if (!resp.ok) return
-    const data = await resp.json()
-    const latestTag = data.tag_name || ''
+    const resp = await getLatestRelease()
+    const latestTag = resp.tag_name || ''
     hasUpdate.value = compareVersions(currentVersion.value, latestTag)
   } catch {
     // 静默失败

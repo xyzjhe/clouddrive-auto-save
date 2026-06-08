@@ -41,3 +41,12 @@ export function validateLink(url, timeoutMs = 5000) {
     skipErrorHandler: true
   })
 }
+
+export function validateBatch(data) {
+  return request({
+    url: '/search/validate_batch',
+    method: 'post',
+    data,
+    timeout: 35000
+  })
+}

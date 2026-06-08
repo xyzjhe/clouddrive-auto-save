@@ -13,3 +13,10 @@ export function clearLogsAPI() {
     method: 'delete'
   })
 }
+
+export function getRecentLogs() {
+  return request({
+    url: '/dashboard/logs/recent',
+    method: 'get'
+  })
+}

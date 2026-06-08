@@ -23,6 +23,10 @@ const service = axios.create({
 // 请求拦截器
 service.interceptors.request.use(
   config => {
+    const apiKey = localStorage.getItem('ucas_api_key')
+    if (apiKey) {
+      config.headers['X-API-Key'] = apiKey
+    }
     return config
   },
   error => {
@@ -42,7 +46,9 @@ service.interceptors.response.use(
       return Promise.reject(error)
     }
     let msg
-    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+    if (error.response?.status === 401) {
+      msg = '认证失败，请检查 API Key 配置'
+    } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
       msg = '请求超时，请稍后重试'
     } else {
       msg = error.response?.data?.error || error.response?.data?.message || error.message || '请求失败'
