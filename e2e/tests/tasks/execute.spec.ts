@@ -229,7 +229,7 @@ test.describe('任务管理：状态机与执行测试', () => {
     await expect(errorTag).toBeVisible({ timeout: 15000 });
     
     await errorTag.hover();
-    await expect(page.getByText('当前分享链接需要提取码，请填写提取码 (code: 41008)')).toBeVisible();
+    await expect(page.getByText('当前分享链接需要提取码，请填写提取码')).toBeVisible();
   });
 
   test('夸克网盘：验证提取码错误场景', async ({ page }) => {
@@ -252,7 +252,7 @@ test.describe('任务管理：状态机与执行测试', () => {
     await expect(errorTag).toBeVisible({ timeout: 15000 });
     
     await errorTag.hover();
-    await expect(page.getByText('提取码错误，请检查后再试 (code: 41007)')).toBeVisible();
+    await expect(page.getByText('提取码错误，请检查后再试')).toBeVisible();
   });
 
   test('夸克网盘：验证分享内容为空或已失效场景', async ({ page }) => {
