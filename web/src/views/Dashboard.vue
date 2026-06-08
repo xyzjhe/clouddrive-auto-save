@@ -176,11 +176,11 @@
             </div>
           </template>
           <div class="log-list" ref="terminalRef">
-            <div v-for="(log, index) in logs" :key="index" class="log-line" :class="getLogClass(log)">
-              <span class="log-time">{{ new Date().toLocaleTimeString() }}</span>
-              <span class="log-content">{{ log }}</span>
+            <div v-for="(log, index) in sseStore.logs" :key="index" class="log-line" :class="getLogClass(log)">
+              <span class="log-time">{{ log.time }}</span>
+              <span class="log-content">{{ log.text }}</span>
             </div>
-            <div v-if="logs.length === 0" class="log-empty">等待系统日志流中...</div>
+            <div v-if="sseStore.logs.length === 0" class="log-empty">等待系统日志流中...</div>
           </div>
         </el-card>
       </el-col>
@@ -199,10 +199,11 @@ import {
   PhSpinner,
   PhX
 } from '@phosphor-icons/vue'
-import { getStats, clearLogsAPI } from '../api/dashboard'
+import { getStats, clearLogsAPI, getRecentLogs } from '../api/dashboard'
 import { runTask, dismissTask as runDismissTask } from '../api/task'
 import { ElMessage } from 'element-plus'
 import { formatSize, formatTime as formatRelativeTime } from '../utils/format'
+import { useSSEStore } from '@/stores/sse'
 
 // 系统遥测
 const cpuUsage = ref(0)
@@ -210,6 +211,8 @@ const ramUsage = ref(0)
 const ramUsedGB = ref(0)
 const ramTotalGB = ref(0)
 const numCPU = ref(0)
+
+const sseStore = useSSEStore()
 
 const activeTab = ref('schedule')
 const stats = reactive({
@@ -221,11 +224,8 @@ const stats = reactive({
   running_tasks_list: []
 })
 
-const logs = ref([])
 const terminalRef = ref(null)
 const runningTasks = ref([])
-let eventSource = null
-let pollTimer = null
 
 const fetchStats = async (isPoll = false) => {
   try {
@@ -274,44 +274,11 @@ const fetchStats = async (isPoll = false) => {
 
 const fetchRecentLogs = async () => {
   try {
-    const response = await fetch('/api/dashboard/logs/recent')
-    const data = await response.json()
-    logs.value = data
+    const data = await getRecentLogs()
+    sseStore.addHistoryLogs(data)
     scrollToBottom()
   } catch (error) {
     console.error('获取历史日志失败:', error)
-  }
-}
-
-const initSSE = () => {
-  eventSource = new EventSource('/api/dashboard/logs')
-  eventSource.onmessage = (event) => {
-    const msg = event.data
-    if (msg.includes('[PROGRESS:')) {
-      handleProgressMessage(msg)
-    } else if (msg.includes('[EVENT:')) {
-      handleSystemEvent(msg)
-    } else {
-      logs.value.push(msg)
-      if (logs.value.length > 200) logs.value.shift()
-      scrollToBottom()
-    }
-  }
-  eventSource.onerror = () => {
-    console.error('SSE 连接异常')
-  }
-}
-
-const handleSystemEvent = (msg) => {
-  const match = msg.match(/\[EVENT:(.+)\]/)
-  if (!match) return
-  try {
-    const ev = JSON.parse(match[1])
-    if (ev.type === 'stats_update') {
-      fetchStats(true)
-    }
-  } catch (e) {
-    console.error('解析系统事件失败:', e)
   }
 }
 
@@ -383,7 +350,7 @@ const scrollToBottom = () => {
 const clearLogs = async () => {
   try {
     await clearLogsAPI()
-    logs.value = []
+    sseStore.clearLogs()
     runningTasks.value = runningTasks.value.filter(task =>
       task.percent < 100 && task.stage !== 'Success' && task.stage !== 'Failed'
     )
@@ -403,9 +370,10 @@ const handleRetry = async (taskId) => {
 }
 
 const getLogClass = (log) => {
-  if (log.includes('ERROR')) return 'log-error'
-  if (log.includes('WARN')) return 'log-warn'
-  if (log.includes('SUCCESS')) return 'log-success'
+  const text = typeof log === 'string' ? log : log.text
+  if (text.includes('ERROR')) return 'log-error'
+  if (text.includes('WARN')) return 'log-warn'
+  if (text.includes('SUCCESS')) return 'log-success'
   return ''
 }
 
@@ -429,20 +397,30 @@ const getStatusText = (status) => {
   return texts[status] || '已准备'
 }
 
-onMounted(() => {
+// SSE Store 清理函数（组件作用域）
+let unsubSSE = null
+let offStatsUpdate = null
+let offProgress = null
+
+onMounted(async () => {
   fetchStats()
-  initSSE()
   fetchRecentLogs()
 
-  pollTimer = setInterval(() => {
-    fetchStats(true)
-  }, 5000)
+  // 通过 SSE Store 订阅实时事件（引用计数 +1）
+  unsubSSE = sseStore.subscribe()
 
+  // 统计更新事件：刷新仪表盘数据
+  offStatsUpdate = sseStore.on('onStatsUpdate', () => fetchStats(true))
+
+  // 进度事件：处理活跃任务进度
+  offProgress = sseStore.on('onProgress', (msg) => handleProgressMessage(msg))
 })
 
 onUnmounted(() => {
-  if (eventSource) eventSource.close()
-  if (pollTimer) clearInterval(pollTimer)
+  // 取消 SSE Store 订阅（引用计数 -1，无引用时自动断开连接）
+  if (offProgress) offProgress()
+  if (offStatsUpdate) offStatsUpdate()
+  if (unsubSSE) unsubSSE()
 })
 </script>
 

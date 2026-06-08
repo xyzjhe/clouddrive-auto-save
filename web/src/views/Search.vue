@@ -1,15 +1,17 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useSSEStore } from '@/stores/sse'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   PhMagnifyingGlass, PhLink, PhClock, PhFileText,
   PhCheckCircle, PhXCircle, PhSpinner, PhWarningCircle
 } from '@phosphor-icons/vue'
-import { searchResources, listSearchSources } from '../api/search'
+import { searchResources, listSearchSources, validateBatch } from '../api/search'
 import ShareContentDialog from '../components/ShareContentDialog.vue'
 
 const router = useRouter()
+const sseStore = useSSEStore()
 const query = ref('')
 const sources = ref([])
 const selectedSources = ref([])
@@ -74,11 +76,7 @@ const triggerPageValidation = async () => {
   }, 30000)
 
   try {
-    await fetch('/api/search/validate_batch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ search_id: currentSearchId.value, items: toValidate })
-    })
+    await validateBatch({ search_id: currentSearchId.value, items: toValidate })
   } catch (e) {
     console.error('批量验证请求失败:', e)
   }
@@ -111,9 +109,9 @@ const onPlatformChange = (val) => {
   }
 }
 
-// SSE 验证监听
-let validateEventSource = null
-let validateTimeoutTimer = null
+// SSE Store 清理函数（组件作用域）
+let unsubSSE = null
+let offSearchValidate = null
 
 onMounted(async () => {
   try {
@@ -123,46 +121,30 @@ onMounted(async () => {
     console.error('获取搜索源失败:', error)
   }
 
-  // 建立 SSE 连接监听验证事件
-  validateEventSource = new EventSource('/api/dashboard/logs')
-  validateEventSource.onmessage = (event) => {
-    const msg = event.data
-    if (!msg || !msg.includes('[EVENT:search_validate|')) return
+  // 通过 SSE Store 订阅实时事件（引用计数 +1）
+  unsubSSE = sseStore.subscribe()
 
-    const match = msg.match(/\[EVENT:search_validate\|(.+)\]/)
-    if (!match) return
-    try {
-      const payload = JSON.parse(match[1])
-      // 只处理当前搜索会话的事件
-      if (payload.search_id !== currentSearchId.value) return
-
-      const idx = payload.index
-      if (idx >= 0 && idx < results.value.length) {
-        results.value[idx].valid = payload.valid
-        results.value[idx].validMessage = payload.message || ''
-      }
-      // 更新进度
-      validateProgress.value.done++
-      if (payload.valid) {
-        validateProgress.value.valid++
-      } else {
-        validateProgress.value.invalid++
-      }
-    } catch (e) {
-      // 解析失败忽略
+  // 注册搜索验证事件回调
+  offSearchValidate = sseStore.on('onSearchValidate', (payload) => {
+    if (payload.search_id !== currentSearchId.value) return
+    const idx = payload.index
+    if (idx >= 0 && idx < results.value.length) {
+      results.value[idx].valid = payload.valid
+      results.value[idx].validMessage = payload.message || ''
     }
-  }
+    validateProgress.value.done++
+    if (payload.valid) {
+      validateProgress.value.valid++
+    } else {
+      validateProgress.value.invalid++
+    }
+  })
 })
 
 onUnmounted(() => {
-  if (validateEventSource) {
-    validateEventSource.close()
-    validateEventSource = null
-  }
-  if (validateTimeoutTimer) {
-    clearTimeout(validateTimeoutTimer)
-    validateTimeoutTimer = null
-  }
+  // 取消 SSE Store 订阅（引用计数 -1，无引用时自动断开连接）
+  if (offSearchValidate) offSearchValidate()
+  if (unsubSSE) unsubSSE()
 })
 
 

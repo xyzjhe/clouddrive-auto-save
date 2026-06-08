@@ -29,702 +29,64 @@
       </div>
     </div>
 
-    <div class="task-filter-bar">
-      <el-radio-group v-model="statusFilter" size="default">
-        <el-radio-button label="all">全部</el-radio-button>
-        <el-radio-button label="pending">等待中</el-radio-button>
-        <el-radio-button label="running">运行中</el-radio-button>
-        <el-radio-button label="success">成功</el-radio-button>
-        <el-radio-button label="failed">失败</el-radio-button>
-      </el-radio-group>
-      <el-input v-model="searchQuery" placeholder="搜索任务名称..." clearable style="width: 200px" :prefix-icon="PhMagnifyingGlass" />
-    </div>
+    <!-- 表格/卡片视图 -->
+    <TaskTable
+      :task-list="taskList"
+      :loading="loading"
+      :global-schedule="globalSchedule"
+      :view-mode="viewMode"
+      @run="handleRun"
+      @edit="handleEdit"
+      @delete="handleDelete"
+      @add="openAddDialog"
+    />
 
-    <el-card v-if="viewMode === 'table'" class="table-card">
-      <el-table v-if="filteredTaskList.length > 0 || loading" :data="filteredTaskList" v-loading="loading" style="width: 100%">
-        <el-table-column label="任务名称" min-width="180">
-          <template #default="{ row }">
-            <div class="task-name-cell">
-              <span class="name">{{ row.name }}</span>
-              <div class="account-tag" v-if="row.account">
-                <el-tag size="small" :type="row.account.platform === 'quark' ? 'success' : 'warning'">
-                  {{ row.account.nickname || row.account.platform }}
-                </el-tag>
-              </div>
-              <div class="account-tag" v-else>
-                <el-tag size="small" type="danger">账号已移除</el-tag>
-              </div>
-            </div>
-          </template>
-        </el-table-column>
-        
-        <el-table-column prop="save_path" label="保存路径" min-width="150" show-overflow-tooltip />
-        
-        <el-table-column prop="schedule_mode" label="调度规则" width="140">
-          <template #default="{ row }">
-            <div v-if="row.schedule_mode === 'global'" class="schedule-tag">
-              <el-tag size="small" type="primary">跟随全局</el-tag>
-              <div class="schedule-sub" v-if="globalSchedule.enabled">{{ globalSchedule.cron }}</div>
-              <div class="schedule-sub disabled" v-else>全局已关闭</div>
-            </div>
-            <div v-else-if="row.schedule_mode === 'custom'" class="schedule-tag">
-              <el-tag size="small" type="warning">自定义</el-tag>
-              <div class="schedule-sub">{{ row.cron }}</div>
-            </div>
-            <el-tag v-else size="small" type="info">手动执行</el-tag>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="状态" width="120">
-          <template #default="{ row }">
-            <div class="status-wrapper">
-              <el-tooltip v-if="row.message && row.message.includes('[Fatal]')" :content="row.message" placement="top" effect="dark">
-                <el-tag type="danger" style="cursor:help"><div class="status-inner"><el-icon><PhWarning weight="fill" /></el-icon>LINK ERROR</div></el-tag>
-              </el-tooltip>
-              <el-tooltip v-else-if="row.retry_count > 0 && row.status === 'pending'" :content="`重试 ${row.retry_count}/${row.max_retries} 次`" placement="top" effect="dark">
-                <el-tag type="warning"><div class="status-inner"><el-icon class="icon-spin"><PhArrowsClockwise /></el-icon>RETRY {{ row.retry_count }}/{{ row.max_retries }}</div></el-tag>
-              </el-tooltip>
-              <el-tag v-else :type="getStatusType(row.status)">
-                <div class="status-inner"><el-icon v-if="row.status === 'running'" class="icon-spin"><PhArrowsClockwise /></el-icon>{{ row.status.toUpperCase() }}</div>
-              </el-tag>
-            </div>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="最后运行" width="180">
-          <template #default="{ row }">
-            {{ formatTime(row.last_run) }}
-          </template>
-        </el-table-column>
-
-        <el-table-column label="操作" width="140" fixed="right">
-          <template #default="{ row }">
-            <div class="action-buttons">
-              <button
-                class="btn-icon btn-icon--success"
-                title="运行"
-                aria-label="运行"
-                :disabled="row.status === 'running' || !!(row.message && row.message.includes('[Fatal]'))"
-                @click="handleRun(row)"
-              >
-                <PhPlay :size="14" />
-              </button>
-              <button
-                class="btn-icon btn-icon--primary"
-                title="编辑"
-                aria-label="编辑"
-                @click="handleEdit(row)"
-              >
-                <PhPencilSimple :size="14" />
-              </button>
-              <button
-                class="btn-icon btn-icon--danger"
-                title="删除"
-                aria-label="删除"
-                @click="handleDelete(row)"
-              >
-                <PhTrash :size="14" />
-              </button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-      <el-empty v-else description="当前没有任何转存任务">
-        <el-button type="primary" :icon="PhPlus" @click="openAddDialog">创建新任务</el-button>
-      </el-empty>
-    </el-card>
-
-    <!-- 卡片视图 -->
-    <div v-else-if="viewMode === 'card'" class="card-view-container" v-loading="loading">
-      <template v-if="filteredTaskList.length > 0 || loading">
-        <el-row :gutter="20">
-          <el-col v-for="row in filteredTaskList" :key="row.id" :xs="24" :sm="12" :md="8" :lg="6">
-            <TaskCard
-              :task="row"
-              @run="handleRun"
-              @edit="handleEdit"
-              @delete="handleDelete"
-            />
-          </el-col>
-        </el-row>
-      </template>
-      <el-empty v-else description="当前没有任何转存任务">
-        <el-button type="primary" :icon="PhPlus" @click="openAddDialog">创建新任务</el-button>
-      </el-empty>
-    </div>
-
-    <!-- 创建/编辑任务抽屉 -->
-    <el-drawer v-model="dialogVisible" :title="form.id ? '编辑任务' : '创建新任务'" direction="rtl" size="560px" destroy-on-close>
-      <el-form :model="form" label-position="top" ref="formRef">
-        <el-form-item label="智能粘贴解析" v-if="!form.id">
-          <el-input
-            v-model="smartInput"
-            type="textarea"
-            :rows="3"
-            placeholder="请在此粘贴包含分享链接和提取码的文字，系统将自动尝试解析并填充下方表单"
-            @input="handleSmartInput"
-          />
-        </el-form-item>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="任务名称" required>
-              <el-input v-model="form.name" placeholder="给任务起个名字" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="执行账号" required>
-              <el-select v-model="form.account_id" placeholder="选择账号" style="width: 100%" @change="handleAccountChange">
-                <el-option-group
-                  v-for="group in groupedAccounts"
-                  :key="group.label"
-                  :label="group.label"
-                >
-                  <el-option
-                    v-for="acc in group.options"
-                    :key="acc.id"
-                    :value="acc.id"
-                    :disabled="acc.status === 0"
-                    :label="acc.nickname"
-                  >
-                    <div class="account-option-item">
-                      <div class="acc-info">
-                        <el-icon class="acc-icon" :color="acc.platform === 'quark' ? 'var(--color-quark)' : 'var(--color-139)'">
-                          <PhCloud weight="duotone" />
-                        </el-icon>
-                        <span class="acc-name">{{ acc.nickname }}</span>
-                      </div>
-                      <div class="acc-meta">
-                        <span class="acc-cap" v-if="acc.capacity_total > 0">
-                          剩余 {{ formatSize(acc.capacity_total - acc.capacity_used) }}
-                        </span>
-                        <el-tag v-if="acc.status === 0" size="small" type="danger">已失效</el-tag>
-                      </div>
-                    </div>
-                  </el-option>
-                </el-option-group>
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-form-item label="分享链接" required>
-          <div class="share-url-row">
-            <el-input v-model="form.share_url" placeholder="请输入 139 或 Quark 分享链接" @change="handleUrlChange" />
-            <el-button-group class="share-url-actions">
-              <el-button
-                :icon="PhFolderOpen"
-                title="浏览分享内容并选择目录"
-                :disabled="!form.share_url || !form.account_id"
-                @click="openBrowseShareDialog"
-              />
-              <el-button
-                :icon="PhArrowSquareOut"
-                title="在新标签页中打开链接"
-                :disabled="!form.share_url"
-                @click="openExternalLink(form.share_url, form.extract_code)"
-              />
-              <el-button
-                type="primary"
-                title="搜索替换资源"
-                @click="handleSearchReplace"
-              >
-                搜索替换
-              </el-button>
-            </el-button-group>
-          </div>
-        </el-form-item>
-
-        <div v-if="isSubDirMode" class="subdir-hint">
-          <el-tag type="warning" closable @close="resetToShareRoot">
-            <el-icon style="margin-right: 4px; vertical-align: middle;"><PhFolderOpen /></el-icon>
-            当前目录：{{ selectedDirName || '子目录' }}
-          </el-tag>
-        </div>
-
-        <el-row :gutter="20">
-          <el-col :span="24">
-            <el-form-item label="提取码">
-              <el-input v-model="form.extract_code" placeholder="如果有提取码请填写" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-form-item label="起始转存点 (可选)">
-          <div class="path-input-group">
-            <el-input 
-              v-model="selectedStartFileName" 
-              placeholder="从该文件开始向前转存 (为空则转存全量)" 
-              readonly
-              class="save-path-input"
-            >
-              <template #append>
-                <el-button @click="openStartFileDialog" :loading="parsingShare">选择文件</el-button>
-              </template>
-            </el-input>
-          </div>
-          <div class="start-id-tip" v-if="form.start_file_id">
-            <el-icon><PhInfo /></el-icon>
-            <span>当前已锁定 ID: <code class="id-code" :title="form.start_file_id">{{ form.start_file_id }}</code></span>
-          </div>
-        </el-form-item>
-
-        <el-form-item label="保存路径" required>
-          <div class="path-input-group">
-            <el-input 
-              v-model="form.save_path" 
-              placeholder="可手动输入或点击右侧选择" 
-              class="save-path-input"
-            >
-              <template #prepend v-if="selectedAccountPlatform">
-                [{{ selectedAccountPlatform }}]
-              </template>
-              <template #append>
-                <el-button @click="openFolderDialog">选择目录</el-button>
-              </template>
-            </el-input>
-          </div>
-        </el-form-item>
-
-        <el-divider>调度规则与预览</el-divider>
-        
-        <el-row :gutter="20">
-          <el-col :span="24">
-            <el-form-item label="调度模式" required>
-              <div class="schedule-mode-selector">
-                <el-radio-group v-model="form.schedule_mode" @change="handleScheduleModeChange">
-                  <el-radio label="global">跟随全局</el-radio>
-                  <el-radio label="custom">自定义频率</el-radio>
-                  <el-radio label="off">手动执行</el-radio>
-                </el-radio-group>
-              </div>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20" v-if="form.schedule_mode === 'custom'">
-          <el-col :span="24">
-            <el-form-item label="自定义频率 (Cron)">
-              <div style="display: flex; align-items: center; gap: 15px; width: 100%;">
-                <el-select v-model="cronPreset" placeholder="选择预设频率" style="width: 180px" @change="handleCronPreset">
-                  <el-option label="每小时" value="0 0 * * * *" />
-                  <el-option label="每 6 小时" value="0 0 */6 * * *" />
-                  <el-option label="每天凌晨 2 点" value="0 0 2 * * *" />
-                  <el-option label="每周一凌晨 2 点" value="0 0 2 * * 1" />
-                  <el-option label="使用自定义表达式" value="custom" />
-                </el-select>
-                <el-input v-if="cronPreset === 'custom'" v-model="form.cron" placeholder="秒 分 时 日 月 周" style="flex: 1">
-                  <template #suffix>
-                    <el-tooltip placement="top">
-                      <template #content>
-                        格式：秒 分 时 日 月 周 (6位)<br/>
-                        例如: */5 * * * * * (每5秒执行一次)
-                      </template>
-                      <el-icon style="cursor: help"><PhInfo /></el-icon>
-                    </el-tooltip>
-                  </template>
-                </el-input>
-              </div>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="重命名正则 (Pattern)">
-              <el-input v-model="form.pattern" placeholder="匹配文件名的正则表达式" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="替换规则 (Replacement)">
-              <el-input v-model="form.replacement" placeholder="支持 {TASKNAME}, {YEAR} 等变量" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="最大重试次数">
-              <el-input-number v-model="form.max_retries" :min="1" :max="10" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="忽略后缀去重">
-              <el-switch v-model="form.ignore_extension" active-text="开启" inactive-text="关闭" />
-              <div class="form-tip">开启后 01.mp4 和 01.mkv 视为同一文件</div>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <div class="preview-action">
-          <el-button type="success" :icon="PhArrowsClockwise" @click="handlePreview" :loading="previewLoading">全量重命名预览</el-button>
-        </div>
-      </el-form>
-      
-      <template #footer>
-        <div style="flex: auto">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="submitting" @click="submitForm">确认并保存</el-button>
-        </div>
-      </template>
-    </el-drawer>
-
-    <!-- 目录选择独立弹窗 -->
-    <el-dialog 
-      v-model="folderDialogVisible" 
-      title="选择保存目录" 
-      width="600px" 
-      class="folder-dialog"
-      append-to-body
-      destroy-on-close
-    >
-      <div class="folder-tree-container" v-loading="loadingFolders">
-        <el-tree
-          ref="folderTreeRef"
-          lazy
-          :load="loadFolders"
-          :props="{ label: 'label', isLeaf: 'isLeaf' }"
-          node-key="path"
-          :default-expanded-keys="['/']"
-          highlight-current
-          @current-change="handleTreeCurrentChange"
-          :expand-on-click-node="false"
-          :empty-text="loadingFolders ? '加载中...' : '暂无目录'"
-        >
-          <template #default="{ node, data }">
-            <span class="custom-tree-node">
-              <el-icon><PhFolder /></el-icon>
-              <span>{{ node.label }}</span>
-            </span>
-          </template>
-        </el-tree>
-      </div>
-      <template #footer>
-        <div class="folder-dialog-footer">
-          <div class="create-folder-action">
-            <el-input v-model="newFolderName" placeholder="新文件夹名称" size="default">
-              <template #append>
-                <el-button @click="handleInlineCreateFolder" :loading="creatingFolder">新建</el-button>
-              </template>
-            </el-input>
-          </div>
-          <div class="dialog-actions">
-            <el-button @click="folderDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="confirmFolderSelection">确认路径</el-button>
-          </div>
-        </div>
-      </template>
-    </el-dialog>
-
-    <!-- 选择起始文件 / 浏览分享内容弹窗 -->
-    <el-dialog
-      v-model="startFileDialogVisible"
-      :title="browseMode === 'selectShareUrl' ? '浏览分享内容' : '选择起始转存文件'"
-      width="900px"
-      append-to-body
-      destroy-on-close
-    >
-      <div class="share-files-dialog-content">
-        <!-- 面包屑导航 -->
-        <div class="breadcrumb-nav" style="margin-bottom: 12px;">
-          <el-breadcrumb separator="/">
-            <el-breadcrumb-item>
-              <a href="#" @click.prevent="navigateToBreadcrumb(-1)" class="breadcrumb-link">根目录</a>
-            </el-breadcrumb-item>
-            <el-breadcrumb-item v-for="(crumb, index) in breadcrumbs" :key="crumb.id">
-              <a href="#" @click.prevent="navigateToBreadcrumb(index)" class="breadcrumb-link">{{ crumb.name }}</a>
-            </el-breadcrumb-item>
-          </el-breadcrumb>
-          <el-button
-            v-if="isSubDirMode"
-            type="warning"
-            link
-            size="small"
-            @click="resetToShareRoot(); startFileDialogVisible = false"
-            style="margin-left: auto;"
-          >
-            重置为根目录
-          </el-button>
-        </div>
-
-        <el-alert v-if="browseMode === 'selectShareUrl'" title="选择目录" type="info" :closable="false" show-icon style="margin-bottom: 15px">
-          点击文件夹进入子目录，选择目标文件夹后点击"选择为分享链接"，将更新分享链接为该目录的地址。
-        </el-alert>
-        <el-alert v-else title="逻辑说明" type="info" :closable="false" show-icon style="margin-bottom: 15px">
-          系统将从选中的文件开始，按更新时间向前转存所有更新的文件（含所选文件本身）。<b>此处已应用您的重命名规则并执行同名预检。</b> 点击文件夹可进入子目录。
-        </el-alert>
-
-        <el-table
-          :data="shareFiles"
-          max-height="500"
-          size="default"
-          border
-          stripe
-          v-loading="parsingShare"
-          highlight-current-row
-          :row-class-name="tableRowClassName"
-          @current-change="handleStartFileTableChange"
-          @row-dblclick="handleRowDblClick"
-        >
-          <!-- startFile 模式且在初始目录时显示 radio 列 -->
-          <el-table-column v-if="browseMode === 'startFile' && isInitialDir" width="40" align="center">
-            <template #default="{ row }">
-              <el-radio v-if="!row.is_folder" v-model="tempStartFileId" :label="row.id" class="naked-radio"><span></span></el-radio>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="原始文件名" show-overflow-tooltip min-width="180">
-            <template #default="{ row }">
-              <div class="name-main" :class="{ 'folder-clickable': row.is_folder }" @click="row.is_folder && enterFolder(row)" @dblclick="!row.is_folder && handleRowDblClick(row)">
-                <el-icon size="16">
-                  <PhFolder v-if="row.is_folder" color="var(--color-warning)" />
-                  <PhFile v-else color="var(--text-muted)" />
-                </el-icon>
-                <span>{{ row.name }}</span>
-              </div>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="预览文件名 (入库名)" show-overflow-tooltip min-width="220">
-            <template #default="{ row }">
-              <span :style="{
-                fontWeight: row.is_folder ? '600' : 'normal',
-                color: (row.new_name && row.new_name !== row.name) ? 'var(--el-color-primary)' : 'inherit'
-              }">
-                {{ row.new_name || row.name }}
-              </span>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="类型" width="80" align="center">
-            <template #default="{ row }">
-              <el-tag size="small" :type="row.is_folder ? 'warning' : 'info'">
-                {{ row.is_folder ? '目录' : '文件' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="状态" width="100" align="center">
-            <template #default="{ row }">
-              <el-tag v-if="row.is_existed" size="small" type="success">已在网盘</el-tag>
-              <el-tag v-else size="small" type="info">待转存</el-tag>
-            </template>
-          </el-table-column>
-
-          <el-table-column prop="updated_at" label="分享更新时间" width="160" sortable />
-
-          <!-- selectShareUrl 模式显示进入按钮 -->
-          <el-table-column v-if="browseMode === 'selectShareUrl'" label="操作" width="80" align="center">
-            <template #default="{ row }">
-              <el-button v-if="row.is_folder" type="primary" link size="small" @click="enterFolder(row)">
-                进入
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-      <template #footer>
-        <el-button @click="startFileDialogVisible = false">取消</el-button>
-        <template v-if="browseMode === 'selectShareUrl'">
-          <el-button type="primary" @click="confirmSelectShareUrl">
-            选择当前目录（{{ currentDirName }}）
-          </el-button>
-        </template>
-        <template v-else>
-          <el-button @click="clearStartFile">清除选择</el-button>
-          <el-button type="primary" @click="confirmStartFileSelection" :disabled="!tempStartFileId">确认选择</el-button>
-        </template>
-      </template>
-    </el-dialog>
-
-    <!-- 预览结果对话框 -->
-    <el-dialog v-model="previewVisible" title="重命名预览" width="800px">
-      <el-table :data="previewData" height="400px" border stripe>
-        <el-table-column prop="original_name" label="原始文件名" min-width="200" show-overflow-tooltip />
-        <el-table-column label="重命名后效果" min-width="200" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span v-if="row.is_filtered" class="filtered-text">(已过滤)</span>
-            <span v-else-if="row.matched" class="matched-text">{{ row.new_name }}</span>
-            <span v-else class="unmatched-text">{{ row.new_name }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag size="small" :type="row.is_filtered ? 'info' : (row.matched ? 'success' : 'warning')">
-              {{ row.is_filtered ? '跳过' : (row.matched ? '匹配' : '未匹配') }}
-            </el-tag>
-          </template>
-        </el-table-column>
-      </el-table>
-      <div class="preview-tips">
-        <p>* 列表基于当前分享链接的真实文件解析。</p>
-        <p>* 过滤规则：如果设置了起始文件，则该文件之后（更旧）的文件将不执行转存。</p>
-      </div>
-    </el-dialog>
-
-    <!-- 搜索替换弹窗 -->
-    <el-dialog
-      v-model="searchReplaceVisible"
-      title="搜索替换资源"
-      width="600px"
-    >
-      <div class="search-replace-bar">
-        <el-input
-          v-model="searchReplaceQuery"
-          placeholder="输入搜索关键词"
-          @keyup.enter="doSearchReplace"
-        >
-          <template #append>
-            <el-button @click="doSearchReplace">搜索</el-button>
-          </template>
-        </el-input>
-      </div>
-      <div v-loading="searchReplaceLoading" class="search-replace-results">
-        <div v-for="item in searchReplaceResults" :key="item.url" class="search-result-item">
-          <div class="result-info">
-            <span class="result-title">{{ item.title }}</span>
-            <span class="result-source">{{ item.source }} - {{ item.platform }}</span>
-          </div>
-          <div class="result-actions">
-            <el-button size="small" @click="handleViewShareContent(item)">查看内容</el-button>
-            <el-button size="small" type="primary" @click="handleReplaceFromSearch(item)">替换</el-button>
-          </div>
-        </div>
-        <el-empty v-if="!searchReplaceLoading && searchReplaceResults.length === 0" description="暂无搜索结果" />
-      </div>
-    </el-dialog>
-
-    <ShareContentDialog
-      v-model:visible="shareDialogVisible"
-      :url="shareDialogUrl"
-      :extract-code="shareDialogExtractCode"
-      :title="shareDialogTitle"
-      :show-replace="true"
-      @replace-link="handleReplaceFromDialog"
+    <!-- 表单抽屉及所有子弹窗 -->
+    <TaskForm
+      ref="taskFormRef"
+      :accounts="accounts"
+      :submitting="submitting"
+      :preview-loading="previewLoading"
+      @submit="submitForm"
+      @open-external="openExternalLink"
+      @reset-share-root="resetToShareRoot"
+      @preview="handlePreview"
+      @view-share-content="handleViewShareContent"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  PhPlus, PhPlay, PhPencilSimple, PhTrash, PhArrowsClockwise,
-  PhFolder, PhFile, PhInfo, PhCloud, PhArrowSquareOut,
-  PhWarning, PhClock, PhFolderOpen, PhList, PhGridFour,
-  PhMagnifyingGlass
+  PhPlus, PhPlay, PhList, PhGridFour
 } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTasks, createTask, updateTask, deleteTask, runTask, runAllTasks, previewTask, parseShareLink, getScheduleSettings } from '../api/task'
-import { getAccounts, getFolders, createFolder } from '../api/account'
-import { searchResources } from '../api/search'
-import TaskCard from '../components/cards/TaskCard.vue'
-import ShareContentDialog from '../components/ShareContentDialog.vue'
-import { formatSize, formatTime, getStatusTagType as getStatusType } from '../utils/format'
+import { getTasks, createTask, updateTask, deleteTask, runTask, runAllTasks, previewTask, getScheduleSettings } from '../api/task'
+import { getAccounts } from '../api/account'
+import { useSSEStore } from '@/stores/sse'
+import TaskTable from '../components/tasks/TaskTable.vue'
+import TaskForm from '../components/tasks/TaskForm.vue'
+import { getDefaultFormData } from '../components/tasks/utils'
 
 const route = useRoute()
+const sseStore = useSSEStore()
+
+// ---- 核心状态 ----
 const taskList = ref([])
 const accounts = ref([])
 const loading = ref(false)
 const runningAll = ref(false)
-const dialogVisible = ref(false)
 const submitting = ref(false)
+const previewLoading = ref(false)
 const viewMode = ref(localStorage.getItem('taskViewMode') || 'table')
-const statusFilter = ref('all')
-const searchQuery = ref('')
 
-const smartInput = ref('')
+// ---- 表单子组件引用 ----
+const taskFormRef = ref(null)
 
-// 搜索替换相关
-const searchReplaceVisible = ref(false)
-const searchReplaceQuery = ref('')
-const searchReplaceResults = ref([])
-const searchReplaceLoading = ref(false)
-
-// 分享内容弹窗
-const shareDialogVisible = ref(false)
-const shareDialogUrl = ref('')
-const shareDialogExtractCode = ref('')
-const shareDialogTitle = ref('')
-
-const handleSmartInput = (val) => {
-  if (!val) return
-  
-  // 1. 提取链接
-  const urlMatch = val.match(/https?:\/\/[a-zA-Z0-9.\-_/]+/)
-  if (urlMatch) {
-    form.value.share_url = urlMatch[0]
-    handleUrlChange()
-  }
-
-  // 2. 提取密码/提取码
-  let remainText = val
-  if (urlMatch) {
-    remainText = val.replace(urlMatch[0], '')
-  }
-  
-  const pwdKeywordMatch = remainText.match(/(?:提取码|提取|密码|pw|码|pwd)[:：\s]*([a-zA-Z0-9]+)/i)
-  if (pwdKeywordMatch) {
-    form.value.extract_code = pwdKeywordMatch[1]
-  } else {
-    const purePwdMatch = remainText.match(/\b([a-zA-Z0-9]{4})\b/)
-    if (purePwdMatch) {
-      form.value.extract_code = purePwdMatch[1]
-    }
-  }
-}
-
-const handleSearchReplace = () => {
-  searchReplaceQuery.value = form.value.name
-  searchReplaceResults.value = []
-  searchReplaceVisible.value = true
-  if (searchReplaceQuery.value) {
-    doSearchReplace()
-  }
-}
-
-const doSearchReplace = async () => {
-  if (!searchReplaceQuery.value.trim()) return
-  searchReplaceLoading.value = true
-  try {
-    const data = await searchResources({ q: searchReplaceQuery.value })
-    searchReplaceResults.value = data.items || []
-  } catch (e) {
-    ElMessage.error('搜索失败')
-  } finally {
-    searchReplaceLoading.value = false
-  }
-}
-
-const handleReplaceFromSearch = (item) => {
-  form.value.share_url = item.url
-  searchReplaceVisible.value = false
-  ElMessage.success('链接已替换，请保存任务')
-}
-
-const handleViewShareContent = (item) => {
-  shareDialogUrl.value = item.url
-  shareDialogExtractCode.value = ''
-  shareDialogTitle.value = item.title
-  shareDialogVisible.value = true
-}
-
-const handleReplaceFromDialog = (data) => {
-  form.value.share_url = data.url
-  form.value.extract_code = data.extractCode || ''
-  shareDialogVisible.value = false
-  ElMessage.success('链接已替换，请保存任务')
-}
-
-const toggleViewMode = (mode) => {
-  viewMode.value = mode
-  localStorage.setItem('taskViewMode', mode)
-}
-
-// 全局调度设置
-const globalSchedule = ref({
-  enabled: false,
-  cron: ''
-})
+// ---- 全局调度设置 ----
+const globalSchedule = ref({ enabled: false, cron: '' })
 
 const fetchGlobalSettings = async () => {
   try {
@@ -735,417 +97,13 @@ const fetchGlobalSettings = async () => {
   }
 }
 
-// 定时执行相关
-const cronPreset = ref('')
-
-const handleScheduleModeChange = (val) => {
-  if (val === 'custom' && !form.value.cron) {
-    cronPreset.value = '0 0 * * * *'
-    form.value.cron = '0 0 * * * *'
-  }
+// ---- 视图切换 ----
+const toggleViewMode = (mode) => {
+  viewMode.value = mode
+  localStorage.setItem('taskViewMode', mode)
 }
 
-const handleCronPreset = (val) => {
-  if (val !== 'custom') {
-    form.value.cron = val
-  }
-}
-
-// 预览相关
-const previewVisible = ref(false)
-const previewLoading = ref(false)
-const previewData = ref([])
-
-// 路径到 ID 的映射，用于辅助新建文件夹
-const pathIdMap = ref({ '/': '' })
-
-// 分享内容解析相关
-const shareFiles = ref([])
-const parsingShare = ref(false)
-const startFileDialogVisible = ref(false)
-const selectedStartFileName = ref('')
-const tempStartFileId = ref('')
-
-// 子目录浏览相关
-const breadcrumbs = ref([]) // [{ id, name }]
-const currentParentId = ref('')
-const browseMode = ref('startFile') // 'startFile' | 'selectShareUrl'
-const isInitialDir = ref(true) // 是否在初始目录（用于控制 radio 显示）
-const selectedDirName = ref('') // 记录用户选择的子目录名称，用于提示条显示
-
-// 计算当前目录名称（用于 selectShareUrl 模式的按钮显示）
-const currentDirName = computed(() => {
-  if (breadcrumbs.value.length === 0) {
-    return '根目录'
-  }
-  return breadcrumbs.value[breadcrumbs.value.length - 1].name
-})
-
-// 判断当前是否处于子目录模式
-const isSubDirMode = computed(() => {
-  const account = accounts.value.find(acc => acc.id === form.value.account_id)
-  if (!account) return false
-
-  if (account.platform === 'quark') {
-    // Quark：从 URL 中解析 pdirFID，非 '0' 且非空则为子目录模式
-    const match = form.value.share_url.match(/\/s\/(\w+)#\/list\/share\/(\w+)/)
-    return match && match[2] && match[2] !== '0'
-  } else {
-    // 139：share_parent_id 非空则为子目录模式
-    return !!form.value.share_parent_id
-  }
-})
-
-// 处理表格行样式
-const tableRowClassName = ({ row }) => {
-  if (row.is_existed) {
-    return 'existed-row'
-  }
-  return ''
-}
-
-// 独立目录弹窗相关
-const folderDialogVisible = ref(false)
-const loadingFolders = ref(false)
-const folderTreeRef = ref(null)
-const selectedTreePath = ref('')
-const selectedTreeId = ref('')
-const newFolderName = ref('')
-const creatingFolder = ref(false)
-
-
-
-const groupedAccounts = computed(() => {
-  if (!accounts.value) return []
-  const groups = [
-    { label: '移动云盘', platform: '139', options: [] },
-    { label: '夸克网盘', platform: 'quark', options: [] }
-  ]
-  
-  accounts.value.forEach(acc => {
-    if (!acc) return
-    const group = groups.find(g => g.platform === acc.platform)
-    if (group) {
-      group.options.push(acc)
-    }
-  })
-  
-  return groups.filter(g => g.options.length > 0)
-})
-
-const selectedAccountPlatform = computed(() => {
-  if (!form.value.account_id || !accounts.value) return ''
-  const account = accounts.value.find(acc => acc.id === form.value.account_id)
-  if (account) {
-    return account.platform === '139' ? '移动云盘' : 'Quark'
-  }
-  return ''
-})
-
-const filteredTaskList = computed(() => {
-  let list = taskList.value
-  if (statusFilter.value !== 'all') {
-    list = list.filter(t => t.status === statusFilter.value)
-  }
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.trim().toLowerCase()
-    list = list.filter(t => t.name.toLowerCase().includes(q))
-  }
-  return list
-})
-
-const form = ref({
-  id: null,
-  name: '',
-  account_id: '',
-  share_url: '',
-  extract_code: '',
-  save_path: '/',
-  pattern: '',
-  replacement: '',
-  start_file_id: '',
-  start_file_name: '',
-  share_parent_id: '',
-  cron: '',
-  schedule_mode: 'global',
-  max_retries: 3,
-  ignore_extension: false
-})
-
-// 链接变更处理
-const handleUrlChange = () => {
-  form.value.start_file_id = ''
-  form.value.start_file_name = ''
-  selectedStartFileName.value = ''
-  form.value.share_parent_id = ''
-  selectedDirName.value = ''
-}
-
-const openExternalLink = async (url, extractCode) => {
-  if (url) {
-    let finalUrl = url
-    if (extractCode) {
-      try {
-        const urlObj = new URL(url)
-        urlObj.searchParams.set('pwd', extractCode)
-        finalUrl = urlObj.toString()
-      } catch (e) {
-        // 针对非标准 URL 的 Fallback 处理
-        finalUrl = url.includes('?') 
-          ? `${url}&pwd=${extractCode}` 
-          : `${url}?pwd=${extractCode}`
-      }
-      
-      try {
-        await navigator.clipboard.writeText(extractCode)
-        ElMessage.success(`提取码 ${extractCode} 已复制，请在新页面粘贴`)
-      } catch (err) {
-        console.warn('复制提取码失败:', err)
-      }
-    }
-    window.open(finalUrl, '_blank')
-  }
-}
-
-// 手动打开解析起始文件的对话框
-const openStartFileDialog = async () => {
-  if (!form.value.share_url || !form.value.account_id) {
-    return ElMessage.warning('请先填写执行账号和分享链接')
-  }
-
-  browseMode.value = 'startFile'
-  startFileDialogVisible.value = true
-  parsingShare.value = true
-  tempStartFileId.value = form.value.start_file_id
-  shareFiles.value = []
-  breadcrumbs.value = []
-  isInitialDir.value = true
-
-  // 使用 share_parent_id 作为初始目录（139 平台）
-  // 如果有 share_parent_id，将其作为新的根目录
-  const initialParentId = form.value.share_parent_id || ''
-  currentParentId.value = initialParentId
-
-  await loadShareFiles(initialParentId)
-}
-
-// 打开浏览分享内容对话框（用于选择目录作为新的分享链接）
-const openBrowseShareDialog = async () => {
-  if (!form.value.share_url || !form.value.account_id) {
-    return ElMessage.warning('请先填写执行账号和分享链接')
-  }
-
-  browseMode.value = 'selectShareUrl'
-  startFileDialogVisible.value = true
-  parsingShare.value = true
-  tempStartFileId.value = ''
-  shareFiles.value = []
-  breadcrumbs.value = []
-
-  // 根据当前分享链接确定初始目录
-  const account = accounts.value.find(acc => acc.id === form.value.account_id)
-  let initialParentId = ''
-
-  if (account?.platform === 'quark') {
-    // 夸克平台：从 URL 中解析 pdirFID
-    const match = form.value.share_url.match(/\/s\/(\w+)#\/list\/share\/(\w+)/)
-    if (match && match[2] && match[2] !== '0') {
-      initialParentId = match[2]
-    }
-  } else if (account?.platform === '139') {
-    // 139 平台：使用 share_parent_id
-    initialParentId = form.value.share_parent_id || ''
-  }
-
-  currentParentId.value = initialParentId
-  await loadShareFiles(initialParentId)
-}
-
-// 加载分享文件列表（支持子目录浏览）
-const loadShareFiles = async (parentId) => {
-  parsingShare.value = true
-  shareFiles.value = []
-  currentParentId.value = parentId
-
-  try {
-    const data = await parseShareLink({
-      account_id: form.value.account_id,
-      share_url: form.value.share_url,
-      extract_code: form.value.extract_code,
-      parent_id: parentId,
-      save_path: form.value.save_path,
-      pattern: form.value.pattern,
-      replacement: form.value.replacement,
-      name: form.value.name
-    })
-    shareFiles.value = data
-
-    // 如果已经有选中的 ID，尝试匹配出文件名用于回显
-    if (form.value.start_file_id) {
-      const selected = data.find(f => f.id === form.value.start_file_id)
-      if (selected) {
-        selectedStartFileName.value = selected.name
-      }
-    }
-  } catch (err) {
-    console.error('解析链接失败:', err)
-    startFileDialogVisible.value = false
-  } finally {
-    parsingShare.value = false
-  }
-}
-
-// 进入子目录
-const enterFolder = async (folder) => {
-  breadcrumbs.value.push({ id: folder.id, name: folder.name })
-  isInitialDir.value = false
-  await loadShareFiles(folder.id)
-}
-
-// 获取初始目录 ID（根据平台）
-const getInitialDirId = () => {
-  const account = accounts.value.find(acc => acc.id === form.value.account_id)
-
-  if (account?.platform === 'quark') {
-    // 夸克平台：从 URL 中解析 pdirFID
-    const match = form.value.share_url.match(/\/s\/(\w+)#\/list\/share\/(\w+)/)
-    if (match && match[2] && match[2] !== '0') {
-      return match[2]
-    }
-  } else if (account?.platform === '139') {
-    // 139 平台：使用 share_parent_id
-    return form.value.share_parent_id || ''
-  }
-
-  return ''
-}
-
-// 点击面包屑导航
-const navigateToBreadcrumb = async (index) => {
-  if (index === -1) {
-    // 返回根目录
-    breadcrumbs.value = []
-    const rootId = getInitialDirId()
-    currentParentId.value = rootId
-    isInitialDir.value = true
-    await loadShareFiles(rootId)
-  } else {
-    breadcrumbs.value = breadcrumbs.value.slice(0, index + 1)
-    const navigatedId = breadcrumbs.value[index].id
-    currentParentId.value = navigatedId
-    // 判断是否回到了初始目录
-    const initialDirId = getInitialDirId()
-    isInitialDir.value = initialDirId
-      ? navigatedId === initialDirId
-      : breadcrumbs.value.length === 0
-    await loadShareFiles(navigatedId)
-  }
-}
-
-const handleStartFileTableChange = (row) => {
-  if (row) {
-    tempStartFileId.value = row.id
-  }
-}
-
-// 双击行处理：文件夹进入，文件选中（仅在 startFile 模式的初始目录下）
-const handleRowDblClick = (row) => {
-  if (browseMode.value === 'startFile' && !row.is_folder && isInitialDir.value) {
-    tempStartFileId.value = row.id
-    confirmStartFileSelection()
-  }
-}
-
-const confirmStartFileSelection = () => {
-  if (tempStartFileId.value) {
-    form.value.start_file_id = tempStartFileId.value
-    const selected = shareFiles.value.find(f => f.id === tempStartFileId.value)
-    if (selected) {
-      form.value.start_file_name = selected.name
-      selectedStartFileName.value = selected.name
-    }
-  }
-  startFileDialogVisible.value = false
-}
-
-// 确认选择目录作为新的分享链接
-const confirmSelectShareUrl = () => {
-  // 根据平台生成新的分享链接
-  const account = accounts.value.find(acc => acc.id === form.value.account_id)
-  if (!account) return
-
-  const originalUrl = form.value.share_url
-  let newUrl = originalUrl
-
-  // 获取当前目录 ID（根目录时使用默认值）
-  const currentDirId = currentParentId.value || ''
-
-  if (account.platform === 'quark') {
-    // 夸克网盘：替换 URL 中的 pdirFID
-    // 格式：https://pan.quark.cn/s/{pwdID}#/list/share/{pdirFID}
-    const match = originalUrl.match(/\/s\/(\w+)/)
-    if (match) {
-      const pwdID = match[1]
-      // 根目录时使用 "0"，子目录时使用 currentDirId
-      const pdirFID = currentDirId || '0'
-      newUrl = `https://pan.quark.cn/s/${pwdID}#/list/share/${pdirFID}`
-    }
-    // 夸克网盘不需要 share_parent_id，清空它
-    form.value.share_parent_id = ''
-  } else if (account.platform === '139') {
-    // 移动云盘：URL 不变，但存储 share_parent_id
-    // 139 通过 pCaID 区分目录，URL 格式不变
-    form.value.share_parent_id = currentDirId || ''
-    newUrl = originalUrl
-  }
-
-  form.value.share_url = newUrl
-  // 清空起始文件选择
-  form.value.start_file_id = ''
-  form.value.start_file_name = ''
-  selectedStartFileName.value = ''
-
-  // 记录选中的目录名称
-  selectedDirName.value = currentDirName.value
-
-  ElMessage.success(`已选择目录：${currentDirName.value}`)
-  startFileDialogVisible.value = false
-}
-
-// 重置为根目录
-const resetToShareRoot = () => {
-  const account = accounts.value.find(acc => acc.id === form.value.account_id)
-  if (!account) return
-
-  if (account.platform === 'quark') {
-    // 从 URL 中提取 pwdID，重建根目录 URL
-    const match = form.value.share_url.match(/\/s\/([^#]+)/)
-    if (match) {
-      form.value.share_url = `https://pan.quark.cn/s/${match[1]}#/list/share/0`
-    }
-  } else {
-    // 139 平台：清空 share_parent_id
-    form.value.share_parent_id = ''
-  }
-  // 清空起始文件选择
-  form.value.start_file_id = ''
-  form.value.start_file_name = ''
-  selectedStartFileName.value = ''
-  // 清空目录名称记录
-  selectedDirName.value = ''
-  ElMessage.success('已重置为根目录')
-}
-
-const clearStartFile = () => {
-  form.value.start_file_id = ''
-  form.value.start_file_name = ''
-  selectedStartFileName.value = ''
-  tempStartFileId.value = ''
-  startFileDialogVisible.value = false
-}
-
-let pollTimer = null
-
+// ---- 数据获取 ----
 const fetchList = async (silent = false) => {
   if (!silent) loading.value = true
   try {
@@ -1159,104 +117,62 @@ const fetchList = async (silent = false) => {
   }
 }
 
-// 加载网盘目录树
-const loadFolders = async (node, resolve) => {
-  if (!form.value.account_id) {
-    return resolve([])
-  }
-  
-  if (node.level === 0) {
-    pathIdMap.value['/'] = '' 
-    return resolve([{ label: '根目录', path: '/', id: '', isLeaf: false }])
-  }
+// ---- 在新标签页打开链接 ----
+const openExternalLink = async (url, extractCode) => {
+  if (!url) return
+  let finalUrl = url
+  if (extractCode) {
+    try {
+      const urlObj = new URL(url)
+      urlObj.searchParams.set('pwd', extractCode)
+      finalUrl = urlObj.toString()
+    } catch (e) {
+      finalUrl = url.includes('?')
+        ? `${url}&pwd=${extractCode}`
+        : `${url}?pwd=${extractCode}`
+    }
 
-  const parentID = node.data.id
-  const parentPath = node.data.path
-  
-  // 仅在根目录加载时显示全局遮罩，子目录展开将利用 Tree 自带的 node-loading
-  if (node.level === 1) {
-    loadingFolders.value = true
-  }
-  
-  try {
-    const folders = await getFolders(form.value.account_id, parentID, parentPath)
-    
-    // 异步更新映射表，不阻塞渲染
-    setTimeout(() => {
-      const newMappings = {}
-      folders.forEach(f => {
-        newMappings[f.path] = f.id
-      })
-      Object.assign(pathIdMap.value, newMappings)
-    }, 0)
-    
-    resolve(folders)
-  } catch (err) {
-    console.error('加载目录失败:', err)
-    resolve([])
-  } finally {
-    if (node.level === 1) {
-      loadingFolders.value = false
+    try {
+      await navigator.clipboard.writeText(extractCode)
+      ElMessage.success(`提取码 ${extractCode} 已复制，请在新页面粘贴`)
+    } catch (err) {
+      console.warn('复制提取码失败:', err)
     }
   }
+  window.open(finalUrl, '_blank')
 }
 
-// 内嵌新建文件夹处理
-const handleInlineCreateFolder = async () => {
-  if (!newFolderName.value.trim()) {
-    return ElMessage.warning('请输入文件夹名称')
-  }
-  
-  const currentPath = selectedTreePath.value || '/'
-  const currentID = selectedTreeId.value || '' 
+// ---- 重置为根目录 ----
+const resetToShareRoot = () => {
+  const form = taskFormRef.value?.getFormData()
+  if (!form) return
+  const account = accounts.value.find(acc => acc.id === form.account_id)
+  if (!account) return
 
-  if (folderTreeRef.value) {
-    const currentNode = folderTreeRef.value.getNode(currentPath)
-    if (currentNode && currentNode.childNodes) {
-      const isDuplicate = currentNode.childNodes.some(
-        child => child.data && child.data.label === newFolderName.value.trim()
-      )
-      if (isDuplicate) {
-        return ElMessage.warning('该目录下已存在同名文件夹')
-      }
+  if (account.platform === 'quark') {
+    const match = form.share_url.match(/\/s\/([^#]+)/)
+    if (match) {
+      form.share_url = `https://pan.quark.cn/s/${match[1]}#/list/share/0`
     }
+  } else {
+    form.share_parent_id = ''
   }
-
-  creatingFolder.value = true
-  try {
-    const res = await createFolder(form.value.account_id, currentID, currentPath, newFolderName.value.trim())
-    ElMessage.success('文件夹创建成功')
-    pathIdMap.value[res.path] = res.id
-    
-    if (folderTreeRef.value) {
-      const currentNode = folderTreeRef.value.getNode(currentPath)
-      if (currentNode) {
-        folderTreeRef.value.append(res, currentNode)
-        currentNode.expanded = true
-      }
-      selectedTreePath.value = res.path
-      selectedTreeId.value = res.id
-      folderTreeRef.value.setCurrentKey(res.path)
-    }
-    newFolderName.value = ''
-  } catch (err) {
-    console.error('创建文件夹失败:', err)
-  } finally {
-    creatingFolder.value = false
-  }
+  form.start_file_id = ''
+  form.start_file_name = ''
+  ElMessage.success('已重置为根目录')
 }
 
-// 重命名预览处理
+// ---- 预览 ----
 const handlePreview = async () => {
-  if (!form.value.account_id || !form.value.share_url) {
+  const form = taskFormRef.value?.getFormData()
+  if (!form?.account_id || !form?.share_url) {
     return ElMessage.warning('请先填写执行账号和分享链接')
   }
-  
+
   previewLoading.value = true
   try {
-    const data = await previewTask(form.value)
-    previewData.value = data
-    previewVisible.value = true
+    const data = await previewTask(form)
+    taskFormRef.value?.setPreviewData(data)
   } catch (err) {
     console.error(err)
   } finally {
@@ -1264,138 +180,79 @@ const handlePreview = async () => {
   }
 }
 
-// 切换账号处理
-const handleAccountChange = () => {
-  form.value.save_path = '/'
-  form.value.start_file_id = ''
-  form.value.start_file_name = ''
-  selectedStartFileName.value = ''
-  pathIdMap.value = { '/': '' }
+// ---- 查看分享内容弹窗 ----
+const handleViewShareContent = (item) => {
+  taskFormRef.value?.openShareContentDialog(item)
 }
 
-const openFolderDialog = () => {
-  if (!form.value.account_id) {
-    return ElMessage.warning('请先选择执行账号')
-  }
-  loadingFolders.value = true
-  const initialPath = form.value.save_path || '/'
-  selectedTreePath.value = initialPath
-  // 尝试从映射表中恢复 ID，若是根目录则默认为空字符串
-  selectedTreeId.value = pathIdMap.value[initialPath] || (initialPath === '/' ? '' : '')
-  newFolderName.value = ''
-  folderDialogVisible.value = true
-}
-
-const handleTreeCurrentChange = (data) => {
-  if (data) {
-    selectedTreePath.value = data.path
-    selectedTreeId.value = data.id
-  }
-}
-
-const confirmFolderSelection = () => {
-  if (selectedTreePath.value) {
-    form.value.save_path = selectedTreePath.value
-  }
-  folderDialogVisible.value = false
-}
-
+// ---- 打开新建对话框 ----
 const openAddDialog = () => {
-  smartInput.value = ''
-  form.value = {
-    id: null,
-    name: '',
-    account_id: '',
-    share_url: '',
-    extract_code: '',
-    save_path: '/',
-    pattern: '',
-    replacement: '',
-    start_file_id: '',
-    start_file_name: '',
-    share_parent_id: '',
-    cron: '',
-    schedule_mode: 'global',
-    max_retries: 3,
-    ignore_extension: false
-  }
-  shareFiles.value = []
-  selectedStartFileName.value = ''
-  selectedDirName.value = ''
-  cronPreset.value = ''
-  dialogVisible.value = true
+  taskFormRef.value?.open(getDefaultFormData())
 }
 
-const handleEdit = async (row) => {
-  smartInput.value = ''
-  shareFiles.value = []
-  
-  form.value = {
-    id: row.id,
-    name: row.name,
-    account_id: row.account_id,
-    share_url: row.share_url,
-    extract_code: row.extract_code,
-    save_path: row.save_path,
-    pattern: row.pattern,
-    replacement: row.replacement,
-    start_file_id: row.start_file_id,
-    start_file_name: row.start_file_name,
-    share_parent_id: row.share_parent_id || '',
-    cron: row.cron,
-    schedule_mode: row.schedule_mode || 'global',
-    max_retries: row.max_retries ?? 3,
-    ignore_extension: row.ignore_extension ?? false
+// ---- 编辑任务 ----
+const handleEdit = (row) => {
+  // TaskCard 传递的是 id，需要找到完整对象
+  const taskRow = (typeof row === 'object' && row.id) ? row : taskList.value.find(t => t.id === row)
+  if (!taskRow) return
+
+  const formData = {
+    id: taskRow.id,
+    name: taskRow.name,
+    account_id: taskRow.account_id,
+    share_url: taskRow.share_url,
+    extract_code: taskRow.extract_code,
+    save_path: taskRow.save_path,
+    pattern: taskRow.pattern,
+    replacement: taskRow.replacement,
+    start_file_id: taskRow.start_file_id,
+    start_file_name: taskRow.start_file_name,
+    share_parent_id: taskRow.share_parent_id || '',
+    cron: taskRow.cron,
+    schedule_mode: taskRow.schedule_mode || 'global',
+    max_retries: taskRow.max_retries ?? 3,
+    ignore_extension: taskRow.ignore_extension ?? false
   }
 
-  // 初始化定时配置状态
-  if (form.value.schedule_mode === 'custom' && row.cron) {
-    const presets = ['0 0 * * * *', '0 0 */6 * * *', '0 0 2 * * *', '0 0 2 * * 1']
-    cronPreset.value = presets.includes(row.cron) ? row.cron : 'custom'
+  let startFileName = ''
+  if (taskRow.start_file_id) {
+    startFileName = taskRow.start_file_name || `ID: ${taskRow.start_file_id} (文件名未记录)`
+  }
+
+  let dirName = ''
+  if (taskRow.share_parent_id) {
+    dirName = '已选子目录'
   } else {
-    cronPreset.value = ''
+    const match = (taskRow.share_url || '').match(/\/s\/(\w+)#\/list\/share\/(\w+)/)
+    dirName = (match && match[2] && match[2] !== '0') ? '已选子目录' : ''
   }
 
-  if (row.start_file_id) {
-    selectedStartFileName.value = row.start_file_name || `ID: ${row.start_file_id} (文件名未记录)`
-  } else {
-    selectedStartFileName.value = ''
-  }
-
-  // 如果已有子目录选择，初始化目录名称（无法从 ID 反推，显示占位文本）
-  if (row.share_parent_id) {
-    selectedDirName.value = '已选子目录'
-  } else {
-    // Quark 平台检查 URL 中的 pdirFID
-    const match = (row.share_url || '').match(/\/s\/(\w+)#\/list\/share\/(\w+)/)
-    selectedDirName.value = (match && match[2] && match[2] !== '0') ? '已选子目录' : ''
-  }
-
-  dialogVisible.value = true
+  taskFormRef.value?.openEdit(formData, startFileName, dirName)
 }
 
+// ---- 提交表单 ----
 const submitForm = async () => {
-  if (!form.value.name || !form.value.account_id || !form.value.share_url) {
+  const form = taskFormRef.value?.getFormData()
+  if (!form?.name || !form?.account_id || !form?.share_url) {
     return ElMessage.warning('请填写必要的信息')
   }
-  
+
   submitting.value = true
   try {
-    if (form.value.id) {
-      const updatedTask = await updateTask(form.value.id, form.value)
-      // 原地更新列表中的任务数据
-      const idx = taskList.value.findIndex(t => t.id === form.value.id)
+    if (form.id) {
+      const updatedTask = await updateTask(form.id, form)
+      const idx = taskList.value.findIndex(t => t.id === form.id)
       if (idx > -1) {
-        // 合并数据，保留可能需要的关联对象（如 account）
         Object.assign(taskList.value[idx], updatedTask)
       }
       ElMessage.success('任务更新成功')
     } else {
-      await createTask(form.value)
+      await createTask(form)
       ElMessage.success('任务保存成功')
-      fetchList() // 新增任务还是刷新一下列表比较稳妥
+      fetchList()
     }
-    dialogVisible.value = false
+    // 关闭抽屉
+    taskFormRef.value?.close()
   } catch (err) {
     console.error(err)
     ElMessage.error('保存失败: ' + (err.response?.data?.error || err.message || '未知错误'))
@@ -1404,13 +261,14 @@ const submitForm = async () => {
   }
 }
 
+// ---- 运行任务 ----
 const handleRun = async (row) => {
+  const taskId = (typeof row === 'object' && row.id) ? row.id : row
+  const taskRow = (typeof row === 'object' && row.id) ? row : taskList.value.find(t => t.id === row)
   try {
-    await runTask(row.id)
-    // 立即在前端反馈状态，避免等待轮询
-    // 增加检查，防止覆盖已经由 SSE 更新的成功状态
-    if (row.status !== 'success') {
-      row.status = 'running'
+    await runTask(taskId)
+    if (taskRow && taskRow.status !== 'success') {
+      taskRow.status = 'running'
     }
     ElMessage.success('任务已提交执行队列')
   } catch (err) {
@@ -1418,13 +276,13 @@ const handleRun = async (row) => {
   }
 }
 
+// ---- 全部运行 ----
 const handleRunAll = async () => {
   runningAll.value = true
   try {
     const res = await runAllTasks()
     ElMessage.success(res.message || `批量执行已开启，已成功触发 ${res.count} 个任务`)
-    
-    // 立即在前端反馈所有满足条件的任务状态
+
     taskList.value.forEach(task => {
       const isFatal = task.message && task.message.includes('[Fatal]')
       if (task.status !== 'running' && task.status !== 'success' && !isFatal) {
@@ -1438,86 +296,73 @@ const handleRunAll = async () => {
   }
 }
 
+// ---- 删除任务 ----
 const handleDelete = (row) => {
+  const taskId = (typeof row === 'object' && row.id) ? row.id : row
   ElMessageBox.confirm('确定要删除此转存任务吗？', '确认', {
     type: 'warning'
   }).then(async () => {
-    await deleteTask(row.id)
+    await deleteTask(taskId)
     ElMessage.success('任务已删除')
     fetchList()
-  })
+  }).catch(() => {})
 }
 
-
-
-let eventSource = null
-
-const initSSE = () => {
-  eventSource = new EventSource('/api/dashboard/logs')
-  eventSource.onmessage = (event) => {
-    const msg = event.data
-    if (msg.includes('[EVENT:')) {
-      const match = msg.match(/\[EVENT:(.+)\]/)
-      if (match) {
-        try {
-          const ev = JSON.parse(match[1])
-          if (ev.type === 'task_update' && ev.task) {
-            const idx = taskList.value.findIndex(t => t.id === ev.task.id)
-            if (idx > -1) {
-              const row = taskList.value[idx]
-              // 手动更新进度相关字段，确保触发响应式，同时防止覆盖 account 信息
-              row.status = ev.task.status
-              row.message = ev.task.message
-              row.last_run = ev.task.last_run
-              row.percent = ev.task.percent
-              row.stage = ev.task.stage
-              // 同步配置字段，避免多标签页下看到过期值
-              if (ev.task.max_retries !== undefined) row.max_retries = ev.task.max_retries
-              if (ev.task.ignore_extension !== undefined) row.ignore_extension = ev.task.ignore_extension
-
-              // 如果任务完成或失败，额外执行一次列表同步以确保最终一致性
-              if (ev.task.status === 'success' || ev.task.status === 'failed') {
-                fetchList(true)
-              }
-            } else {
-              // 如果是新任务且列表里没有（可能是刚创建的），刷新一次列表
-              fetchList()
-            }
-          } else if (ev.type === 'task_delete') {
-            const idx = taskList.value.findIndex(t => t.id === ev.taskId)
-            if (idx > -1) {
-              taskList.value.splice(idx, 1)
-            }
-          }
-        } catch (e) {
-          console.error('解析实时事件失败:', e)
-        }
-      }
-    }
-  }
-}
+// ---- SSE 事件处理 ----
+let unsubSSE = null
+let offTaskUpdate = null
+let offTaskDelete = null
 
 onMounted(async () => {
   await fetchList()
   fetchGlobalSettings()
-  initSSE()
 
+  unsubSSE = sseStore.subscribe()
+
+  offTaskUpdate = sseStore.on('task_update', (ev) => {
+    if (!ev.task) return
+    const task = ev.task
+    const idx = taskList.value.findIndex(t => t.id === task.id)
+    if (idx > -1) {
+      const row = taskList.value[idx]
+      row.status = task.status
+      row.message = task.message
+      row.last_run = task.last_run
+      row.percent = task.percent
+      row.stage = task.stage
+      if (task.max_retries !== undefined) row.max_retries = task.max_retries
+      if (task.ignore_extension !== undefined) row.ignore_extension = task.ignore_extension
+
+      if (task.status === 'success' || task.status === 'failed') {
+        fetchList(true)
+      }
+    } else {
+      fetchList()
+    }
+  })
+
+  offTaskDelete = sseStore.on('task_delete', (ev) => {
+    taskList.value = taskList.value.filter(t => t.id !== ev.taskId)
+  })
+
+  // 从搜索页跳转创建任务
   if (route.query.share_url) {
     openAddDialog()
-    form.value.share_url = route.query.share_url
-    if (route.query.title) {
-      form.value.name = `转存-${route.query.title}`
-    }
-    if (route.query.platform) {
-      const match = accounts.value.find(a => a.platform === route.query.platform)
-      if (match) {
-        form.value.account_id = match.id
-        handleAccountChange()
+    const form = taskFormRef.value?.getFormData()
+    if (form) {
+      form.share_url = route.query.share_url
+      if (route.query.title) {
+        form.name = `转存-${route.query.title}`
       }
-    }
-    // 从搜索页带来的子目录 ID（139 平台）
-    if (route.query.share_parent_id) {
-      form.value.share_parent_id = route.query.share_parent_id
+      if (route.query.platform) {
+        const match = accounts.value.find(a => a.platform === route.query.platform)
+        if (match) {
+          form.account_id = match.id
+        }
+      }
+      if (route.query.share_parent_id) {
+        form.share_parent_id = route.query.share_parent_id
+      }
     }
   }
 
@@ -1527,30 +372,30 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (eventSource) eventSource.close()
+  if (offTaskDelete) offTaskDelete()
+  if (offTaskUpdate) offTaskUpdate()
+  if (unsubSSE) unsubSSE()
   document.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
 const handleKeydown = (e) => {
-  // Ctrl+S: 保存任务（弹窗打开时）
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault()
-    if (dialogVisible.value) {
+    if (taskFormRef.value?.isOpen()) {
       submitForm()
     }
   }
-  // Ctrl+R: 运行所有任务
   if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
     e.preventDefault()
-    if (!dialogVisible.value) {
+    if (!taskFormRef.value?.isOpen()) {
       handleRunAll()
     }
   }
 }
 
 const handleBeforeUnload = (e) => {
-  if (dialogVisible.value) {
+  if (taskFormRef.value?.isOpen()) {
     e.preventDefault()
     e.returnValue = ''
   }
@@ -1563,19 +408,6 @@ const handleBeforeUnload = (e) => {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 16px;
-}
-
-.task-filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.form-tip {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 4px;
 }
 
 .header-actions {
@@ -1598,396 +430,9 @@ const handleBeforeUnload = (e) => {
   font-size: 15px;
 }
 
-.global-settings-card {
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--brand-50) 0%, var(--bg-content) 100%);
-  border: 1px solid var(--brand-200);
-}
-
-.global-settings-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-.setting-info {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.setting-icon {
-  font-size: 24px;
-  color: var(--brand-600);
-  background: var(--bg-content);
-  padding: 10px;
-  border-radius: 10px;
-  box-shadow: var(--shadow-sm);
-}
-
-.setting-text {
-  display: flex;
-  flex-direction: column;
-}
-
-.setting-title {
-  font-weight: 700;
-  font-size: 16px;
-  color: var(--text-primary);
-}
-
-.setting-desc {
-  font-size: 13px;
-  color: var(--neutral-500);
-  margin-top: 2px;
-}
-
-.setting-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.action-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.action-label {
-  font-size: 13px;
-  color: var(--neutral-600);
-  font-weight: 500;
-}
-
-.schedule-tag {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.schedule-sub {
-  font-size: 11px;
-  color: var(--neutral-500);
-  font-family: var(--font-mono);
-}
-
-.schedule-sub.disabled {
-  color: var(--color-danger);
-}
-
-.schedule-mode-selector {
-  margin-bottom: 10px;
-}
-
-.task-name-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.task-name-cell .name {
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.status-inner {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.icon-spin {
-  animation: rotate 2s linear infinite;
-}
-
-@keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.path-input-group {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.start-id-tip {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--neutral-500);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.id-code {
-  background-color: var(--neutral-100);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  color: var(--brand-600);
-  max-width: 300px;
-  display: inline-block;
-  vertical-align: bottom;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.share-files-dialog-content {
-  padding: 10px 0;
-}
-
-.share-tips {
-  font-size: 12px;
-  color: var(--neutral-400);
-  margin-top: 8px;
-}
-
-.save-path-input {
-  width: 100%;
-}
-
-.save-path-input :deep(.el-input-group__prepend) {
-  background-color: var(--neutral-100);
-  color: var(--neutral-600);
-  font-weight: 700;
-}
-
-.folder-tree-container {
-  height: 400px;
-  overflow-y: auto;
-  border: 1px solid var(--neutral-200);
-  border-radius: 8px;
-  padding: 8px;
-}
-
-.folder-dialog-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.create-folder-action {
-  flex: 1;
-  margin-right: 20px;
-  max-width: 300px;
-}
-
-.dialog-actions {
-  flex-shrink: 0;
-}
-
-.preview-action {
-  display: flex;
-  justify-content: center;
-  margin-top: 12px;
-}
-
-.preview-tips {
-  margin-top: 16px;
-  color: var(--neutral-500);
-  font-size: 13px;
-}
-
-.preview-tips p {
-  margin: 4px 0;
-}
-
-.filtered-text {
-  color: var(--neutral-400);
-  font-style: italic;
-}
-
-.matched-text {
-  color: var(--color-success);
-  font-weight: 500;
-}
-
-.unmatched-text {
-  color: var(--color-warning);
-}
-
-.existed-row {
-  background-color: var(--neutral-100) !important;
-  color: var(--neutral-400);
-}
-
-.existed-row span {
-  opacity: 0.8;
-}
-
-.existed-tag {
-  margin-left: 8px;
-  flex-shrink: 0;
-}
-
-:deep(.el-tree-node__children) {
-  transition: none !important;
-}
-:deep(.el-collapse-transition-leave-active),
-:deep(.el-collapse-transition-enter-active) {
-  transition: none !important;
-  display: none !important;
-}
-
-.naked-radio :deep(.el-radio__label) {
-  display: none !important;
-}
-
-.custom-tree-node {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.name-main {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-}
-
-.name-sub-column {
-  font-size: 13px;
-  color: var(--neutral-500);
-}
-
-.account-option-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  gap: 12px;
-}
-
-.acc-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow: hidden;
-}
-
-.acc-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.acc-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.acc-cap {
-  font-size: 12px;
-  color: var(--neutral-400);
-}
-
-.breadcrumb-nav {
-  padding: 8px 0;
-  display: flex;
-  align-items: center;
-}
-
-.breadcrumb-link {
-  color: var(--brand-600);
-  cursor: pointer;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.breadcrumb-link:hover {
-  text-decoration: underline;
-}
-
-.folder-clickable {
-  cursor: pointer;
-}
-
-.folder-clickable:hover {
-  color: var(--brand-600);
-}
-
-.share-url-row {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-}
-
-.share-url-row .el-input {
-  flex: 1;
-}
-
-.share-url-actions .el-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.subdir-hint {
-  margin-top: 6px;
-}
-
-.subdir-hint .el-tag {
-  cursor: default;
-}
-
-.card-view-container {
-  min-height: 300px;
-}
-
 .view-toggle :deep(.el-radio-button__inner) {
   padding: 8px 12px;
   display: flex;
   align-items: center;
-}
-
-.search-replace-bar {
-  margin-bottom: 16px;
-}
-
-.search-replace-results {
-  min-height: 200px;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.search-result-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.result-info {
-  flex: 1;
-  overflow: hidden;
-}
-
-.result-title {
-  display: block;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.result-source {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.result-actions {
-  display: flex;
-  gap: 8px;
-  margin-left: 16px;
 }
 </style>
