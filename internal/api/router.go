@@ -34,12 +34,14 @@ func InitRouter(wm *worker.Manager, version, commit, date string) *gin.Engine {
 	appDate = date
 	r := gin.Default()
 
-	// 基础 API 路由组
-	api := r.Group("/api")
-	{
-		api.GET("/version", getVersion)
-		api.GET("/magic_patterns", listMagicPatterns)
+	// 公开端点：无需认证（版本号和魔法正则规则列表）
+	r.GET("/api/version", getVersion)
+	r.GET("/api/magic_patterns", listMagicPatterns)
 
+	// 需要 Token 认证的 API 路由组（未配置 UCAS_API_KEY 时自动跳过）
+	api := r.Group("/api")
+	api.Use(authMiddleware())
+	{
 		api.GET("/accounts", listAccounts)
 		api.POST("/accounts", createAccount)
 		api.PUT("/accounts/:id", updateAccount)
@@ -104,7 +106,7 @@ func InitRouter(wm *worker.Manager, version, commit, date string) *gin.Engine {
 		path := c.Request.URL.Path
 		// 1. 如果是 API 请求，直接返回 404
 		if strings.HasPrefix(path, "/api") {
-			c.JSON(http.StatusNotFound, gin.H{"error": "API route not found"})
+			c.PureJSON(http.StatusNotFound, gin.H{"error": "API route not found"})
 			return
 		}
 
