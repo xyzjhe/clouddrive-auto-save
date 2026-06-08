@@ -1,0 +1,16 @@
+.git/
+.github/
+bin/
+e2e/
+docs/
+node_modules/
+web/node_modules/
+coverage.out
+*.md
+!README.md
+.claude/
+.vscode/
+.idea/
+*.test
+*.out
+data/

@@ -35,9 +35,12 @@ FROM alpine:latest
 # 安装运行环境依赖
 RUN apk add --no-cache ca-certificates tzdata
 
+# 创建非 root 用户
+RUN adduser -D -u 1000 ucas
+
 WORKDIR /app
-COPY --from=server-builder /app/ucas .
-COPY --from=web-builder /app/web/dist ./web/dist
+COPY --from=server-builder --chown=ucas:ucas /app/ucas .
+COPY --from=web-builder --chown=ucas:ucas /app/web/dist ./web/dist
 
 # 配置环境变量默认值
 ENV LOG_LEVEL=INFO
@@ -45,7 +48,9 @@ ENV DB_PATH=/app/data/data.db
 ENV TZ=Asia/Shanghai
 
 # 创建数据目录
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data && chown ucas:ucas /app/data
+
+USER ucas
 
 EXPOSE 8080
 CMD ["./ucas"]
