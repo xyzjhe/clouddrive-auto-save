@@ -28,7 +28,7 @@ COPY . .
 COPY --from=web-builder /app/web/dist ./internal/api/dist
 ARG VERSION=latest
 # 设置 CGO_ENABLED=0 并使用目标架构参数进行极速交叉编译
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -tags embed -ldflags="-s -w -X main.version=${VERSION}" -o ucas cmd/server/main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -tags embed -ldflags="-s -w -X main.version=${VERSION}" -o ucas ./cmd/server/
 
 # --- 第三阶段：最终镜像 (适配目标架构) ---
 FROM alpine:latest

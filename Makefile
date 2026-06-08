@@ -46,7 +46,7 @@ dev:
 	@echo "=> Starting Vue 3 dev server (DEBUG mode)..."
 	@cd $(WEB_DIR) && LOG_LEVEL=DEBUG npm run dev &
 	@echo "=> Starting Go backend server (DEBUG mode)..."
-	@go mod tidy && LOG_LEVEL=DEBUG go run cmd/server/main.go &
+	@go mod tidy && LOG_LEVEL=DEBUG go run ./cmd/server/ &
 	@echo "=> Dev servers started. Frontend: :5173, Backend: :8080"
 	@echo "=> Press Ctrl+C to stop both servers."
 	@wait
@@ -74,7 +74,7 @@ dev-server:
 	fi
 	@echo "=> Starting Go backend server (DEBUG mode)..."
 	go mod tidy
-	LOG_LEVEL=DEBUG go run cmd/server/main.go
+	LOG_LEVEL=DEBUG go run ./cmd/server/
 
 # ------------------------------------------
 # 构建打包 (Build)
@@ -93,7 +93,7 @@ build-server: build-web
 	@echo "=> Building backend binary ($(VERSION))..."
 	go mod tidy
 	mkdir -p $(BIN_DIR)
-	go build $(GO_BUILD_FLAGS) -ldflags "$(LDFLAGS)" -o $(APP_NAME) ./cmd/server/main.go
+	go build $(GO_BUILD_FLAGS) -ldflags "$(LDFLAGS)" -o $(APP_NAME) ./cmd/server/
 	@echo "=> Build successful! Binary generated: $(APP_NAME)"
 
 ## build: 完整构建流程的快捷别名 (等同于 build-server)
