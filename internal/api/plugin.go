@@ -2,10 +2,12 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zcq/clouddrive-auto-save/internal/core/plugin"
+	"github.com/zcq/clouddrive-auto-save/internal/db"
 )
 
 // PluginHandler 插件 API 处理器
@@ -44,7 +46,7 @@ func (h *PluginHandler) GetPlugin(c *gin.Context) {
 
 // UpdatePluginConfig 更新插件配置
 func (h *PluginHandler) UpdatePluginConfig(c *gin.Context) {
-	_ = c.Param("name")
+	name := c.Param("name")
 
 	var config map[string]interface{}
 	if err := c.ShouldBindJSON(&config); err != nil {
@@ -52,6 +54,20 @@ func (h *PluginHandler) UpdatePluginConfig(c *gin.Context) {
 		return
 	}
 
-	// TODO: 实现配置更新逻辑
+	// 校验插件是否存在
+	_, exists := h.manager.GetPlugin(name)
+	if !exists {
+		c.PureJSON(http.StatusNotFound, gin.H{"error": "插件不存在"})
+		return
+	}
+
+	// 持久化配置到 Setting 表
+	configJSON, err := json.Marshal(config)
+	if err != nil {
+		c.PureJSON(http.StatusInternalServerError, gin.H{"error": "序列化配置失败"})
+		return
+	}
+	db.DB.Save(&db.Setting{Key: "plugin_config_" + name, Value: string(configJSON)})
+
 	c.PureJSON(http.StatusOK, gin.H{"message": "配置已更新"})
 }
