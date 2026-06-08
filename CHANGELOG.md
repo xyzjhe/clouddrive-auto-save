@@ -2,10 +2,51 @@
 
 ## [Unreleased]
 
+（暂无）
+
+## [1.6.0] - 2026-06-08
+
 ### ✨ 核心特性 (Features)
 
+- **API 静态 Token 认证**：新增 `UCAS_API_KEY` 环境变量，支持 `X-API-Key` 请求头和 `?token=` 查询参数认证，为空则跳过（向后兼容）。
+- **凭据 AES-GCM 加密存储**：新增 `UCAS_SECRET_KEY` 环境变量（64 字符 hex），Cookie/AuthToken 使用 AES-256-GCM 加密后存入数据库，启动时自动迁移明文凭据。
+- **SSE Pinia Store 统一管理**：新建 `web/src/stores/sse.js`，Dashboard/Tasks/Search 三视图共享单一 EventSource 连接，支持引用计数和指数退避重连。
+- **插件配置更新 API**：`PUT /api/plugins/:name/config` 从 TODO stub 改为完整实现，配置持久化到 Setting 表。
 - **任务重试机制**：失败任务自动分类（致命/可恢复），可恢复错误按指数退避重试（30s→60s→120s→...→最大 3600s），支持配置最大重试次数和忽略后缀去重。
-- **凭证安全**：`GET /api/accounts` 返回 DTO（排除 Cookie/AuthToken），`GET /api/settings/global` 对含 token/key/password 的配置值脱敏为 `***`。
+
+### 🔧 重构 (Refactoring)
+
+- **Task 输入 DTO 隔离**：新增 `taskInputDTO` 白名单结构体，`createTask`/`updateTask` 绑定 DTO 而非完整 `db.Task`，防止客户端篡改运行时状态字段。补全 `filter`/`run_days`/`start_date` 三个缺失字段。
+- **Account 凭据脱敏**：所有返回账号信息的端点统一通过 `toAccountDTO()` 输出，Cookie/AuthToken 不再出现在 API 响应中。
+- **前端组件拆分**：Tasks.vue（1993→438 行）拆分为 TaskTable/TaskForm/utils 子组件；Settings.vue（1112→145 行）拆分为 Schedule/Notify/Plugin/Search 子组件。
+- **API 响应格式统一**：全部端点统一为 `c.PureJSON`，消除 `c.JSON` 的 HTML 转义不一致问题。
+- **前端 API 标准化**：3 处原生 `fetch` 替换为 axios 统一调用，request.js 拦截器注入 API Key。
+- **预定义魔法匹配**：新增 `$TV`、`$BLACK_WORD`、`$SHOW_MAGIC`、`$TV_MAGIC` 四种预定义正则规则，任务中直接用 `$名称` 引用。
+
+### 🛡️ 安全 (Security)
+
+- **Docker 非 root 运行**：Dockerfile 添加 `ucas` 用户（UID 1000），容器不再以 root 身份运行。
+- **Mock 文件构建隔离**：4 个 mock 文件添加 `//go:build e2e` 标签，不编入生产二进制。
+- **CI latest 标签修复**：`docker-publish-main.yml` 的 `latest` 改为 `main`，避免与 tag 发布冲突。
+
+### 🐛 修复 (Bug Fixes)
+
+- **Broadcaster 竞态修复**：`Shutdown()` 与 `run()` 发送循环的竞态条件修复，通过 `defer closeAllClients()` 避免 send to closed channel panic。
+- **Worker context 及时释放**：4 处 `defer cancel()` 改为对应代码块结束后立即调用。
+- **Notify Manager 锁优化**：`Send`/`Test` 方法在 RLock 内只做快照，释放锁后再执行网络调用。
+- **quark json.Unmarshal 错误处理**：`SaveLink` 中 `json.Unmarshal` 添加错误检查。
+- **正则预编译**：cloud139 和 pansou 中 14 处函数内 `regexp.MustCompile` 提取为包级变量。
+- **IsEncrypted 误判修复**：从简单 `:` 检查改为验证 `base64(12B nonce):base64(ciphertext)` 格式。
+- **SSE addHistoryLogs 覆盖修复**：从替换改为追加，避免丢失实时日志。
+- **ScheduleSettings 键污染修复**：`fetchScheduleSettings` 只合并白名单内的 key，避免引入 bark_* 等无关 key。
+- **Makefile test 去重**：合并为单次运行，消除重复测试。
+- **drivers map 并发保护**：添加 `sync.RWMutex`。
+
+### 🎨 界面优化 (UI/UX)
+
+- **Dashboard 日志时间戳**：日志从纯字符串改为 `{text, time}` 对象格式，显示实际接收时间而非渲染时间。
+- **前端死代码清理**：删除未使用的 echarts 图表组件。
+- **vite 路径别名**：添加 `@` 路径别名支持。
 
 ### 🔧 重构 (Refactoring)
 
