@@ -40,10 +40,11 @@ func InitGlobal(dbInst *gorm.DB) error {
 		_ = Global.Register(NewWeChatNotifier())
 		_ = Global.Register(NewTelegramNotifier())
 		_ = Global.Register(NewWxPusherNotifier())
+		_ = Global.Register(NewBarkNotifier())
 	}
 
 	configs := make(map[string]*NotifierConfig)
-	channels := []string{"wechat", "telegram", "wxpusher"}
+	channels := []string{"wechat", "telegram", "wxpusher", "bark"}
 
 	for _, name := range channels {
 		var setting db.Setting
@@ -105,25 +106,33 @@ func (m *Manager) Init(configs map[string]*NotifierConfig) error {
 
 // Send 发送通知到所有启用的渠道
 func (m *Manager) Send(ctx context.Context, message *Message) error {
+	// 在读锁内只做快照，避免网络调用阻塞锁
+	type sendJob struct {
+		name     string
+		notifier Notifier
+		config   *NotifierConfig
+	}
+
 	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	var lastErr error
-
+	jobs := make([]sendJob, 0, len(m.notifiers))
 	for name, notifier := range m.notifiers {
 		config, exists := m.configs[name]
 		if !exists || !config.Enabled {
 			continue
 		}
-
 		// 检查是否应该发送
 		if !m.shouldSend(config, message.Level) {
 			continue
 		}
+		jobs = append(jobs, sendJob{name: name, notifier: notifier, config: config})
+	}
+	m.mu.RUnlock()
 
-		if err := notifier.Send(ctx, message); err != nil {
+	var lastErr error
+	for _, job := range jobs {
+		if err := job.notifier.Send(ctx, message); err != nil {
 			slog.Error("发送通知失败",
-				"notifier", name,
+				"notifier", job.name,
 				"error", err,
 			)
 			lastErr = err
@@ -148,9 +157,9 @@ func (m *Manager) shouldSend(config *NotifierConfig, level MessageLevel) bool {
 // Test 测试指定通知渠道
 func (m *Manager) Test(ctx context.Context, name string) error {
 	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	notifier, exists := m.notifiers[name]
+	m.mu.RUnlock()
+
 	if !exists {
 		return fmt.Errorf("通知渠道 %s 不存在", name)
 	}

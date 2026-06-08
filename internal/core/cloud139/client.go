@@ -31,6 +31,13 @@ const (
 	CatalogV1URL     = BaseURL + "/orchestration/personalCloud/catalog/v1.0"
 )
 
+// 包级预编译正则，避免每次调用时重复编译
+var (
+	rePhone         = regexp.MustCompile(`1\d{10}`)
+	reBareCode      = regexp.MustCompile(`^[a-zA-Z0-9_-]{4,32}$`)
+	reTrailingNoise = regexp.MustCompile(`[^\w\-./?:@&=#]+$`)
+)
+
 type Cloud139 struct {
 	account *db.Account
 	client  *http.Client
@@ -89,9 +96,8 @@ func jsEncodeURIComponent(str string) string {
 }
 
 func (c *Cloud139) getPhone() string {
-	re := regexp.MustCompile(`1\d{10}`)
-	if re.MatchString(c.account.AccountName) {
-		return re.FindString(c.account.AccountName)
+	if rePhone.MatchString(c.account.AccountName) {
+		return rePhone.FindString(c.account.AccountName)
 	}
 	auth := c.account.AuthToken
 	if auth != "" {
@@ -101,13 +107,13 @@ func (c *Cloud139) getPhone() string {
 		}
 		decoded, err := base64.StdEncoding.DecodeString(token)
 		if err == nil {
-			if match := re.FindString(string(decoded)); match != "" {
+			if match := rePhone.FindString(string(decoded)); match != "" {
 				return match
 			}
 		}
 	}
 	if c.account.Cookie != "" {
-		if match := re.FindString(c.account.Cookie); match != "" {
+		if match := rePhone.FindString(c.account.Cookie); match != "" {
 			return match
 		}
 	}
@@ -388,7 +394,6 @@ func (c *Cloud139) GetInfo(ctx context.Context) (*db.Account, error) {
 	c.account.Status = 1
 	c.account.LastCheck = time.Now()
 
-	rePhone := regexp.MustCompile(`1\d{10}`)
 	phoneNum := ""
 	if rePhone.MatchString(phone) {
 		phoneNum = rePhone.FindString(phone)
@@ -859,8 +864,7 @@ func (c *Cloud139) parseShareLink(input string) (string, string, string, error) 
 		return "", "", "", fmt.Errorf("empty share link")
 	}
 	// 剥离尾部非 URL 安全字符（搜索源数据常带 emoji、标签符号等）
-	reClean := regexp.MustCompile(`[^\w\-./?:@&=#]+$`)
-	trimmed = reClean.ReplaceAllString(trimmed, "")
+	trimmed = reTrailingNoise.ReplaceAllString(trimmed, "")
 	linkID, passwd, pCaID := "", "", "root"
 	urlStr := trimmed
 	if !strings.HasPrefix(strings.ToLower(urlStr), "http") {
@@ -868,8 +872,7 @@ func (c *Cloud139) parseShareLink(input string) (string, string, string, error) 
 	}
 	u, err := url.Parse(urlStr)
 	if err != nil {
-		reBare := regexp.MustCompile(`^[a-zA-Z0-9_-]{4,32}$`)
-		if reBare.MatchString(trimmed) {
+		if reBareCode.MatchString(trimmed) {
 			return trimmed, "", "root", nil
 		}
 		return "", "", "", fmt.Errorf("解析 URL 失败: %w", err)
@@ -905,8 +908,7 @@ func (c *Cloud139) parseShareLink(input string) (string, string, string, error) 
 			parts := strings.Split(strings.Trim(fragment, "/"), "/")
 			if len(parts) > 0 {
 				candidate := parts[len(parts)-1]
-				reBare := regexp.MustCompile(`^[a-zA-Z0-9_-]{4,32}$`)
-				if reBare.MatchString(candidate) {
+				if reBareCode.MatchString(candidate) {
 					linkID = candidate
 				}
 			}
@@ -917,8 +919,7 @@ func (c *Cloud139) parseShareLink(input string) (string, string, string, error) 
 		rawQ := u.RawQuery
 		// 去除可能的 key=value 对，只取裸 ID 部分
 		if rawQ != "" && !strings.Contains(rawQ, "=") {
-			reBare := regexp.MustCompile(`^[a-zA-Z0-9_-]{4,32}$`)
-			if reBare.MatchString(rawQ) {
+			if reBareCode.MatchString(rawQ) {
 				linkID = rawQ
 			}
 		}
@@ -927,16 +928,14 @@ func (c *Cloud139) parseShareLink(input string) (string, string, string, error) 
 		parts := strings.Split(strings.Trim(u.Path, "/"), "/")
 		if len(parts) > 0 {
 			candidate := parts[len(parts)-1]
-			reBare := regexp.MustCompile(`^[a-zA-Z0-9_-]{4,32}$`)
-			if reBare.MatchString(candidate) {
+			if reBareCode.MatchString(candidate) {
 				linkID = candidate
 			}
 		}
 	}
 	if linkID == "" {
 		// 裸 ID 输入（如 "105CqFasD8oLm"）补 https:// 后 host 即为 ID
-		reBare := regexp.MustCompile(`^[a-zA-Z0-9_-]{4,32}$`)
-		if reBare.MatchString(u.Host) {
+		if reBareCode.MatchString(u.Host) {
 			linkID = u.Host
 		}
 	}

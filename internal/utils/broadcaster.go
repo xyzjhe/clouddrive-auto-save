@@ -56,6 +56,7 @@ type Broadcaster struct {
 	messages   chan string
 	history    *ringBuffer // 环形缓冲区存储最近的 50 条日志
 	mu         sync.Mutex
+	done       chan struct{} // 优雅关闭信号
 }
 
 const historyCapacity = 50
@@ -74,12 +75,16 @@ func NewBroadcaster() *Broadcaster {
 		unregister: make(chan chan string),
 		messages:   make(chan string, 1000),
 		history:    newRingBuffer(historyCapacity),
+		done:       make(chan struct{}),
 	}
 }
 
 func (b *Broadcaster) run() {
+	defer b.closeAllClients()
 	for {
 		select {
+		case <-b.done:
+			return
 		case client := <-b.register:
 			b.mu.Lock()
 			b.clients[client] = true
@@ -150,4 +155,20 @@ func (b *Broadcaster) Broadcast(message string) {
 	default:
 		// 队列满时忽略，防止极端高频日志影响系统稳定性
 	}
+}
+
+// closeAllClients 关闭所有客户端 channel（由 run() 的 defer 调用，避免竞态）
+func (b *Broadcaster) closeAllClients() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for ch := range b.clients {
+		close(ch)
+	}
+	b.clients = make(map[chan string]bool)
+}
+
+// Shutdown 优雅关闭广播器，通知 run goroutine 退出
+// 客户端 channel 由 run() 的 defer closeAllClients() 负责关闭，避免与发送循环竞态
+func (b *Broadcaster) Shutdown() {
+	close(b.done)
 }

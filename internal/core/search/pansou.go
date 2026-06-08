@@ -12,6 +12,14 @@ import (
 	"time"
 )
 
+// 包级预编译正则，避免每次调用时重复编译
+var (
+	reHrefLink    = regexp.MustCompile(`href="([^"]+)"`)
+	reBareURL     = regexp.MustCompile(`https?://[^\s<"]+`)
+	reHTMLTag     = regexp.MustCompile(`<[^>]*>`)
+	reDescPattern = regexp.MustCompile(`^(.*?)(?:【(?:简介|介绍|描述)】|\[(?:简介|介绍|描述)\]|(?:简介|介绍|描述)[:：])(.*)$`)
+)
+
 // PanSouSource PanSou 搜索源
 type PanSouSource struct {
 	baseURL string
@@ -56,13 +64,11 @@ func platformToCloudTypes(platforms []string) []string {
 
 // extractURLFromContent 从 content HTML 中提取链接
 func extractURLFromContent(content string) string {
-	re := regexp.MustCompile(`href="([^"]+)"`)
-	matches := re.FindStringSubmatch(content)
+	matches := reHrefLink.FindStringSubmatch(content)
 	if len(matches) > 1 {
 		return matches[1]
 	}
-	re2 := regexp.MustCompile(`https?://[^\s<"]+`)
-	matches2 := re2.FindStringSubmatch(content)
+	matches2 := reBareURL.FindStringSubmatch(content)
 	if len(matches2) > 0 {
 		return matches2[0]
 	}
@@ -71,8 +77,7 @@ func extractURLFromContent(content string) string {
 
 // extractTitleFromContent 从 content 中提取标题
 func extractTitleFromContent(content string) string {
-	re := regexp.MustCompile(`<[^>]*>`)
-	cleaned := re.ReplaceAllString(content, "")
+	cleaned := reHTMLTag.ReplaceAllString(content, "")
 
 	lines := strings.Split(cleaned, "\n")
 	for _, line := range lines {
@@ -95,8 +100,7 @@ func extractTitleFromContent(content string) string {
 
 // extractSummaryFromContent 从 content 中提取描述
 func extractSummaryFromContent(content string) string {
-	re := regexp.MustCompile(`<[^>]*>`)
-	cleaned := re.ReplaceAllString(content, "")
+	cleaned := reHTMLTag.ReplaceAllString(content, "")
 
 	lines := strings.Split(cleaned, "\n")
 	for _, line := range lines {
@@ -195,7 +199,6 @@ func (s *PanSouSource) searchLegacy(query string, platforms []string, page int) 
 
 	var items []SearchItem
 	seen := make(map[string]bool)
-	pattern := regexp.MustCompile(`^(.*?)(?:【(?:简介|介绍|描述)】|\[(?:简介|介绍|描述)\]|(?:简介|介绍|描述)[:：])(.*)$`)
 
 	for platform, dataItems := range legacyResult.Data.MergedByType {
 		mappedPlatform := panToPlatform(platform)
@@ -214,7 +217,7 @@ func (s *PanSouSource) searchLegacy(query string, platforms []string, page int) 
 			title := item.Note
 			content := ""
 
-			if m := pattern.FindStringSubmatch(item.Note); len(m) > 2 {
+			if m := reDescPattern.FindStringSubmatch(item.Note); len(m) > 2 {
 				title = strings.TrimSpace(m[1])
 				content = strings.TrimSpace(m[2])
 			}

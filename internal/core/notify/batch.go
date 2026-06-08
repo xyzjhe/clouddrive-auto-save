@@ -1,12 +1,11 @@
 package notify
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
-
-	"github.com/zcq/clouddrive-auto-save/internal/db"
 )
 
 // BatchResult 批量任务结果
@@ -79,26 +78,8 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%dm%ds", int(d.Minutes()), int(d.Seconds())%60)
 }
 
-// SendBatchNotification 发送批量执行汇总通知
+// SendBatchNotification 发送批量执行汇总通知（统一通过 Global Manager 发送）
 func SendBatchNotification(results []BatchResult, totalDuration time.Duration) {
-	var enabledSetting, serverSetting, keySetting, iconSetting, archiveSetting db.Setting
-
-	db.DB.Where("key = ?", "bark_enabled").First(&enabledSetting)
-	if enabledSetting.Value != "true" {
-		return
-	}
-
-	db.DB.Where("key = ?", "bark_server").First(&serverSetting)
-	db.DB.Where("key = ?", "bark_device_key").First(&keySetting)
-	db.DB.Where("key = ?", "bark_icon").First(&iconSetting)
-	db.DB.Where("key = ?", "bark_archive").First(&archiveSetting)
-
-	server := serverSetting.Value
-	key := keySetting.Value
-	if key == "" {
-		return
-	}
-
 	// 判断是否有失败任务
 	hasFailure := false
 	for _, r := range results {
@@ -108,41 +89,26 @@ func SendBatchNotification(results []BatchResult, totalDuration time.Duration) {
 		}
 	}
 
-	// 根据成功/失败选择级别和铃声
-	var level, sound string
-	var levelSetting, soundSetting db.Setting
+	msgLevel := LevelSuccess
 	if hasFailure {
-		level = "timeSensitive"
-		sound = "alarm.caf"
-		db.DB.Where("key = ?", "bark_failure_level").First(&levelSetting)
-		if levelSetting.Value != "" {
-			level = levelSetting.Value
-		}
-		db.DB.Where("key = ?", "bark_failure_sound").First(&soundSetting)
-		if soundSetting.Value != "" && soundSetting.Value != "default" {
-			sound = soundSetting.Value
-		}
-	} else {
-		level = "active"
-		sound = "birdsong.caf"
-		db.DB.Where("key = ?", "bark_success_level").First(&levelSetting)
-		if levelSetting.Value != "" {
-			level = levelSetting.Value
-		}
-		db.DB.Where("key = ?", "bark_success_sound").First(&soundSetting)
-		if soundSetting.Value != "" && soundSetting.Value != "default" {
-			sound = soundSetting.Value
-		}
+		msgLevel = LevelError
 	}
 
 	title := buildBatchTitle(results)
 	body := buildBatchBody(results, totalDuration)
-	icon := iconSetting.Value
-	archive := archiveSetting.Value
+
+	notifyMsg := &Message{
+		Title:   title,
+		Content: body,
+		Level:   msgLevel,
+	}
 
 	go func() {
-		if err := SendBarkDirect(server, key, title, body, level, sound, icon, archive); err != nil {
-			slog.Error("发送 Bark 批量通知失败", "err", err)
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		if err := Global.Send(ctx, notifyMsg); err != nil {
+			slog.Error("发送批量通知失败", "error", err)
 		}
 	}()
 }

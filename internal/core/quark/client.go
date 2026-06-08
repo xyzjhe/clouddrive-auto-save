@@ -708,7 +708,9 @@ func (q *Quark) SaveLink(ctx context.Context, shareURL, extractCode, targetPath 
 			} `json:"list"`
 		} `json:"data"`
 	}
-	json.Unmarshal(resp, &detailRes)
+	if err := json.Unmarshal(resp, &detailRes); err != nil {
+		slog.Warn("解析文件详情响应失败", "error", err)
+	}
 
 	targetID, err := q.PrepareTargetPath(ctx, targetPath)
 	if err != nil {

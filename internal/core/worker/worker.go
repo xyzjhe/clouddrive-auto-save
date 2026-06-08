@@ -140,8 +140,8 @@ func (m *Manager) execute(job Job) {
 	// 2. 解析分享内容（独立超时，避免单个 API 挂起阻塞 worker）
 	m.updateProgress(task, 15, "Parsing", "正在解析分享链接...")
 	parseCtx, parseCancel := context.WithTimeout(m.ctx, 60*time.Second)
-	defer parseCancel()
 	files, err := driver.ParseShare(parseCtx, task.ShareURL, task.ExtractCode, task.ShareParentID)
+	parseCancel()
 	if err != nil {
 		m.finishTask(job, "failed", "解析分享失败: "+err.Error(), nil, startTime)
 		return
@@ -171,14 +171,15 @@ func (m *Manager) execute(job Job) {
 	// 3. 列出目标目录文件，进行去重检查
 	m.updateProgress(task, 35, "Checking", "正在检查目标目录是否存在同名文件...")
 	checkCtx, checkCancel := context.WithTimeout(m.ctx, 30*time.Second)
-	defer checkCancel()
 	targetID, err := driver.PrepareTargetPath(checkCtx, task.SavePath)
 	if err != nil {
+		checkCancel()
 		m.finishTask(job, "failed", "准备目标路径失败: "+err.Error(), nil, startTime)
 		return
 	}
 
 	existingFiles, err := driver.ListFiles(checkCtx, targetID)
+	checkCancel()
 	if err != nil {
 		m.finishTask(job, "failed", "列出目标目录失败: "+err.Error(), nil, startTime)
 		return
@@ -277,8 +278,8 @@ func (m *Manager) execute(job Job) {
 
 	m.updateProgress(task, 60, "Saving", fmt.Sprintf("正在转存 %d 个文件...", len(filteredIDs)))
 	saveCtx, saveCancel := context.WithTimeout(m.ctx, 120*time.Second)
-	defer saveCancel()
 	err = driver.SaveLink(saveCtx, task.ShareURL, task.ExtractCode, task.SavePath, filteredIDs, task.ShareParentID)
+	saveCancel()
 	if err != nil {
 		m.finishTask(job, "failed", "转存失败: "+err.Error(), nil, startTime)
 		return
@@ -289,8 +290,8 @@ func (m *Manager) execute(job Job) {
 		m.updateProgress(task, 85, "Renaming", "转存成功，正在执行重命名...")
 		// 再次列出文件，找到刚才存入的文件进行重命名
 		renameCtx, renameCancel := context.WithTimeout(m.ctx, 30*time.Second)
-		defer renameCancel()
 		newFiles, listErr := driver.ListFiles(renameCtx, targetID)
+		renameCancel()
 		if listErr != nil {
 			slog.Error("重命名阶段列出文件失败，跳过重命名", "task_id", task.ID, "error", listErr)
 			m.updateProgress(task, 90, "Renaming", fmt.Sprintf("重命名失败：无法列出目录 (%v)", listErr))

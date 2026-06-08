@@ -9,8 +9,114 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/zcq/clouddrive-auto-save/internal/db"
+	"github.com/zcq/clouddrive-auto-save/internal/utils"
 )
+
+// BarkNotifier Bark 通知渠道，通过统一 Notifier 接口管理
+type BarkNotifier struct {
+	server       string
+	deviceKey    string
+	icon         string
+	archive      string
+	successLevel string
+	successSound string
+	failureLevel string
+	failureSound string
+	client       *http.Client
+}
+
+// NewBarkNotifier 创建 Bark 通知渠道
+func NewBarkNotifier() *BarkNotifier {
+	return &BarkNotifier{
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+	}
+}
+
+// Name 返回通知渠道名称
+func (n *BarkNotifier) Name() string {
+	return "bark"
+}
+
+// Type 返回通知渠道类型
+func (n *BarkNotifier) Type() NotifierType {
+	return NotifierTypeBark
+}
+
+// Init 初始化 Bark 通知渠道
+func (n *BarkNotifier) Init(config map[string]interface{}) error {
+	server, _ := config["server"].(string)
+	if server == "" {
+		server = "https://api.day.app"
+	}
+
+	deviceKey, _ := config["device_key"].(string)
+	if deviceKey == "" {
+		return fmt.Errorf("Bark device_key 不能为空")
+	}
+
+	// 可选配置项，带默认值
+	icon, _ := config["icon"].(string)
+	archive := "true"
+	if v, ok := config["archive"].(string); ok && v != "" {
+		archive = v
+	}
+
+	successLevel := "active"
+	if v, ok := config["success_level"].(string); ok && v != "" {
+		successLevel = v
+	}
+	successSound := "birdsong.caf"
+	if v, ok := config["success_sound"].(string); ok && v != "" && v != "default" {
+		successSound = v
+	}
+	failureLevel := "timeSensitive"
+	if v, ok := config["failure_level"].(string); ok && v != "" {
+		failureLevel = v
+	}
+	failureSound := "alarm.caf"
+	if v, ok := config["failure_sound"].(string); ok && v != "" && v != "default" {
+		failureSound = v
+	}
+
+	n.server = server
+	n.deviceKey = deviceKey
+	n.icon = icon
+	n.archive = archive
+	n.successLevel = successLevel
+	n.successSound = successSound
+	n.failureLevel = failureLevel
+	n.failureSound = failureSound
+	return nil
+}
+
+// Send 发送 Bark 通知
+func (n *BarkNotifier) Send(ctx context.Context, message *Message) error {
+	// 根据消息级别选择 Bark 级别和铃声
+	level := n.successLevel
+	sound := n.successSound
+	if message.Level == LevelError || message.Level == LevelWarning {
+		level = n.failureLevel
+		sound = n.failureSound
+	}
+
+	return sendBarkDirectWithContext(ctx, n.server, n.deviceKey, message.Title, message.Content, level, sound, n.icon, n.archive)
+}
+
+// Test 测试 Bark 通知渠道
+func (n *BarkNotifier) Test(ctx context.Context) error {
+	return n.Send(ctx, &Message{
+		Title:   "UCAS 测试通知",
+		Content: "这是一条测试消息，用于验证 Bark 推送配置是否正确。",
+		Level:   LevelInfo,
+	})
+}
+
+// Close 关闭通知渠道
+func (n *BarkNotifier) Close() error {
+	return nil
+}
 
 // BarkPayload Bark 推送请求载荷
 type BarkPayload struct {
@@ -26,33 +132,8 @@ type BarkPayload struct {
 	IsArchive int    `json:"isArchive"`
 }
 
-// SendBark 发送 Bark 推送
-func SendBark(title, body, level, sound, icon, archive string) error {
-	var enabledSetting, serverSetting, keySetting db.Setting
-
-	// 获取配置
-	db.DB.Where("key = ?", "bark_enabled").First(&enabledSetting)
-	if enabledSetting.Value != "true" {
-		return nil
-	}
-
-	db.DB.Where("key = ?", "bark_server").First(&serverSetting)
-	db.DB.Where("key = ?", "bark_device_key").First(&keySetting)
-
-	server := serverSetting.Value
-	if server == "" {
-		server = "https://api.day.app"
-	}
-	key := keySetting.Value
-	if key == "" {
-		return fmt.Errorf("bark device key is empty")
-	}
-
-	return SendBarkDirect(server, key, title, body, level, sound, icon, archive)
-}
-
-// SendBarkDirect 直接通过提供的服务器和 Key 发送推送（不检查开关）
-func SendBarkDirect(server, key, title, body, level, sound, icon, archive string) error {
+// sendBarkDirectWithContext 直接通过提供的服务器和 Key 发送推送（支持 context）
+func sendBarkDirectWithContext(ctx context.Context, server, key, title, body, level, sound, icon, archive string) error {
 	if server == "" {
 		server = "https://api.day.app"
 	}
@@ -90,7 +171,7 @@ func SendBarkDirect(server, key, title, body, level, sound, icon, archive string
 
 	// 构造推送 URL
 	pushURL := fmt.Sprintf("%s/push", server)
-	req, err := http.NewRequest("POST", pushURL, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", pushURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
 	}
@@ -111,58 +192,19 @@ func SendBarkDirect(server, key, title, body, level, sound, icon, archive string
 	return nil
 }
 
-// SendTaskNotification 发送任务完成通知
+// SendBarkDirect 直接发送 Bark 推送（不检查开关，用于测试接口等场景）
+func SendBarkDirect(server, key, title, body, level, sound, icon, archive string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	return sendBarkDirectWithContext(ctx, server, key, title, body, level, sound, icon, archive)
+}
+
+// SendTaskNotification 发送任务完成通知（统一通过 Global Manager 发送到所有已启用渠道）
 func SendTaskNotification(taskName string, status string, message string, files []string, duration time.Duration) {
-	var enabledSetting, serverSetting, keySetting, iconSetting, archiveSetting db.Setting
-
-	// 同步读取所有配置，确保 goroutine 中不访问 db
-	db.DB.Where("key = ?", "bark_enabled").First(&enabledSetting)
-	if enabledSetting.Value != "true" {
-		return
-	}
-
-	db.DB.Where("key = ?", "bark_server").First(&serverSetting)
-	db.DB.Where("key = ?", "bark_device_key").First(&keySetting)
-	db.DB.Where("key = ?", "bark_icon").First(&iconSetting)
-	db.DB.Where("key = ?", "bark_archive").First(&archiveSetting)
-
-	server := serverSetting.Value
-	key := keySetting.Value
-	if key == "" {
-		return
-	}
-
 	title := fmt.Sprintf("✅ 转存任务完成: %s", taskName)
-	level := "active"
-	sound := "birdsong.caf" // 成功时默认
-
-	var levelSetting, soundSetting db.Setting
 	if status == "failed" {
 		title = fmt.Sprintf("❌ 转存任务失败: %s", taskName)
-		level = "timeSensitive" // 失败时默认
-		sound = "alarm.caf"     // 失败时默认
-
-		db.DB.Where("key = ?", "bark_failure_level").First(&levelSetting)
-		if levelSetting.Value != "" {
-			level = levelSetting.Value
-		}
-		db.DB.Where("key = ?", "bark_failure_sound").First(&soundSetting)
-		if soundSetting.Value != "" && soundSetting.Value != "default" {
-			sound = soundSetting.Value
-		}
-	} else {
-		db.DB.Where("key = ?", "bark_success_level").First(&levelSetting)
-		if levelSetting.Value != "" {
-			level = levelSetting.Value
-		}
-		db.DB.Where("key = ?", "bark_success_sound").First(&soundSetting)
-		if soundSetting.Value != "" && soundSetting.Value != "default" {
-			sound = soundSetting.Value
-		}
 	}
-
-	icon := iconSetting.Value
-	archive := archiveSetting.Value
 
 	body := fmt.Sprintf("%s\n执行耗时: %s", message, duration.Round(time.Second))
 	if len(files) > 0 {
@@ -178,30 +220,26 @@ func SendTaskNotification(taskName string, status string, message string, files 
 		body = fmt.Sprintf("%s\n\n转存文件列表:%s", body, fileList)
 	}
 
+	msgLevel := LevelSuccess
+	if status == "failed" {
+		msgLevel = LevelError
+	}
+
+	notifyMsg := &Message{
+		Title:   title,
+		Content: body,
+		Level:   msgLevel,
+	}
+
 	go func() {
-		if err := SendBarkDirect(server, key, title, body, level, sound, icon, archive); err != nil {
-			slog.Error("发送 Bark 通知失败", "err", err)
-		}
-	}()
-
-	// 触发全局通知渠道发送 (WeChat, Telegram, WxPusher)
-	go func() {
-		msgLevel := LevelSuccess
-		if status == "failed" {
-			msgLevel = LevelError
-		}
-
-		notifyMsg := &Message{
-			Title:   title,
-			Content: body,
-			Level:   msgLevel,
-		}
-
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 
 		if err := Global.Send(ctx, notifyMsg); err != nil {
 			slog.Error("发送全局渠道通知失败", "error", err)
 		}
+
+		// 同步统计更新
+		utils.BroadcastStatsUpdate()
 	}()
 }
