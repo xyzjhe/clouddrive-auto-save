@@ -319,6 +319,10 @@ func (m *Manager) execute(job Job) {
 
 // isFatalError 判断是否为致命错误（不应重试）
 func isFatalError(message string) bool {
+	// 驱动层已标记为致命错误（如 quarkErrorCodeMap / cloud139 命中），直接返回
+	if strings.Contains(message, "[Fatal]") {
+		return true
+	}
 	fatalPatterns := []string{
 		"链接失效", "链接过期", "提取码错误", "提取码无效",
 		"分享已删除", "分享已过期", "权限不足",
