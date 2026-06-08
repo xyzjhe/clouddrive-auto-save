@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	"github.com/zcq/clouddrive-auto-save/internal/api"
-	"github.com/zcq/clouddrive-auto-save/internal/core"
 	"github.com/zcq/clouddrive-auto-save/internal/core/notify"
 	"github.com/zcq/clouddrive-auto-save/internal/core/plugin"
 	"github.com/zcq/clouddrive-auto-save/internal/core/scheduler"
 	"github.com/zcq/clouddrive-auto-save/internal/core/search"
 	"github.com/zcq/clouddrive-auto-save/internal/core/telegram"
 	"github.com/zcq/clouddrive-auto-save/internal/core/worker"
+	"github.com/zcq/clouddrive-auto-save/internal/crypto"
 	"github.com/zcq/clouddrive-auto-save/internal/db"
 	"github.com/zcq/clouddrive-auto-save/internal/utils"
 )
@@ -41,6 +41,12 @@ func main() {
 	utils.InitLogger(minLevel, os.Stdout)
 	slog.Info("UCAS starting", "version", version, "commit", commit, "date", date, "logLevel", minLevel.String())
 
+	// 0.5 初始化凭据加密模块
+	if err := crypto.Init(os.Getenv("UCAS_SECRET_KEY")); err != nil {
+		slog.Error("初始化凭据加密失败", "error", err)
+		os.Exit(1)
+	}
+
 	// 1. 初始化数据库
 	dbPath := os.Getenv("DB_PATH")
 	isE2E := os.Getenv("E2E_TEST_MODE") == "true"
@@ -48,7 +54,7 @@ func main() {
 		dbPath = "file::memory:?cache=shared"
 		slog.Info("Running in E2E TEST MODE (using memory database)")
 		// 开启 HTTP 层 Mock 拦截，让系统走真实驱动逻辑进行 JSON 解析测试
-		core.SetupE2EHTTPMock()
+		setupE2EMock()
 	} else if dbPath == "" {
 		dbPath = "data.db"
 	}
@@ -64,6 +70,24 @@ func main() {
 		"status":  "pending",
 		"message": "服务重启，已重置执行状态",
 	})
+
+	// 1.6 凭据加密迁移：将明文凭据自动加密
+	if crypto.Enabled() {
+		var accounts []db.Account
+		db.DB.Find(&accounts)
+		migrated := 0
+		for i := range accounts {
+			if accounts[i].Cookie != "" && !crypto.IsEncrypted(accounts[i].Cookie) {
+				accounts[i].Cookie = crypto.Encrypt(accounts[i].Cookie)
+				accounts[i].AuthToken = crypto.Encrypt(accounts[i].AuthToken)
+				db.DB.Save(&accounts[i])
+				migrated++
+			}
+		}
+		if migrated > 0 {
+			slog.Info("凭据加密迁移完成", "count", migrated)
+		}
+	}
 
 	// 2. 启动任务管理器（可通过环境变量配置并发数和队列容量）
 	numWorkers := 3
@@ -82,6 +106,7 @@ func main() {
 	wm := worker.NewManager(numWorkers, queueSize, db.DB)
 	wm.Start()
 	defer wm.Stop()
+	defer utils.GlobalBroadcaster.Shutdown()
 
 	// 2.5 启动定时调度器
 	scheduler.Init(wm)
@@ -135,7 +160,10 @@ func main() {
 	}
 	api.InitTelegramHandler(telegramBot)
 
-	// 4.5 初始化全局通知管理器
+	// 4.5 Bark 配置迁移：将旧 bark_* 单独键迁移为 notify_config_bark JSON
+	migrateBarkConfig()
+
+	// 4.6 初始化全局通知管理器
 	slog.Info("Initializing notify manager...")
 	if err := notify.InitGlobal(db.DB); err != nil {
 		slog.Error("Failed to initialize global notify manager", "error", err)
@@ -167,4 +195,64 @@ func main() {
 		slog.Error("Failed to start API server", "error", err)
 		os.Exit(1)
 	}
+}
+
+// migrateBarkConfig 将旧 bark_* 单独键迁移为统一的 notify_config_bark JSON
+func migrateBarkConfig() {
+	// 检查是否已有新配置
+	var existing db.Setting
+	if err := db.DB.Where("key = ?", "notify_config_bark").First(&existing).Error; err == nil {
+		// 新配置已存在，跳过迁移
+		return
+	}
+
+	// 读取旧配置键
+	var settings []db.Setting
+	db.DB.Where("key LIKE ?", "bark_%").Find(&settings)
+	if len(settings) == 0 {
+		return
+	}
+
+	// 构建 map 便于查找
+	old := make(map[string]string)
+	for _, s := range settings {
+		old[s.Key] = s.Value
+	}
+
+	// 仅在 enabled=true 且 device_key 不为空时迁移有效配置
+	if old["bark_enabled"] != "true" || old["bark_device_key"] == "" {
+		slog.Info("Bark 旧配置未启用或缺少 device_key，跳过迁移")
+		return
+	}
+
+	config := map[string]interface{}{
+		"name":              "bark",
+		"type":              "bark",
+		"enabled":           true,
+		"notify_on_success": old["bark_notify_on_success"] != "false",
+		"notify_on_failure": old["bark_notify_on_failure"] != "false",
+		"config": map[string]interface{}{
+			"server":        old["bark_server"],
+			"device_key":    old["bark_device_key"],
+			"icon":          old["bark_icon"],
+			"archive":       old["bark_archive"],
+			"success_level": old["bark_success_level"],
+			"success_sound": old["bark_success_sound"],
+			"failure_level": old["bark_failure_level"],
+			"failure_sound": old["bark_failure_sound"],
+		},
+	}
+
+	data, err := json.Marshal(config)
+	if err != nil {
+		slog.Error("序列化迁移后 Bark 配置失败", "error", err)
+		return
+	}
+
+	if err := db.DB.Save(&db.Setting{Key: "notify_config_bark", Value: string(data)}).Error; err != nil {
+		slog.Error("保存迁移后 Bark 配置失败", "error", err)
+		return
+	}
+
+	slog.Info("Bark 配置已从旧格式迁移为 notify_config_bark", "keys", len(settings))
 }

@@ -16,6 +16,73 @@ import (
 	"github.com/zcq/clouddrive-auto-save/internal/utils"
 )
 
+// taskInputDTO 任务输入数据传输对象，限制前端可写入的字段白名单
+type taskInputDTO struct {
+	Name            string     `json:"name"`
+	AccountID       uint       `json:"account_id"`
+	ShareURL        string     `json:"share_url"`
+	ExtractCode     string     `json:"extract_code"`
+	SavePath        string     `json:"save_path"`
+	Pattern         string     `json:"pattern"`
+	Replacement     string     `json:"replacement"`
+	Filter          string     `json:"filter"`
+	Cron            string     `json:"cron"`
+	ScheduleMode    string     `json:"schedule_mode"`
+	MaxRetries      int        `json:"max_retries"`
+	RunDays         string     `json:"run_days"`
+	StartDate       *time.Time `json:"start_date"`
+	StartFileID     string     `json:"start_file_id"`
+	StartFileName   string     `json:"start_file_name"`
+	ShareParentID   string     `json:"share_parent_id"`
+	IgnoreExtension bool       `json:"ignore_extension"`
+}
+
+// toTask 将输入 DTO 转换为 db.Task 实体（用于创建）
+func (dto *taskInputDTO) toTask() db.Task {
+	return db.Task{
+		Name:            dto.Name,
+		AccountID:       dto.AccountID,
+		ShareURL:        dto.ShareURL,
+		ExtractCode:     dto.ExtractCode,
+		SavePath:        dto.SavePath,
+		Pattern:         dto.Pattern,
+		Replacement:     dto.Replacement,
+		Filter:          dto.Filter,
+		Cron:            dto.Cron,
+		ScheduleMode:    dto.ScheduleMode,
+		MaxRetries:      dto.MaxRetries,
+		RunDays:         dto.RunDays,
+		StartDate:       dto.StartDate,
+		StartFileID:     dto.StartFileID,
+		StartFileName:   dto.StartFileName,
+		ShareParentID:   dto.ShareParentID,
+		IgnoreExtension: dto.IgnoreExtension,
+	}
+}
+
+// toUpdateData 将输入 DTO 转换为 GORM Updates 所需的 map（用于更新）
+func (dto *taskInputDTO) toUpdateData() map[string]interface{} {
+	return map[string]interface{}{
+		"name":             dto.Name,
+		"account_id":       dto.AccountID,
+		"share_url":        dto.ShareURL,
+		"extract_code":     dto.ExtractCode,
+		"save_path":        dto.SavePath,
+		"pattern":          dto.Pattern,
+		"replacement":      dto.Replacement,
+		"filter":           dto.Filter,
+		"cron":             dto.Cron,
+		"schedule_mode":    dto.ScheduleMode,
+		"max_retries":      dto.MaxRetries,
+		"run_days":         dto.RunDays,
+		"start_date":       dto.StartDate,
+		"start_file_id":    dto.StartFileID,
+		"start_file_name":  dto.StartFileName,
+		"share_parent_id":  dto.ShareParentID,
+		"ignore_extension": dto.IgnoreExtension,
+	}
+}
+
 func listTasks(c *gin.Context) {
 	var tasks []db.Task
 	db.DB.Preload("Account").Find(&tasks)
@@ -23,11 +90,13 @@ func listTasks(c *gin.Context) {
 }
 
 func createTask(c *gin.Context) {
-	var task db.Task
-	if err := c.ShouldBindJSON(&task); err != nil {
+	var input taskInputDTO
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.PureJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	task := input.toTask()
 
 	// 校验 Cron 表达式
 	if task.ScheduleMode == "custom" {
@@ -63,55 +132,38 @@ func updateTask(c *gin.Context) {
 	oldURL := task.ShareURL
 	oldCode := task.ExtractCode
 
-	if err := c.ShouldBindJSON(&task); err != nil {
+	var input taskInputDTO
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.PureJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 防御性：恢复 task.ID，防止 JSON body 中的 id 字段覆盖 URL 路径参数
-	task.ID = originalID
-
 	// 校验 Cron 表达式
-	if task.ScheduleMode == "custom" {
-		if err := scheduler.ValidateCron(task.Cron); err != nil {
+	if input.ScheduleMode == "custom" {
+		if err := scheduler.ValidateCron(input.Cron); err != nil {
 			c.PureJSON(http.StatusBadRequest, gin.H{"error": "Cron 表达式格式错误: " + err.Error()})
 			return
 		}
 	}
 
-	slog.Info("更新任务", "name", task.Name)
+	slog.Info("更新任务", "name", input.Name)
 
-	updateData := map[string]interface{}{
-		"name":             task.Name,
-		"account_id":       task.AccountID,
-		"share_url":        task.ShareURL,
-		"extract_code":     task.ExtractCode,
-		"save_path":        task.SavePath,
-		"pattern":          task.Pattern,
-		"replacement":      task.Replacement,
-		"start_file_id":    task.StartFileID,
-		"start_file_name":  task.StartFileName,
-		"share_parent_id":  task.ShareParentID,
-		"cron":             task.Cron,
-		"schedule_mode":    task.ScheduleMode,
-		"max_retries":      task.MaxRetries,
-		"ignore_extension": task.IgnoreExtension,
-	}
+	updateData := input.toUpdateData()
 
 	// 仅当分享链接或提取码发生变动时，才重置状态以解除 [Fatal] 封锁
-	if task.ShareURL != oldURL || task.ExtractCode != oldCode {
-		slog.Info("检测到关键参数变更，自动重置任务状态", "name", task.Name)
+	if input.ShareURL != oldURL || input.ExtractCode != oldCode {
+		slog.Info("检测到关键参数变更，自动重置任务状态", "name", input.Name)
 		updateData["status"] = "pending"
 		updateData["message"] = ""
 	}
 
-	if err := db.DB.Model(&task).Updates(updateData).Error; err != nil {
+	if err := db.DB.Model(&db.Task{}).Where("id = ?", originalID).Updates(updateData).Error; err != nil {
 		c.PureJSON(http.StatusInternalServerError, gin.H{"error": "update failed"})
 		return
 	}
 
 	// 重新加载以获取关联的 Account 信息
-	db.DB.Preload("Account").First(&task, task.ID)
+	db.DB.Preload("Account").First(&task, originalID)
 
 	// 推送更新事件
 	utils.BroadcastTaskUpdate(&task)

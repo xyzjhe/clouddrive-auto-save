@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/zcq/clouddrive-auto-save/internal/core"
+	"github.com/zcq/clouddrive-auto-save/internal/crypto"
 	"github.com/zcq/clouddrive-auto-save/internal/db"
 )
 
@@ -26,6 +27,16 @@ type accountDTO struct {
 	CapacityTotal int64     `json:"capacity_total"`
 	VipName       string    `json:"vip_name"`
 	LastCheck     time.Time `json:"last_check"`
+}
+
+// toAccountDTO 将 Account 实体转换为安全返回对象（排除凭据）
+func toAccountDTO(a *db.Account) accountDTO {
+	return accountDTO{
+		ID: a.ID, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
+		Platform: a.Platform, Nickname: a.Nickname, AccountName: a.AccountName,
+		Status: a.Status, CapacityUsed: a.CapacityUsed, CapacityTotal: a.CapacityTotal,
+		VipName: a.VipName, LastCheck: a.LastCheck,
+	}
 }
 
 // accountInputDTO 账号输入数据传输对象，限制前端可写入的字段白名单
@@ -47,13 +58,8 @@ func listAccounts(c *gin.Context) {
 	db.DB.Find(&accounts)
 
 	dtos := make([]accountDTO, len(accounts))
-	for i, a := range accounts {
-		dtos[i] = accountDTO{
-			ID: a.ID, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
-			Platform: a.Platform, Nickname: a.Nickname, AccountName: a.AccountName,
-			Status: a.Status, CapacityUsed: a.CapacityUsed, CapacityTotal: a.CapacityTotal,
-			VipName: a.VipName, LastCheck: a.LastCheck,
-		}
+	for i := range accounts {
+		dtos[i] = toAccountDTO(&accounts[i])
 	}
 	c.PureJSON(http.StatusOK, dtos)
 }
@@ -66,6 +72,12 @@ func createAccount(c *gin.Context) {
 	}
 
 	sanitizeCredentials(&dto)
+
+	// 加密凭据（如已启用）
+	if crypto.Enabled() {
+		dto.Cookie = crypto.Encrypt(dto.Cookie)
+		dto.AuthToken = crypto.Encrypt(dto.AuthToken)
+	}
 
 	account := db.Account{
 		Platform:    dto.Platform,
@@ -85,7 +97,7 @@ func createAccount(c *gin.Context) {
 		slog.Error("添加账号后自动校验失败", "name", account.AccountName, "error", err)
 	}
 
-	c.PureJSON(http.StatusOK, account)
+	c.PureJSON(http.StatusOK, toAccountDTO(&account))
 }
 
 func updateAccount(c *gin.Context) {
@@ -104,6 +116,12 @@ func updateAccount(c *gin.Context) {
 
 	sanitizeCredentials(&dto)
 
+	// 加密凭据（如已启用）
+	if crypto.Enabled() {
+		dto.Cookie = crypto.Encrypt(dto.Cookie)
+		dto.AuthToken = crypto.Encrypt(dto.AuthToken)
+	}
+
 	// 仅更新白名单字段，防止通过 JSON 注入覆盖 ID/Status 等敏感字段
 	account.Platform = dto.Platform
 	account.AccountName = dto.AccountName
@@ -121,7 +139,7 @@ func updateAccount(c *gin.Context) {
 		slog.Error("更新账号后自动校验失败", "name", account.AccountName, "error", err)
 	}
 
-	c.PureJSON(http.StatusOK, account)
+	c.PureJSON(http.StatusOK, toAccountDTO(&account))
 }
 
 func deleteAccount(c *gin.Context) {
@@ -152,14 +170,20 @@ func checkAccount(c *gin.Context) {
 
 	if err := performAccountCheck(&account, c.Request.Context()); err != nil {
 		slog.Error("账号校验失败", "account_id", id, "error", err)
-		c.PureJSON(http.StatusUnauthorized, gin.H{"error": err.Error(), "account": account})
+		c.PureJSON(http.StatusUnauthorized, gin.H{"error": err.Error(), "account": toAccountDTO(&account)})
 		return
 	}
 
-	c.PureJSON(http.StatusOK, account)
+	c.PureJSON(http.StatusOK, toAccountDTO(&account))
 }
 
 func performAccountCheck(account *db.Account, ctx context.Context) error {
+	// 解密凭据供驱动使用
+	if err := crypto.DecryptAccount(account); err != nil {
+		slog.Error("解密账号凭据失败", "account_id", account.ID, "error", err)
+		return fmt.Errorf("解密凭据失败: %w", err)
+	}
+
 	driver := core.GetDriver(account)
 	if driver == nil {
 		return fmt.Errorf("driver not found for platform: %s", account.Platform)

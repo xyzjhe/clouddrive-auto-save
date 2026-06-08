@@ -2,10 +2,13 @@ package core
 
 import (
 	"context"
-	"github.com/zcq/clouddrive-auto-save/internal/db"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/zcq/clouddrive-auto-save/internal/crypto"
+	"github.com/zcq/clouddrive-auto-save/internal/db"
 )
 
 // HTTPTransport 是全局可替换的 HTTP 传输层，默认为 http.DefaultTransport。
@@ -54,21 +57,36 @@ type CloudDrive interface {
 // DriveFactory 用于根据平台创建对应的驱动实例
 type DriveFactory func(account *db.Account) CloudDrive
 
-var drivers = make(map[string]DriveFactory)
+var (
+	drivers   = make(map[string]DriveFactory)
+	driversMu sync.RWMutex
+)
 
 func RegisterDriver(platform string, factory DriveFactory) {
+	driversMu.Lock()
 	drivers[platform] = factory
+	driversMu.Unlock()
 }
 
 func GetDriver(account *db.Account) CloudDrive {
-	if factory, ok := drivers[account.Platform]; ok {
-		return factory(account)
+	// 克隆 account 避免原地解密污染调用者的对象（防止明文凭据意外泄露到日志）
+	clone := *account
+	if err := crypto.DecryptAccount(&clone); err != nil {
+		return nil
+	}
+	driversMu.RLock()
+	factory, ok := drivers[clone.Platform]
+	driversMu.RUnlock()
+	if ok {
+		return factory(&clone)
 	}
 	return nil
 }
 
 // GetDriverByURL 根据分享链接 URL 判断平台并返回驱动实例
 func GetDriverByURL(url string) CloudDrive {
+	driversMu.RLock()
+	defer driversMu.RUnlock()
 	if strings.Contains(url, "pan.quark.cn") {
 		if factory, ok := drivers["quark"]; ok {
 			return factory(&db.Account{Platform: "quark"})
