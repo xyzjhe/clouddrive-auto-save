@@ -1,3 +1,5 @@
+//go:build e2e
+
 // internal/core/plugin/manager_test.go
 package plugin
 

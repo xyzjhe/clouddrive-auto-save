@@ -1,3 +1,5 @@
+//go:build e2e
+
 // internal/core/mock_plugin.go
 package core
 

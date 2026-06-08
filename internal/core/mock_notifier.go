@@ -1,3 +1,5 @@
+//go:build e2e
+
 // internal/core/mock_notifier.go
 package core
 

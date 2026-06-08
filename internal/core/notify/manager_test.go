@@ -1,3 +1,5 @@
+//go:build e2e
+
 // internal/core/notify/manager_test.go
 package notify
 
