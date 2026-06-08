@@ -85,6 +85,8 @@ services:
 | `DB_PATH` | SQLite 数据库文件路径 | `/app/data/data.db` |
 | `LISTEN_ADDR` | 服务监听地址与端口 | `0.0.0.0:8080` |
 | `TZ` | 系统时区（主要用于日志时间与定时任务对齐） | `Asia/Shanghai` |
+| `UCAS_API_KEY` | API 静态 Token 认证密钥，为空则跳过认证 | （空） |
+| `UCAS_SECRET_KEY` | 凭据 AES-256-GCM 加密密钥（64 字符 hex），为空则明文存储 | （空） |
 
 ---
 

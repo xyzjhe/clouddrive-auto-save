@@ -49,7 +49,9 @@ make clean          # 清理 bin/、web/dist/、coverage.out
   - `20002`：账号登录已失效
 - **调度器** (`internal/core/scheduler/`) — 封装 robfig/cron，支持秒级精度。"global" 模式共享一个 cron 触发所有全局任务；"custom" 模式为每个任务独立 cron。带有 `[Fatal]` 消息的任务会被自动跳过
 - **重命名器** (`internal/core/renamer/`) — 支持魔法变量 `{TASKNAME}`、`{OLDNAME}`、`{CHINESE}`、`{DATE}`、`{YEAR}`、`{EXT}`，正则捕获组 `${1}`，以及 Go `text/template` 表达式
-- **SSE/事件系统** (`internal/utils/`) — `Broadcaster` 发布/订阅系统，向所有 SSE 客户端广播实时日志和 `[EVENT:task_update|task_delete|stats_update|search_validate]` 结构化 JSON 事件。`DashboardLogger` 双写 slog 输出到控制台 + SSE
+- **SSE/事件系统** (`internal/utils/`) — `Broadcaster` 发布/订阅系统，向所有 SSE 客户端广播实时日志和 `[EVENT:task_update|task_delete|stats_update|search_validate]` 结构化 JSON 事件。`DashboardLogger` 双写 slog 输出到控制台 + SSE。支持 `Shutdown()` 优雅关闭
+- **API 认证** (`internal/api/middleware.go`) — 静态 Token 认证中间件，读取 `UCAS_API_KEY`，支持 `X-API-Key` 头和 `?token=` 查询参数
+- **凭据加密** (`internal/crypto/`) — AES-256-GCM 加密模块，`UCAS_SECRET_KEY` 为空时透明透传，启动时自动迁移明文凭据
 - **插件系统** (`internal/core/plugin/`) — 支持模块化扩展，插件有三个生命周期钩子：`task_before`、`task_after`、`run`
 - **Telegram 集成** (`internal/core/telegram/`) — 支持通过 Telegram 远程管理任务，包括命令处理和消息推送
 - **资源搜索** (`internal/core/search/`) — 集成 CloudSaver/PanSou 等资源搜索引擎，支持搜索后一键创建任务
@@ -59,9 +61,12 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 
 5 个页面位于 `web/src/views/`：Dashboard（左右两栏面板 + SSE 实时日志）、Accounts（139/Quark 卡片网格账号管理与空间进度环）、Tasks（抽屉式 CRUD 任务管理 + 智能提取解析）、Settings（Tab 式集中管理：系统调度、四通道推送及扩展插件）、Search（云盘资源搜索引擎对接与跨页面联动创建）
 
+Tasks.vue 拆分为 `web/src/components/tasks/` 下的 TaskTable.vue、TaskForm.vue、utils.js。Settings.vue 拆分为 `web/src/components/settings/` 下的 ScheduleSettings.vue、NotifySettings.vue、PluginSettings.vue、SearchSettings.vue。
+
 共享工具模块 `web/src/utils/`：
 - `format.js` — 统一的 `formatSize`（`parseFloat` 去尾零）、`formatTime`（相对时间）、`getStatusTagType`/`getStatusLabel` 状态映射
-- `sse.js` — 统一的 SSE 连接管理（自动重连、事件解析）
+
+SSE 连接通过 `web/src/stores/sse.js` Pinia Store 统一管理（单例 EventSource、引用计数、指数退避重连），Dashboard/Tasks/Search 三视图共享同一连接。
 
 ### 构建标签分离
 
@@ -70,7 +75,8 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 
 ### E2E 测试
 
-- `E2E_TEST_MODE=true` 激活 `internal/core/mock_http.go`，替换 `http.DefaultTransport` 拦截所有云盘 API 调用并返回预设响应
+- Mock 文件（`internal/core/mock_*.go`）使用 `//go:build e2e` 标签隔离，不编入生产二进制。`cmd/server/e2e_setup.go`（e2e）和 `e2e_stub.go`（!e2e）条件编译桥接
+- `E2E_TEST_MODE=true` 激活 HTTP Mock，替换 `http.DefaultTransport` 拦截所有云盘 API 调用并返回预设响应
 - Playwright 测试用例位于 `e2e/tests/`（74 个测试），覆盖账号、仪表盘、任务、设置和布局导航模块
 - Dashboard 页面有 SSE 长连接 (`/api/dashboard/logs`)，使用 `page.route` mock 数据时必须同时 mock SSE 端点，否则真实后端事件会触发 `fetchStats()` 与 mock 竞态导致 flaky
 - Playwright 选择器：当多个按钮的可访问名称有包含关系时（如"选择目录" vs "浏览分享内容并选择目录"），必须使用 `getByRole('button', { name: '...', exact: true })` 避免严格模式冲突
@@ -96,7 +102,7 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - **纯 Go 架构**：使用 `glebarez/sqlite`（无 CGO 依赖）以确保跨平台交叉编译，无需 C 编译器
 - **错误处理**：不可吞噬错误。严重异常使用 `[Fatal]` 级别日志，通过 SSE 同步至前端 UI 展示
 - **API 响应格式**：统一使用扁平格式 — 成功直接返回业务数据（`c.PureJSON(200, data)`），错误返回 `gin.H{"error": "..."}`。禁止使用信封格式 `{code, data}`。前端统一通过 `request.js`（axios）调用，禁止绕过用 raw `fetch()`
-- **环境变量**：`LOG_LEVEL`（DEBUG/INFO/WARN/ERROR）、`DB_PATH`（默认 `data.db`）、`LISTEN_ADDR`（默认 `0.0.0.0:8080`）
+- **环境变量**：`LOG_LEVEL`（DEBUG/INFO/WARN/ERROR）、`DB_PATH`（默认 `data.db`）、`LISTEN_ADDR`（默认 `0.0.0.0:8080`）、`UCAS_API_KEY`（API 认证 Token，为空跳过）、`UCAS_SECRET_KEY`（AES-256-GCM 凭据加密密钥，64 字符 hex，为空明文存储）
 
 ## 数据库模型 (`internal/db/db.go`)
 
@@ -106,9 +112,9 @@ make clean          # 清理 bin/、web/dist/、coverage.out
 - **Setting**：全局配置的键值存储（调度、Bark 通知）
 
 **⚠️ Task 字段三处同步规则**：Task 模型新增可编辑字段时，必须同步更新以下三处，否则编辑任务时字段不生效：
-1. `internal/api/task.go` 的 `updateData` map（后端持久化）
-2. `web/src/views/Tasks.vue` 的 `handleEdit` 函数（编辑表单填充）
-3. `web/src/views/Tasks.vue` 的 `openAddDialog` 和初始 `form` ref（新建表单默认值）
+1. `internal/api/task.go` 的 `taskInputDTO` 结构体和 `toUpdateData()` 方法（后端白名单 + 持久化）
+2. `web/src/components/tasks/TaskForm.vue` 的表单模板（编辑表单 UI）
+3. `web/src/components/tasks/utils.js` 的 `getDefaultFormData()` 函数（新建表单默认值）
 
 ## API 路由
 
