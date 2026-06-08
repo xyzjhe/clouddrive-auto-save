@@ -99,6 +99,14 @@ build-server: build-web
 ## build: 完整构建流程的快捷别名 (等同于 build-server)
 build: build-server
 
+## build-e2e: 编译带 E2E Mock 的二进制 (用于端到端测试)
+build-e2e: build-web
+	@echo "=> Building E2E binary ($(VERSION))..."
+	go mod tidy
+	mkdir -p $(BIN_DIR)
+	go build $(GO_BUILD_FLAGS) -tags "embed e2e" -ldflags "$(LDFLAGS)" -o $(APP_NAME) ./cmd/server/...
+	@echo "=> E2E build successful! Binary generated: $(APP_NAME)"
+
 # ------------------------------------------
 # 容器化运维 (Docker)
 # ------------------------------------------
@@ -150,17 +158,15 @@ vet:
 
 ## test: 运行 Go 单元测试 (含竞态检测和覆盖率)
 test:
-	@echo "=> Running tests with race detection..."
-	go test -v -race ./...
-	@echo ""
-	@echo "=> Collecting coverage info for packages with tests..."
+	@echo "=> Running tests with race detection and coverage..."
 	@PACKAGES=$$(go list -f '{{if .TestGoFiles}}{{.ImportPath}}{{end}}' ./...); \
 	if [ -n "$$PACKAGES" ]; then \
-		go test -coverprofile=coverage.out $$PACKAGES > /dev/null; \
+		go test -v -race -coverprofile=coverage.out $$PACKAGES; \
+		echo ""; \
 		echo "=> Coverage Summary:"; \
 		go tool cover -func=coverage.out | tail -n 1; \
 	else \
-		echo "=> No test files found, skipping coverage collection."; \
+		echo "=> No test files found."; \
 	fi
 
 ## test-html: 在浏览器中查看覆盖率报告
@@ -183,7 +189,7 @@ e2e-setup:
 	cd e2e && npx playwright install chromium
 
 ## e2e-test: 编译并运行端到端测试 (自动处理后台服务起停)
-e2e-test: build
+e2e-test: build-e2e
 	@echo "=> Running E2E tests..."
 	@echo "=> Checking if port 8080 is occupied..."
 	@PORT_PID=$$(lsof -t -i:8080 2>/dev/null || true); \
