@@ -19,21 +19,21 @@ func getAccountFolders(c *gin.Context) {
 	var account db.Account
 	if err := db.DB.First(&account, id).Error; err != nil {
 		slog.Error("获取目录失败: 账号未找到", "account_id", id)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+		c.PureJSON(http.StatusNotFound, gin.H{"error": "Account not found"})
 		return
 	}
 
 	driver := core.GetDriver(&account)
 	if driver == nil {
 		slog.Error("获取目录失败: 驱动加载失败", "platform", account.Platform)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Driver not found"})
+		c.PureJSON(http.StatusInternalServerError, gin.H{"error": "Driver not found"})
 		return
 	}
 
 	folders, err := driver.ListFiles(c.Request.Context(), parentID)
 	if err != nil {
 		slog.Error("获取目录异常", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.PureJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -60,7 +60,7 @@ func getAccountFolders(c *gin.Context) {
 	}
 
 	slog.Info("获取目录完成", "account_id", id, "folder_count", len(result))
-	c.JSON(http.StatusOK, result)
+	c.PureJSON(http.StatusOK, result)
 }
 
 func createAccountFolder(c *gin.Context) {
@@ -70,7 +70,7 @@ func createAccountFolder(c *gin.Context) {
 		ParentPath string `json:"parent_path"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -79,21 +79,21 @@ func createAccountFolder(c *gin.Context) {
 	var account db.Account
 	if err := db.DB.First(&account, id).Error; err != nil {
 		slog.Error("创建文件夹失败: 账号未找到", "account_id", id)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+		c.PureJSON(http.StatusNotFound, gin.H{"error": "Account not found"})
 		return
 	}
 
 	driver := core.GetDriver(&account)
 	if driver == nil {
 		slog.Error("创建文件夹失败: 驱动加载失败", "platform", account.Platform)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Driver not found"})
+		c.PureJSON(http.StatusInternalServerError, gin.H{"error": "Driver not found"})
 		return
 	}
 
 	info, err := driver.CreateFolder(c.Request.Context(), req.ParentPath, req.Name)
 	if err != nil {
 		slog.Error("创建文件夹异常", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.PureJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -105,7 +105,7 @@ func createAccountFolder(c *gin.Context) {
 	}
 
 	slog.Info("创建文件夹完成", "path", childPath)
-	c.JSON(http.StatusOK, gin.H{
+	c.PureJSON(http.StatusOK, gin.H{
 		"id":     info.ID,
 		"name":   info.Name,
 		"label":  info.Name,

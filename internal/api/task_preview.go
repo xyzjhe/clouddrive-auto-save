@@ -24,26 +24,26 @@ func previewTask(c *gin.Context) {
 		Name        string `json:"name"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	var account db.Account
 	if err := db.DB.First(&account, req.AccountID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+		c.PureJSON(http.StatusNotFound, gin.H{"error": "Account not found"})
 		return
 	}
 
 	driver := core.GetDriver(&account)
 	if driver == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Driver not found"})
+		c.PureJSON(http.StatusInternalServerError, gin.H{"error": "Driver not found"})
 		return
 	}
 
 	// 1. 获取分享内容
 	files, err := driver.ParseShare(c.Request.Context(), req.ShareURL, req.ExtractCode, req.ParentID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Parse share failed: " + err.Error()})
+		c.PureJSON(http.StatusInternalServerError, gin.H{"error": "Parse share failed: " + err.Error()})
 		return
 	}
 
@@ -110,7 +110,7 @@ func previewTask(c *gin.Context) {
 	}
 
 	slog.Info("预览计算完成", "file_count", len(results))
-	c.JSON(http.StatusOK, results)
+	c.PureJSON(http.StatusOK, results)
 }
 
 func parseShareLinkInfo(c *gin.Context) {
@@ -125,7 +125,7 @@ func parseShareLinkInfo(c *gin.Context) {
 		Name        string `json:"name"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -138,7 +138,7 @@ func parseShareLinkInfo(c *gin.Context) {
 		var account db.Account
 		if err := db.DB.First(&account, req.AccountID).Error; err != nil {
 			slog.Error("解析失败: 账号未找到", "account_id", req.AccountID)
-			c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+			c.PureJSON(http.StatusNotFound, gin.H{"error": "Account not found"})
 			return
 		}
 		driver = core.GetDriver(&account)
@@ -149,7 +149,7 @@ func parseShareLinkInfo(c *gin.Context) {
 
 	if driver == nil {
 		slog.Error("解析失败: 驱动加载失败", "url", req.ShareURL)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Driver not found"})
+		c.PureJSON(http.StatusInternalServerError, gin.H{"error": "Driver not found"})
 		return
 	}
 
@@ -157,7 +157,7 @@ func parseShareLinkInfo(c *gin.Context) {
 	files, err := driver.ParseShare(c.Request.Context(), req.ShareURL, req.ExtractCode, req.ParentID)
 	if err != nil {
 		slog.Error("解析失败", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.PureJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -222,5 +222,5 @@ func parseShareLinkInfo(c *gin.Context) {
 	}
 
 	slog.Info("解析完成", "item_count", len(files))
-	c.JSON(http.StatusOK, files)
+	c.PureJSON(http.StatusOK, files)
 }

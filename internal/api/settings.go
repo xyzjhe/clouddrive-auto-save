@@ -26,19 +26,6 @@ var allowedSettingKeys = map[string]bool{
 	"openlist_enabled":   true,
 	"openlist_api_url":   true,
 	"openlist_api_token": true,
-	// Bark 通知（兼容新旧字段名）
-	"bark_enabled":           true,
-	"bark_server":            true,
-	"bark_device_key":        true,
-	"bark_url":               true,
-	"bark_notify_on_success": true,
-	"bark_notify_on_failure": true,
-	"bark_icon":              true,
-	"bark_archive":           true,
-	"bark_success_level":     true,
-	"bark_success_sound":     true,
-	"bark_failure_level":     true,
-	"bark_failure_sound":     true,
 }
 
 func getScheduleSettings(c *gin.Context) {
@@ -104,7 +91,7 @@ func getGlobalSettings(c *gin.Context) {
 func updateGlobalSettings(c *gin.Context) {
 	var input map[string]string
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -181,11 +168,11 @@ func testBarkNotification(c *gin.Context) {
 		Archive string `json:"isArchive"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if !isSafeBarkURL(input.Server) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Bark 服务器地址不合法或为内网地址"})
+		c.PureJSON(http.StatusBadRequest, gin.H{"error": "Bark 服务器地址不合法或为内网地址"})
 		return
 	}
 
@@ -208,7 +195,7 @@ func testBarkNotification(c *gin.Context) {
 
 	err := notify.SendBarkDirect(input.Server, input.Key, title, body, level, sound, input.Icon, input.Archive)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.PureJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.PureJSON(http.StatusOK, gin.H{"message": "test notification sent"})
